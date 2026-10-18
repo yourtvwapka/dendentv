@@ -1,4 +1,4 @@
-"""HDHub4u provider plugin (v8 — hubdrive /ajax.php?ajax=download resolver)."""
+"""HDHub4u provider plugin (v9 — hubdrive ajax with detailed attempt logging)."""
 
 import html
 import json
@@ -53,7 +53,7 @@ class Provider:
     def _get(self, url, **kw):
         return self.session.get(url, timeout=45, allow_redirects=True, **kw)
 
-    # ---------- search (unchanged, working) ----------
+    # ---------- search ----------
     def search(self, q):
         q = (q or "").strip()
         if not q:
@@ -131,7 +131,7 @@ class Provider:
         base_host = self.base.split("//", 1)[-1].split("/")[0]
         return base_host in low
 
-    # ---------- get_streams (v8) ----------
+    # ---------- get_streams (v9) ----------
     def get_streams(self, page_url):
         page_url = (page_url or "").strip()
         if not page_url:
@@ -177,10 +177,8 @@ class Provider:
             seen.add(u)
             host = urlparse(u).netloc.lower()
 
-            # Skip hubdrive homepages — no file path
             if host.endswith("hubdrive.pics") and "/file/" not in u.lower():
-                debug["resolutions"].append({"input": u[:150],
-                                             "attempt": "skipped (homepage)"})
+                debug["resolutions"].append({"input": u[:150], "attempt": "skipped (homepage)"})
                 continue
 
             try:
@@ -194,8 +192,7 @@ class Provider:
                     streams.append({"url": final, "quality": "Auto",
                                     "format": "MP4", "label": "HDHub"})
             except Exception as e:
-                debug["resolutions"].append({"input": u[:200],
-                                             "error": str(e)[:200]})
+                debug["resolutions"].append({"input": u[:200], "error": str(e)[:200]})
 
         return {"streams": streams, "page": page_url, "debug": debug}
 
@@ -207,74 +204,145 @@ class Provider:
             return self._resolve_hubcloud(url)
         return self._resolve_generic(url)
 
-    # ---------- HubDrive (uses confirmed ajax.php API) ----------
+    # ---------- HubDrive (v9) ----------
     def _resolve_hubdrive(self, url):
-        m = re.search(r"/file/([^/?#]+)", url) or re.search(r"/([A-Za-z0-9_-]+)/?$", url)
+        m = re.search(r"/file/([^/?#]+)", url)
         if not m:
-            return None, "hubdrive: no file id"
-        file_id = m.group(1)
+            return None, "hubdrive: no /file/ in URL"
+        url_id = m.group(1)
 
-        # Load file page first (sets any cookies / session state)
+        # Step 1: load page (establishes session cookies)
         try:
-            self._get(url)
+            page_resp = self._get(url)
+            page_html = page_resp.text
         except Exception as e:
-            return None, f"hubdrive: page GET error: {e}"
+            return None, {"message": "page load failed", "error": str(e)}
 
-        # POST to ajax endpoint
-        origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
-        ajax_url = origin + "/ajax.php?ajax=download"
+        # Capture cookies after page load
+        cookies_after = []
         try:
-            r = self.session.post(
-                ajax_url,
-                data={"id": file_id},
-                headers={
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Referer": url,
-                    "Origin": origin,
-                    "Accept": "application/json, text/javascript, */*; q=0.01",
-                },
-                timeout=30,
-                allow_redirects=True,
-            )
-        except Exception as e:
-            return None, f"hubdrive: ajax error: {e}"
-
-        if r.status_code != 200:
-            return None, f"hubdrive: ajax HTTP {r.status_code} body={r.text[:100]!r}"
-
-        try:
-            j = r.json()
+            for c in self.session.cookies.jar:
+                cookies_after.append({"name": c.name, "domain": c.domain})
         except Exception:
-            return None, f"hubdrive: ajax non-json: {r.text[:150]!r}"
+            pass
 
-        code = str(j.get("code") or "")
-        file_url = j.get("file") or j.get("url") or j.get("link")
+        # Step 2: find down-id in page
+        down_id = None
+        m2 = re.search(r'id=["\']down-id["\'][^>]*>([^<]+)<', page_html)
+        if m2:
+            down_id = m2.group(1).strip()
+        else:
+            m3 = re.search(r'id=["\']down-id["\'][^>]*value=["\']([^"\']+)', page_html)
+            if m3:
+                down_id = m3.group(1)
+        if not down_id:
+            m4 = re.search(r'down-id["\'][^>]*data-id=["\']([^"\']+)', page_html)
+            if m4:
+                down_id = m4.group(1)
 
-        if code == "200" and file_url:
-            return file_url, "hubdrive: ajax OK"
-        return None, f"hubdrive: code={code} file={file_url!r} msg={j.get('message') or j.get('nama')!r}"
+        # Step 3: try POSTs with all combinations
+        origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        ajax_urls = [origin + "/ajax.php?ajax=download", origin + "/ajax.php"]
+        ids_to_try = []
+        if down_id:
+            ids_to_try.append(("down-id", down_id))
+        ids_to_try.append(("url-id", url_id))
 
-    # ---------- HubCloud (try same ajax pattern, then look for embedded hubdrive) ----------
+        attempts = []
+        for label, candidate_id in ids_to_try:
+            for ajax_url in ajax_urls:
+                for body_kind, body_data, content_type in [
+                    ("form-dict", {"id": candidate_id}, "application/x-www-form-urlencoded; charset=UTF-8"),
+                    ("form-str", f"id={candidate_id}", "application/x-www-form-urlencoded; charset=UTF-8"),
+                    ("form-body", {"ajax": "download", "id": candidate_id}, "application/x-www-form-urlencoded; charset=UTF-8"),
+                ]:
+                    headers = {
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Referer": url,
+                        "Origin": origin,
+                        "Accept": "application/json, text/javascript, */*; q=0.01",
+                        "Accept-Language": "en-US,en;q=0.9",
+                        "Content-Type": content_type,
+                    }
+                    try:
+                        resp = self.session.post(
+                            ajax_url, data=body_data, headers=headers,
+                            timeout=30, allow_redirects=False,
+                        )
+                        body_text = resp.text or ""
+                        resp_headers = {}
+                        for h in ("Location", "Content-Type", "Set-Cookie", "Content-Length"):
+                            if h in resp.headers:
+                                resp_headers[h] = resp.headers[h][:120]
+
+                        attempts.append({
+                            "src": label,
+                            "id": candidate_id[:25],
+                            "url": ajax_url.split("//")[1][:40],
+                            "body_kind": body_kind,
+                            "status": resp.status_code,
+                            "bytes": len(body_text),
+                            "preview": body_text[:80] if body_text else "",
+                            "resp_headers": resp_headers,
+                        })
+
+                        # Success paths
+                        if resp.status_code in (200, 302):
+                            # Redirect to file?
+                            loc = resp.headers.get("Location") or ""
+                            if loc and any(re.search(p, loc, re.I) for p in FILE_PATTERNS):
+                                return loc, f"hubdrive: 302 → file ({label})"
+
+                            # JSON body?
+                            if body_text.strip():
+                                try:
+                                    j = resp.json()
+                                    if str(j.get("code") or "") == "200":
+                                        file_url = j.get("file") or j.get("url") or j.get("link")
+                                        if file_url:
+                                            return file_url, f"hubdrive: JSON OK ({label}, {body_kind})"
+                                except Exception:
+                                    pass
+
+                                # Non-JSON body that looks like HTML with file link
+                                direct = self._scan_for_direct(body_text)
+                                if direct:
+                                    return direct, f"hubdrive: body scan ({label}, {body_kind})"
+                    except Exception as e:
+                        attempts.append({
+                            "src": label, "id": candidate_id[:25],
+                            "body_kind": body_kind, "error": str(e)[:120],
+                        })
+
+        # Step 4: nothing worked — dump diagnostics
+        return None, {
+            "message": "hubdrive: all POST variants failed",
+            "url_id": url_id,
+            "down_id": down_id,
+            "cookies_after_page": cookies_after,
+            "attempts": attempts[:12],
+        }
+
+    # ---------- HubCloud ----------
     def _resolve_hubcloud(self, url):
         try:
             r = self._get(url)
         except Exception as e:
-            return None, f"hubcloud: GET error: {e}"
-
+            return None, f"hubcloud GET error: {e}"
         if r.status_code >= 400:
-            return None, f"hubcloud: HTTP {r.status_code}"
+            return None, f"hubcloud HTTP {r.status_code}"
 
-        # If the hubcloud page embeds a hubdrive link, follow it
+        # Check if hubcloud page embeds a hubdrive link
         for m in re.finditer(r"https?://hubdrive\.\w+/file/[^\s\"'<>]+", r.text):
             try:
                 final, attempt = self._resolve_hubdrive(m.group(0))
                 if final:
-                    return final, f"hubcloud → hubdrive ({attempt})"
+                    return final, f"hubcloud → hubdrive ({attempt if isinstance(attempt, str) else 'OK'})"
             except Exception:
                 pass
 
-        # Try hubcloud's own ajax endpoint
-        m = re.search(r"/drive/([^/?#]+)", url) or re.search(r"/([A-Za-z0-9_-]+)/?$", url)
+        # Try hubcloud's own ajax.php
+        m = re.search(r"/drive/([^/?#]+)", url)
         if m:
             file_id = m.group(1)
             origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
@@ -286,20 +354,20 @@ class Provider:
                         "X-Requested-With": "XMLHttpRequest",
                         "Referer": url,
                         "Origin": origin,
+                        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                     },
                     timeout=30,
                 )
-                if resp.status_code == 200:
+                if resp.status_code == 200 and resp.text.strip():
                     try:
                         j = resp.json()
-                        if str(j.get("code")) == "200" and (j.get("file") or j.get("url")):
-                            return j.get("file") or j.get("url"), "hubcloud: ajax OK"
+                        if str(j.get("code")) == "200":
+                            return j.get("file") or j.get("url"), "hubcloud ajax OK"
                     except Exception:
                         pass
             except Exception:
                 pass
 
-        # Fallback: scan for direct file links
         direct = self._scan_for_direct(r.text)
         if direct:
             return direct, "hubcloud: direct scan"
@@ -309,13 +377,11 @@ class Provider:
         try:
             r = self._get(url)
         except Exception as e:
-            return None, f"generic: GET error: {e}"
-
+            return None, f"generic GET error: {e}"
         ct = (r.headers.get("content-type") or "").lower()
         if any(k in ct for k in ("video/", "application/octet-stream",
                                  "application/zip", "video/x-matroska")):
-            return str(r.url), f"generic: direct file ({ct})"
-
+            return str(r.url), f"generic: file ({ct})"
         direct = self._scan_for_direct(r.text)
         if direct:
             return direct, "generic: scan"
