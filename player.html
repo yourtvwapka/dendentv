@@ -1083,6 +1083,7 @@ const HLS_CDN = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js";
 let currentPosKey = "pos:" + P.detailPath + ":" + P.se + ":" + P.ep;
 let pendingResumeTime = 0;
 let _nextEpRefreshAbort = null;
+let _retry = { tried: new Set(), apiRefreshes: 0, busy: false };
 
 /* ═══════════ RESUME / LAST-PLAYED PERSISTENCE ═══════════ */
 const LAST_PLAY_KEY = "ytv:lastPlayed";
@@ -1999,6 +2000,7 @@ const player = {
   idleTimer: null, scrubbing: false, abort: null,
   captions: [], captionIndex: -1,
   captionBlobUrl: null, captionTrackEl: null,
+  _currentStreamUrl: "",
 };
 
 function loadHlsLib() {
@@ -2025,6 +2027,7 @@ async function loadAndPlay() {
   capWrap.hidden = true;
   if (player.abort) { try { player.abort.abort(); } catch (_) {} }
   player.abort = new AbortController();
+  _retry = { tried: new Set(), apiRefreshes: 0, busy: false };
 
   // ═══ Direct stream mode (from catalog index, external provider) ═══
   if (P.streamUrl) {
@@ -2072,6 +2075,7 @@ async function loadAndPlay() {
 async function attachSource(stream, index) {
   if (player.hls) { try { player.hls.destroy(); } catch (_) {} player.hls = null; }
   const url = stream.url;
+  player._currentStreamUrl = url;
   const isHls = /\.m3u8([?#&]|$)/i.test(url) || /mpegurl/i.test(stream.format);
   const headers = { ...(stream.headers || {}) };
   if (player.signCookie && !headers.Cookie) headers.Cookie = player.signCookie;
@@ -2943,12 +2947,51 @@ video.addEventListener("ended", () => {
     }, { pushState: true });
   }
 });
-video.addEventListener("error", () => {
+
+video.addEventListener("error", async () => {
   logVideoError();
   if (player.hls) return;
-  playerLoading.hidden = true;
-  playerErrorMsg.textContent = "Video element failed. Try another quality.";
-  playerError.hidden = false;
+  if (P.streamUrl || _retry.busy) {
+    playerLoading.hidden = true;
+    playerErrorMsg.textContent = "Video failed.";
+    playerError.hidden = false;
+    return;
+  }
+  _retry.busy = true;
+  try {
+    if (player._currentStreamUrl) _retry.tried.add(player._currentStreamUrl);
+
+    const next = player.streams.find(
+      (s) => s && s.url && !_retry.tried.has(s.url)
+    );
+    if (next) {
+      const idx = player.streams.indexOf(next);
+      console.log("[stream] error → trying stream " + idx + " (" + next.quality + ")");
+      playerLoading.hidden = false;
+      playerError.hidden = true;
+      await attachSource(next, idx);
+      return;
+    }
+
+    if (_retry.apiRefreshes < 2) {
+      _retry.apiRefreshes++;
+      console.log("[stream] all failed → refreshing play API (" + _retry.apiRefreshes + "/2)");
+      _retry.tried.clear();
+      playerLoading.hidden = false;
+      playerError.hidden = true;
+      await new Promise((r) => setTimeout(r, 1200));
+      loadAndPlay();
+      return;
+    }
+
+    playerLoading.hidden = true;
+    playerErrorMsg.innerHTML =
+      "All streams failed.<br>" +
+      "<span style='font-size:11.5px;color:#8a8a94'>Check logs (L) for details.</span>";
+    playerError.hidden = false;
+  } finally {
+    _retry.busy = false;
+  }
 });
 
 /* ═══════════ SAVE STATE ON PAUSE / HIDE / UNLOAD ═══════════ */
