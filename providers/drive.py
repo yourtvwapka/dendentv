@@ -1,4 +1,4 @@
-"""MoviesDrive provider plugin (v5 — wp-json + admin-ajax + debug)."""
+"""MoviesDrive provider plugin (v8 — tries post meta, then Playwright-free scan)."""
 
 import html
 import re
@@ -10,31 +10,16 @@ from curl_cffi import requests as creq
 GDRIVE_ID_PATTERNS = [
     r"/file/d/([a-zA-Z0-9_-]+)",
     r"[?&]id=([a-zA-Z0-9_-]+)",
-    r"/document/d/([a-zA-Z0-9_-]+)",
-    r"/presentation/d/([a-zA-Z0-9_-]+)",
-    r"/spreadsheets/d/([a-zA-Z0-9_-]+)",
 ]
 
 FILE_HOST_PATTERNS = [
-    r"drive\.google\.com",
-    r"docs\.google\.com",
+    r"drive\.google\.com", r"docs\.google\.com",
     r"drive\.usercontent\.google\.com",
-    r"driveleech\.\w+",
-    r"gdflix\.\w+",
-    r"filepress\.\w+",
-    r"gdtot\.\w+",
-    r"kolop\.\w+",
-    r"filebee\.\w+",
-    r"mega\.nz",
-    r"dropbox\.com",
-    r"hubdrive\.\w+",
-    r"hubcloud\.\w+",
+    r"driveleech\.\w+", r"gdflix\.\w+", r"filepress\.\w+",
+    r"gdtot\.\w+", r"kolop\.\w+", r"filebee\.\w+",
+    r"mega\.nz", r"dropbox\.com",
+    r"hubdrive\.\w+", r"hubcloud\.\w+",
 ]
-
-INTERMEDIATE_PATH_HINTS = (
-    "/download", "/go/", "/redirect", "/file/", "/watch",
-    "/dl/", "/link/", "/open/", "/get/", "/upload", "/r/",
-)
 
 SEARCH_SELECTORS = [
     "h2.entry-title a[href]", "h3.entry-title a[href]",
@@ -64,7 +49,6 @@ class Provider:
     def _get(self, url, **kw):
         return self.session.get(url, timeout=45, allow_redirects=True, **kw)
 
-    # ---------- search (unchanged) ----------
     def search(self, q):
         q = (q or "").strip()
         if not q:
@@ -139,123 +123,128 @@ class Provider:
         base_host = self.base.split("//", 1)[-1].split("/")[0]
         return base_host in low
 
-    # ---------- get_streams (v5 with debug) ----------
+    # ---------- get_streams (v8) ----------
     def get_streams(self, page_url):
         page_url = (page_url or "").strip()
         if not page_url:
             return {"streams": []}
 
-        debug = {
-            "wp_json": {"bytes": 0, "urls": []},
-            "page_html": {"bytes": 0, "urls": []},
-            "admin_ajax": {"tried": [], "urls": []},
-        }
+        debug = {"sources": {}, "all_urls": []}
+        all_urls = set()
 
-        # 1. wp-json post content
-        wp_bytes, wp_urls = self._fetch_post_content(page_url)
-        debug["wp_json"]["bytes"] = wp_bytes
-        debug["wp_json"]["urls"] = sorted(list(wp_urls))[:10]
-
-        # 2. page HTML
-        page_urls = set()
-        try:
-            r = self._get(page_url)
-            debug["page_html"]["bytes"] = len(r.text)
-            page_urls = self._extract_file_urls(r.text)
-            debug["page_html"]["urls"] = sorted(list(page_urls))[:10]
-        except Exception as e:
-            debug["page_html"]["error"] = str(e)
-
-        # 3. admin-ajax fallback (WordPress themes use this for JS-rendered content)
-        ajax_urls = self._try_admin_ajax(page_url, debug)
-
-        all_urls = set(wp_urls) | page_urls | ajax_urls
-        streams = self._build_streams(all_urls)
-        return {"streams": streams, "page": page_url, "debug": debug}
-
-    def _try_admin_ajax(self, page_url, debug):
-        """Try common WP admin-ajax actions to fetch download links."""
         path = urlparse(page_url).path.strip("/")
         slug = path.split("/")[-1] if path else ""
-        if not slug:
-            return set()
-
-        # First, get the post ID from wp-json
         post_id = None
-        try:
-            r = self._get(self.base + "wp-json/wp/v2/posts?" + urlencode({"slug": slug}))
-            if r.status_code == 200:
-                data = r.json()
-                if isinstance(data, list) and data:
-                    post_id = data[0].get("id")
-        except Exception:
-            pass
 
-        if not post_id:
-            return set()
-
-        actions = [
-            "get_download_links",
-            "download_links",
-            "get_links",
-            "get_movie_links",
-            "single_download_links",
-        ]
-        urls = set()
-        ajax_endpoint = self.base + "wp-admin/admin-ajax.php"
-
-        for action in actions:
+        # Fetch full post object via wp-json (has meta, content, everything)
+        if slug:
             try:
-                r = self.session.post(
-                    ajax_endpoint,
-                    data={"action": action, "post_id": post_id, "id": post_id},
-                    timeout=20, allow_redirects=True,
-                )
-                debug["admin_ajax"]["tried"].append({
-                    "action": action, "status": r.status_code, "bytes": len(r.text),
-                })
-                if r.status_code == 200 and len(r.text) > 20:
-                    found = self._extract_file_urls(r.text)
-                    if found:
-                        urls |= found
-                        debug["admin_ajax"]["urls"] = sorted(list(urls))[:10]
-                        break
-            except Exception:
-                continue
+                r = self._get(self.base + "wp-json/wp/v2/posts?" + urlencode({"slug": slug}))
+                if r.status_code == 200:
+                    data = r.json()
+                    if isinstance(data, list) and data:
+                        post = data[0]
+                        post_id = post.get("id")
+                        debug["sources"]["post_id"] = post_id
 
-        return urls
+                        # Content
+                        content = post.get("content", {}).get("rendered", "") or ""
+                        content_urls = self._extract_file_urls(content)
+                        all_urls |= content_urls
+                        debug["sources"]["content_bytes"] = len(content)
+                        debug["sources"]["content_urls"] = len(content_urls)
 
-    def _fetch_post_content(self, page_url):
-        path = urlparse(page_url).path.strip("/")
-        if not path:
-            return 0, set()
-        slug = path.split("/")[-1]
+                        # Excerpt
+                        excerpt = post.get("excerpt", {}).get("rendered", "") or ""
+                        excerpt_urls = self._extract_file_urls(excerpt)
+                        all_urls |= excerpt_urls
+                        debug["sources"]["excerpt_bytes"] = len(excerpt)
+                        debug["sources"]["excerpt_urls"] = len(excerpt_urls)
+
+                        # Meta (depends on theme exposing it)
+                        meta = post.get("meta") or {}
+                        meta_urls = set()
+                        if isinstance(meta, dict):
+                            for k, v in meta.items():
+                                if isinstance(v, str) and "http" in v:
+                                    for m in re.finditer(r"https?://[^\s\"'<>()\\]+", v):
+                                        u = m.group(0).rstrip(".,;)\"'")
+                                        if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
+                                            meta_urls.add(u)
+                                elif isinstance(v, list):
+                                    for item in v:
+                                        if isinstance(item, str) and "http" in item:
+                                            for m in re.finditer(r"https?://[^\s\"'<>()\\]+", item):
+                                                u = m.group(0).rstrip(".,;)\"'")
+                                                if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
+                                                    meta_urls.add(u)
+                        all_urls |= meta_urls
+                        debug["sources"]["meta_keys"] = sorted(list(meta.keys())) if isinstance(meta, dict) else []
+                        debug["sources"]["meta_urls"] = sorted(list(meta_urls))[:5]
+            except Exception as e:
+                debug["sources"]["wp_json_error"] = str(e)
+
+        # Try single-post endpoint with ?context=edit (sometimes exposes meta)
+        if post_id:
+            try:
+                r = self._get(self.base + f"wp-json/wp/v2/posts/{post_id}?context=edit")
+                if r.status_code == 200:
+                    data = r.json()
+                    meta = data.get("meta") or {}
+                    if isinstance(meta, dict):
+                        meta_urls = set()
+                        for k, v in meta.items():
+                            if isinstance(v, str) and "http" in v:
+                                meta_urls |= self._extract_file_urls(v)
+                        all_urls |= meta_urls
+                        debug["sources"]["edit_meta_urls"] = sorted(list(meta_urls))[:5]
+                        debug["sources"]["edit_meta_keys"] = sorted(list(meta.keys()))
+            except Exception as e:
+                debug["sources"]["edit_error"] = str(e)
+
+        # Try custom REST endpoints the theme may expose
+        if post_id:
+            for endpoint in (
+                f"wp-json/moviesdrive/v1/downloads?post_id={post_id}",
+                f"wp-json/moviesdrive/v2/downloads?id={post_id}",
+                f"wp-json/movie/v1/links?post_id={post_id}",
+                f"wp-json/wp/v2/download?post={post_id}",
+            ):
+                try:
+                    r = self._get(self.base + endpoint)
+                    if r.status_code == 200 and len(r.text) > 30:
+                        urls = self._extract_file_urls(r.text)
+                        if urls:
+                            all_urls |= urls
+                            debug["sources"].setdefault("custom_endpoints", []).append({
+                                "endpoint": endpoint, "urls": len(urls),
+                            })
+                except Exception:
+                    continue
+
+        # Fallback: rendered page scan
         try:
-            url = self.base + "wp-json/wp/v2/posts?" + urlencode({"slug": slug})
-            r = self._get(url)
-            if r.status_code != 200:
-                return 0, set()
-            data = r.json()
-            if not isinstance(data, list) or not data:
-                return 0, set()
-            rendered = data[0].get("content", {}).get("rendered", "") or ""
-            if not rendered:
-                return 0, set()
-            urls = self._extract_file_urls(rendered)
-            return len(rendered), urls
-        except Exception:
-            return 0, set()
+            r = self._get(page_url)
+            page_urls = self._extract_file_urls(r.text)
+            all_urls |= page_urls
+            debug["sources"]["page_bytes"] = len(r.text)
+            debug["sources"]["page_urls"] = len(page_urls)
+        except Exception as e:
+            debug["sources"]["page_error"] = str(e)
+
+        debug["all_urls"] = sorted(list(all_urls))[:20]
+
+        streams = self._build_streams(all_urls)
+        return {"streams": streams, "page": page_url, "debug": debug}
 
     def _extract_file_urls(self, text):
         urls = set()
         if not text:
             return urls
-
         for m in re.finditer(r"https?://[^\s\"'<>()\\]+", text):
             u = m.group(0).rstrip(".,;)\"'")
             if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
                 urls.add(u)
-
         soup = BeautifulSoup(text, "html.parser")
         for tag in soup.find_all(True):
             for attr_val in tag.attrs.values():
@@ -266,22 +255,6 @@ class Provider:
                             u = m.group(0).rstrip(".,;)\"'")
                             if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
                                 urls.add(u)
-
-        for a in soup.find_all("a", href=True):
-            href = a["href"].strip()
-            if not href.startswith(("http://", "https://")):
-                href = urljoin(self.base, href)
-            path = urlparse(href).path.lower()
-            if any(hint in path for hint in INTERMEDIATE_PATH_HINTS):
-                try:
-                    r = self._get(href)
-                    for m in re.finditer(r"https?://[^\s\"'<>()\\]+", r.text):
-                        u = m.group(0).rstrip(".,;)\"'")
-                        if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
-                            urls.add(u)
-                except Exception:
-                    continue
-
         return urls
 
     def _build_streams(self, urls):
@@ -296,19 +269,15 @@ class Provider:
                 seen.add(fid)
                 streams.append({
                     "url": self._direct_download_url(fid, is_doc),
-                    "quality": "Auto",
-                    "format": "MP4",
-                    "label": "Google Drive",
-                    "file_id": fid,
+                    "quality": "Auto", "format": "MP4",
+                    "label": "Google Drive", "file_id": fid,
                 })
             else:
                 if u in seen:
                     continue
                 seen.add(u)
                 streams.append({
-                    "url": u,
-                    "quality": "Auto",
-                    "format": "",
+                    "url": u, "quality": "Auto", "format": "",
                     "label": "Direct",
                 })
         return streams
@@ -327,7 +296,5 @@ class Provider:
     def _direct_download_url(file_id, is_doc=False):
         if is_doc:
             return f"https://docs.google.com/document/d/{file_id}/export?format=pdf"
-        return (
-            f"https://drive.usercontent.google.com/download"
-            f"?id={file_id}&export=download&authuser=0"
-        )
+        return (f"https://drive.usercontent.google.com/download"
+                f"?id={file_id}&export=download&authuser=0")
