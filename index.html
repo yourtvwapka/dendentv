@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>Browse — Movies & TV</title>
+
+<style>
+  :root{
+    --accent:#e50914; --accent-2:#f6121d;
+    --bg:#000; --bg-2:#0a0a0d;
+    --card:#1e1e25; --card-2:#26262f;
+    --line:#2a2a33; --text:#f5f5f7; --muted:#8a8a94;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);min-height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  img{display:block}
+  button{font-family:inherit;color:inherit;cursor:pointer}
+
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;gap:16px;
+    padding:14px 22px;
+    background:linear-gradient(180deg,rgba(0,0,0,.95) 60%,rgba(0,0,0,.6));
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid rgba(255,255,255,.05);
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;letter-spacing:-.3px;color:#fff;white-space:nowrap;flex-shrink:0}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+  .search-wrap{flex:1;max-width:640px;position:relative;display:flex;align-items:center}
+  .search-wrap svg.search-ico{position:absolute;left:14px;width:18px;height:18px;fill:var(--muted);pointer-events:none;transition:fill .15s}
+  .search-wrap:focus-within svg.search-ico{fill:#fff}
+  #searchInput{width:100%;height:44px;padding:0 40px 0 44px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#fff;border-radius:var(--radius);font-size:14px;font-family:inherit;outline:none;transition:border .15s,background .15s}
+  #searchInput::placeholder{color:var(--muted)}
+  #searchInput:focus{border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.10)}
+  #searchClear{position:absolute;right:8px;width:30px;height:30px;border-radius:6px;background:transparent;border:none;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px}
+  #searchClear:hover{background:rgba(255,255,255,.08);color:#fff}
+  #searchClear[hidden]{display:none}
+
+  main{padding:24px 22px 80px;max-width:1600px;margin:0 auto}
+  section[hidden]{display:none!important}
+
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:26px 0 14px}
+  .section-head:first-child{margin-top:0}
+  .section-head h2{font-size:20px;font-weight:800;letter-spacing:-.3px}
+  .section-head .hint{font-size:12.5px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .row{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 16px;scroll-snap-type:x proximity;scrollbar-width:thin}
+  .row::-webkit-scrollbar{height:8px}
+  .row::-webkit-scrollbar-thumb{background:#2a2a33;border-radius:4px}
+  .row::-webkit-scrollbar-thumb:hover{background:#3a3a44}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:18px 14px}
+
+  .card{display:flex;flex-direction:column;gap:8px;background:transparent;border:none;padding:0;text-align:left;color:inherit;scroll-snap-align:start;flex-shrink:0;transition:transform .15s ease;-webkit-tap-highlight-color:transparent}
+  .row .card{width:168px}
+  .card:hover{transform:translateY(-3px)}
+  .card:active{transform:translateY(-1px) scale(.98)}
+
+  .poster{position:relative;width:100%;aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a20 0%,#0a0a0d 100%);border-radius:var(--radius);overflow:hidden;border:1px solid var(--line)}
+  .poster img{width:100%;height:100%;object-fit:cover;transition:transform .25s ease}
+  .card:hover .poster img{transform:scale(1.05)}
+  .poster .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:rgba(255,255,255,.22)}
+  .poster .badge,.poster .provider-tag{position:absolute;padding:2px 6px;border-radius:999px;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(4px)}
+  .poster .badge{top:6px;left:6px;background:rgba(0,0,0,.72);color:#fff}
+  .poster .provider-tag{bottom:6px;right:6px;background:rgba(229,9,20,.82);color:#fff;max-width:calc(100% - 12px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .poster .provider-tag.neutral{background:rgba(0,0,0,.72)}
+
+  .card-title{font-size:13px;font-weight:600;line-height:1.3;color:#e5e5ea;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 2px}
+
+  .spinner-wrap{display:flex;align-items:center;justify-content:center;padding:70px 20px;gap:12px;color:var(--muted);font-size:13px}
+  .spinner{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:var(--accent);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty{text-align:center;padding:70px 24px;color:var(--muted);font-size:14px}
+  .empty strong{color:#fff;font-weight:700}
+
+  .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);padding:11px 18px;border-radius:10px;background:rgba(20,20,24,.96);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:13.5px;font-weight:600;box-shadow:0 12px 40px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media (max-width:640px){
+    .topbar{padding:12px 14px;gap:10px}
+    .brand{font-size:15px}
+    .brand .dot{width:8px;height:8px}
+    #searchInput{height:40px;font-size:13.5px;padding:0 36px 0 40px}
+    main{padding:16px 14px 70px}
+    .section-head h2{font-size:17px}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px 10px}
+    .row .card{width:132px}
+    .row{gap:10px}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="dot"></span>Browse</div>
+  <div class="search-wrap">
+    <svg class="search-ico" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+    <input id="searchInput" type="search" placeholder="Search movies and TV shows across all providers…" autocomplete="off" />
+    <button id="searchClear" hidden aria-label="Clear">✕</button>
+  </div>
+</header>
+
+<main>
+  <section id="browseSection">
+    <div class="section-head">
+      <h2>Trending Movies</h2>
+      <span class="hint" id="hintMovies">Popular right now</span>
+    </div>
+    <div class="row" id="rowMovies">
+      <div class="spinner-wrap"><div class="spinner"></div>Loading…</div>
+    </div>
+
+    <div class="section-head">
+      <h2>Trending TV Shows</h2>
+      <span class="hint" id="hintTV"></span>
+    </div>
+    <div class="row" id="rowTV">
+      <div class="spinner-wrap"><div class="spinner"></div>Loading…</div>
+    </div>
+
+    <div class="section-head">
+      <h2>All providers</h2>
+      <span class="hint" id="providerHint">—</span>
+    </div>
+    <div class="empty" id="providerList">Loading…</div>
+  </section>
+
+  <section id="searchSection" hidden>
+    <div class="section-head">
+      <h2>Results for “<span id="searchQuery"></span>”</h2>
+      <span class="hint" id="searchStatus"></span>
+    </div>
+    <div class="grid" id="searchGrid"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PROXY_URL = location.origin;
+const BASE = "https://officialmoviebox.com";
+
+const MOVIEBOX_VIRTUAL = {
+  id: "__moviebox",
+  name: "MovieBox",
+  url: BASE,
+  has_plugin: true,
+  isVirtual: true,
+};
+
+let PROVIDERS = [];
+let searchAbort = null;
+let currentSearchQuery = "";
+
+/* ─────── helpers ─────── */
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+function imgUrl(v) {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  return v.url || v.src || v.path || "";
+}
+function showToast(msg, ms) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove("show"), ms || 2400);
+}
+function proxyFor(url, referer, providerId) {
+  let q = PROXY_URL + "/?url=" + encodeURIComponent(url)
+        + "&referer=" + encodeURIComponent(referer || BASE + "/");
+  if (providerId) q += "&provider=" + encodeURIComponent(providerId);
+  return q;
+}
+
+/* ─────── Nuxt3 devalue decoder (for MovieBox search fallback) ─────── */
+const DEVALUE_WRAPPERS = {
+  ShallowReactive: v => v, Reactive: v => v, Ref: v => v,
+  ShallowRef: v => v, EmptyRef: () => undefined, EmptyShallowRef: () => undefined,
+  Set: v => v, Map: v => v, Date: v => v, RegExp: v => v, BigInt: v => v,
+  "null": () => null, "undefined": () => undefined, NaN: () => NaN,
+  Infinity: () => Infinity, "-Infinity": () => -Infinity,
+};
+function devalueResolve(arr) {
+  const cache = new Map();
+  function go(ref) {
+    if (ref === null || ref === undefined) return ref;
+    if (typeof ref !== "number") return ref;
+    if (cache.has(ref)) return cache.get(ref);
+    const v = arr[ref];
+    if (v === null || v === undefined || typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+      cache.set(ref, v); return v;
+    }
+    if (Array.isArray(v)) {
+      if (v.length >= 1 && typeof v[0] === "string" && DEVALUE_WRAPPERS[v[0]]) {
+        const inner = v.length > 1 ? go(v[1]) : undefined;
+        const wrapped = DEVALUE_WRAPPERS[v[0]](inner);
+        cache.set(ref, wrapped); return wrapped;
+      }
+      const out = []; cache.set(ref, out);
+      for (const item of v) out.push(go(item));
+      return out;
+    }
+    if (typeof v === "object") {
+      const out = {}; cache.set(ref, out);
+      for (const k of Object.keys(v)) out[k] = go(v[k]);
+      return out;
+    }
+    cache.set(ref, v); return v;
+  }
+  return go(0);
+}
+function extractNuxt3Payload(html) {
+  const m = html.match(/<script[^>]*id=["']__NUXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  try {
+    const arr = JSON.parse(m[1]);
+    if (!Array.isArray(arr)) return null;
+    return devalueResolve(arr);
+  } catch (_) { return null; }
+}
+function findSubjects(root) {
+  const seen = new Set();
+  const out = [];
+  const visited = new WeakSet();
+  function walk(node, depth) {
+    if (depth > 40 || !node || typeof node !== "object" || visited.has(node)) return;
+    visited.add(node);
+    if (Array.isArray(node)) { for (const item of node) walk(item, depth + 1); return; }
+    if (
+      typeof node.detailPath === "string" && node.detailPath.length > 0 &&
+      typeof node.title === "string" && node.title.length > 0 &&
+      node.subjectId !== undefined
+    ) {
+      if (!seen.has(node.detailPath)) {
+        seen.add(node.detailPath);
+        out.push({
+          title: node.title,
+          detailPath: node.detailPath,
+          subjectId: String(node.subjectId || ""),
+          image: (typeof node.cover === "string" ? node.cover : (node.cover?.url || "")),
+          isTV: Number(node.subjectType) === 2,
+          hasResource: node.hasResource !== false,
+        });
+      }
+    }
+    for (const k of Object.keys(node)) walk(node[k], depth + 1);
+  }
+  walk(root, 0);
+  return out.filter(s => s.hasResource);
+}
+
+/* ─────── provider discovery ─────── */
+async function loadProviders() {
+  try {
+    const res = await fetch(PROXY_URL + "/providers");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const list = await res.json();
+    PROVIDERS = (list || []).filter((p) => p && p.has_plugin);
+  } catch (e) {
+    console.warn("[providers] fetch failed:", e);
+    PROVIDERS = [];
+  }
+  const hasMovieBoxProvider = PROVIDERS.some(
+    (p) => /moviebox/i.test(p.name) || /moviebox/i.test(p.url || "")
+  );
+  if (!hasMovieBoxProvider) PROVIDERS = [MOVIEBOX_VIRTUAL, ...PROVIDERS];
+
+  document.getElementById("providerHint").textContent =
+    PROVIDERS.length + " source" + (PROVIDERS.length === 1 ? "" : "s");
+  document.getElementById("providerList").innerHTML =
+    PROVIDERS.map((p) =>
+      `<span style="display:inline-block;margin:4px 6px 4px 0;padding:6px 12px;` +
+      `background:#1e1e25;border:1px solid #2a2a33;border-radius:999px;font-size:12.5px;` +
+      `font-weight:600;color:#e5e5ea">${escapeHtml(p.name)}</span>`
+    ).join("") +
+    '<div style="margin-top:14px;color:#8a8a94;font-size:13px">' +
+    'Type in the search bar above to search all providers at once.</div>';
+}
+
+/* ─────── MovieBox trending ─────── */
+async function fetchMovieBoxTrending(tabId, page, signal) {
+  const params = new URLSearchParams({ page: String(page || 1), perPage: "36" });
+  if (tabId) params.set("tabId", tabId);
+  const realUrl = BASE + "/wefeed-h5api-bff/subject/trending?" + params;
+  const r = await fetch(proxyFor(realUrl, BASE + "/"), { signal });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const json = await r.json();
+  if (json.code !== 0) throw new Error("code " + json.code);
+  return json.data?.subjectList || [];
+}
+function normalizeMovieBoxItem(s) {
+  return {
+    providerId: MOVIEBOX_VIRTUAL.id,
+    providerName: MOVIEBOX_VIRTUAL.name,
+    title: s.title || "Untitled",
+    image: imgUrl(s.cover),
+    detailPath: s.detailPath || "",
+    subjectId: String(s.subjectId || ""),
+    pageUrl: "",
+    isSeries: Number(s.subjectType) === 2,
+    isMovieBox: true,
+  };
+}
+async function loadTrending() {
+  const rowMovies = document.getElementById("rowMovies");
+  const rowTV = document.getElementById("rowTV");
+  const [moviesR, tvR] = await Promise.allSettled([
+    fetchMovieBoxTrending("ONEROOM_MOVIE", 1),
+    fetchMovieBoxTrending(null, 1),
+  ]);
+  if (moviesR.status === "fulfilled") {
+    const items = moviesR.value.map(normalizeMovieBoxItem);
+    document.getElementById("hintMovies").textContent = items.length + " titles";
+    renderRow(rowMovies, items);
+  } else {
+    rowMovies.innerHTML = '<div class="empty">Could not load trending movies.</div>';
+    document.getElementById("hintMovies").textContent = "";
+  }
+  if (tvR.status === "fulfilled") {
+    const items = tvR.value.map(normalizeMovieBoxItem);
+    document.getElementById("hintTV").textContent = items.length + " shows";
+    renderRow(rowTV, items);
+  } else {
+    rowTV.innerHTML = '<div class="empty">Could not load trending TV shows.</div>';
+    document.getElementById("hintTV").textContent = "";
+  }
+}
+
+/* ─────── renderers ─────── */
+function cardHtml(item) {
+  const badge = item.isSeries ? "TV" : "Movie";
+  const img = item.image
+    ? `<img src="${escapeHtml(item.image)}" alt="" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : "";
+  const fallback = `<div class="fallback" ${item.image ? 'style="display:none"' : ""}>
+    ${escapeHtml((item.title || "?").charAt(0).toUpperCase())}
+  </div>`;
+  const providerClass = item.providerId === MOVIEBOX_VIRTUAL.id ? "" : "neutral";
+  return `<button class="card" data-pid="${escapeHtml(item.providerId)}" data-key="${escapeHtml(itemKey(item))}">
+    <div class="poster">${img}${fallback}
+      <span class="badge">${badge}</span>
+      <span class="provider-tag ${providerClass}">${escapeHtml(item.providerName)}</span>
+    </div>
+    <div class="card-title">${escapeHtml(item.title)}</div>
+  </button>`;
+}
+function itemKey(item) {
+  return (item.detailPath || item.pageUrl || item.title || "") + "|" + item.providerId;
+}
+function bindCardClicks(root, items) {
+  const byKey = new Map();
+  for (const it of items) byKey.set(itemKey(it), it);
+  root.querySelectorAll(".card").forEach((el) => {
+    el.addEventListener("click", () => {
+      const it = byKey.get(el.dataset.key);
+      if (it) handleCardClick(it);
+    });
+  });
+}
+function renderRow(container, items) {
+  if (!items || !items.length) { container.innerHTML = '<div class="empty">Nothing here.</div>'; return; }
+  container.innerHTML = items.map(cardHtml).join("");
+  bindCardClicks(container, items);
+}
+function renderGrid(container, items) {
+  if (!items || !items.length) {
+    container.innerHTML = '<div class="empty"><strong>No results.</strong><br>' +
+      '<span style="font-size:12px">Try a different search term.</span></div>';
+    return;
+  }
+  container.innerHTML = items.map(cardHtml).join("");
+  bindCardClicks(container, items);
+}
+
+/* ─────── search ─────── */
+async function searchProvider(p, q, signal) {
+  try {
+    if (p.id === MOVIEBOX_VIRTUAL.id) {
+      // try API first
+      try {
+        const apiUrl = BASE + "/wefeed-h5api-bff/subject/search?" +
+          new URLSearchParams({ keyword: q, page: "1", perPage: "36" });
+        const r = await fetch(proxyFor(apiUrl, BASE + "/"), { signal });
+        if (r.ok) {
+          const json = await r.json();
+          const list = json.data?.subjectList || json.data?.items || json.data?.list || [];
+          if (list.length) return list.map(normalizeMovieBoxItem);
+        }
+      } catch (_) {}
+      // fallback: parse the search page Nuxt payload
+      try {
+        const searchUrl = BASE + "/search?q=" + encodeURIComponent(q);
+        const r = await fetch(proxyFor(searchUrl, BASE + "/"), { signal });
+        if (!r.ok) return [];
+        const html = await r.text();
+        const resolved = extractNuxt3Payload(html);
+        if (!resolved) return [];
+        const subjects = findSubjects(resolved);
+        return subjects.map(s => ({
+          providerId: MOVIEBOX_VIRTUAL.id,
+          providerName: MOVIEBOX_VIRTUAL.name,
+          title: s.title,
+          image: s.image,
+          detailPath: s.detailPath,
+          subjectId: s.subjectId,
+          pageUrl: "",
+          isSeries: s.isTV,
+          isMovieBox: true,
+        }));
+      } catch (_) { return []; }
+    }
+    const url = PROXY_URL + "/providers/" + encodeURIComponent(p.id) +
+                "/search?q=" + encodeURIComponent(q);
+    const r = await fetch(url, { signal });
+    if (!r.ok) return [];
+    const json = await r.json();
+    const list = json.results || json.data || json.items || json.list || [];
+    return list.map((item) => normalizeGenericItem(item, p));
+  } catch (e) {
+    if (e.name === "AbortError") throw e;
+    console.warn("[search " + p.id + "]", e);
+    return [];
+  }
+}
+function normalizeGenericItem(item, p) {
+  const isMovieBoxShape = !!(item.detailPath && item.subjectId);
+  if (isMovieBoxShape) return normalizeMovieBoxItem(item);
+  return {
+    providerId: p.id,
+    providerName: p.name,
+    title: item.title || item.name || "Untitled",
+    image: imgUrl(item.image || item.cover || item.poster),
+    detailPath: "",
+    subjectId: "",
+    pageUrl: item.url || item.href || "",
+    isSeries: item.type === "tv" || item.isTV === true || Number(item.subjectType) === 2,
+    isMovieBox: false,
+  };
+}
+async function doSearch(q) {
+  q = (q || "").trim();
+  currentSearchQuery = q;
+  const browse = document.getElementById("browseSection");
+  const search = document.getElementById("searchSection");
+  const grid = document.getElementById("searchGrid");
+  const status = document.getElementById("searchStatus");
+  const qLabel = document.getElementById("searchQuery");
+
+  if (q.length < 2) {
+    search.hidden = true;
+    browse.hidden = false;
+    return;
+  }
+  browse.hidden = true;
+  search.hidden = false;
+  qLabel.textContent = q;
+  status.textContent = "Searching " + PROVIDERS.length + " source(s)…";
+  grid.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div>Searching…</div>';
+
+  if (searchAbort) { try { searchAbort.abort(); } catch (_) {} }
+  searchAbort = new AbortController();
+  const signal = searchAbort.signal;
+
+  const t0 = performance.now();
+  const jobs = PROVIDERS.map((p) => searchProvider(p, q, signal));
+  let grouped;
+  try { grouped = await Promise.all(jobs); }
+  catch (e) {
+    if (e.name === "AbortError") return;
+    grid.innerHTML = '<div class="empty">Search failed.</div>';
+    status.textContent = "";
+    return;
+  }
+  if (signal.aborted) return;
+
+  const flat = grouped.flat();
+  const ms = Math.round(performance.now() - t0);
+
+  if (!flat.length) {
+    grid.innerHTML =
+      '<div class="empty"><strong>No results found.</strong><br>' +
+      '<span style="font-size:12px">Nothing matched “' + escapeHtml(q) + '”.</span></div>';
+    status.textContent = ms + "ms · 0 results";
+    return;
+  }
+  const seen = new Set();
+  const dedup = [];
+  for (const it of flat) {
+    const k = it.providerId + "|" + (it.detailPath || it.pageUrl || it.title).toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    dedup.push(it);
+  }
+  const perProvider = {};
+  for (const it of dedup) perProvider[it.providerName] = (perProvider[it.providerName] || 0) + 1;
+  const summary = Object.entries(perProvider).map(([k, v]) => k + ": " + v).join(" · ");
+  status.textContent = dedup.length + " results · " + ms + "ms · " + summary;
+  renderGrid(grid, dedup);
+}
+
+/* ─────── card click → play ─────── */
+async function handleCardClick(item) {
+  if (item.isMovieBox && item.detailPath && item.subjectId) {
+    const params = new URLSearchParams({
+      detailPath: item.detailPath,
+      mainDetailPath: item.detailPath,
+      subjectId: item.subjectId,
+      isSeries: item.isSeries ? "1" : "0",
+      title: item.title,
+      subtitle: "",
+      lang: "Original Audio",
+    });
+    if (item.isSeries) { params.set("se", "1"); params.set("ep", "1"); }
+    location.href = "player.html?" + params.toString();
+    return;
+  }
+  if (!item.pageUrl) { showToast("This item cannot be played (no page URL)."); return; }
+
+  showToast("Fetching streams from " + item.providerName + "…", 60000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const url = PROXY_URL + "/providers/" + encodeURIComponent(item.providerId) +
+                "/streams?url=" + encodeURIComponent(item.pageUrl);
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    const streams = json.streams || [];
+    if (!streams.length) { showToast("No playable streams found."); return; }
+    const stream = pickBestStream(streams);
+    if (!stream || !stream.url) { showToast("Invalid stream from provider."); return; }
+
+    const provider = PROVIDERS.find((p) => p.id === item.providerId);
+    const referer = provider?.url || BASE + "/";
+    const proxied = proxyFor(stream.url, referer, item.providerId);
+    const subtitle = item.providerName +
+      (stream.quality && stream.quality !== "Auto" ? " · " + stream.quality : "");
+
+    const params = new URLSearchParams({
+      streamUrl: proxied,
+      title: item.title,
+      subtitle,
+    });
+    location.href = "player.html?" + params.toString();
+  } catch (e) {
+    if (e.name === "AbortError") showToast("Stream fetch timed out.");
+    else showToast("Failed: " + e.message);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+function pickBestStream(streams) {
+  const score = (s) => { const q = parseInt(s.quality, 10); return isNaN(q) ? 0 : q; };
+  return [...streams].sort((a, b) => score(b) - score(a))[0];
+}
+
+/* ─────── search wiring ─────── */
+const searchInput = document.getElementById("searchInput");
+const searchClear = document.getElementById("searchClear");
+let searchTimer = null;
+
+searchInput.addEventListener("input", (e) => {
+  const v = e.target.value;
+  searchClear.hidden = v.length === 0;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => doSearch(v), 420);
+});
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    e.preventDefault();
+    searchInput.value = "";
+    searchClear.hidden = true;
+    doSearch("");
+  }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    clearTimeout(searchTimer);
+    doSearch(searchInput.value);
+  }
+});
+searchClear.addEventListener("click", () => {
+  searchInput.value = "";
+  searchClear.hidden = true;
+  doSearch("");
+  searchInput.focus();
+});
+
+/* ─────── boot ─────── */
+(async function boot() {
+  await loadProviders();
+  await loadTrending();
+})();
+</script>
+</body>
+</html>
