@@ -12,15 +12,14 @@ Combined MovieBox proxy + provider aggregator + HTML server.
   GET /?url=<url>&referer=<url>[&provider=][&cookie=]  -> proxied fetch
   OPTIONS *                                -> CORS preflight
 
-Provider plugins live in ./providers/*.py. Each module exposes a `Provider`
-class with id / search() / get_streams(). Missing plugins are reported as
-501 instead of crashing.
+M3U8 manifests are rewritten server-side so nested URIs route back through
+this proxy with correct referer + cookie + provider.
 
-M3U8 / vnd.apple.mpegurl responses are rewritten server-side so every
-nested URI (variant playlists, EXT-X-KEY, EXT-X-MAP, segments) is routed
-back through this proxy with the correct referer + cookie + provider.
-Without this, hls.js resolves relative segment URIs against this server
-and gets 400.
+For media requests:
+  - No Origin header is sent to the CDN (breaks signed URLs on Alibaba OSS / Tengine).
+  - Every request is logged: [media] OK/BAD status=.. ct=.. len=.. host=.. range=..
+  - If the upstream response is HTML/JSON (error page), we return 502 JSON so
+    the player can retry instead of trying to decode HTML as MP4.
 
 Railway-ready: threading HTTP/1.1 server, $PORT, keepalive, SIGTERM handler,
 streaming Range support via curl_cffi.
@@ -84,8 +83,10 @@ ALLOWED_HOSTS = (
     ".hdhub4u.cl",
     ".hdhub4u.ec",
     ".hdhub4u.kg",
+    ".hdhub4u.ms",
     "hubcloud.foo", ".hubcloud.foo",
     "hubcloud.ist", ".hubcloud.ist",
+    "hubcloud.cx", ".hubcloud.cx",
     "gadgetsweb.xyz", ".gadgetsweb.xyz",
     "hubcdn.fans", ".hubcdn.fans",
     "hubdrive.space", ".hubdrive.space",
@@ -137,7 +138,6 @@ M3U8_CONTENT_TYPES = (
 )
 
 def _rewrite_m3u8(content, base_url, referer, cookie=None, provider_id=None):
-    """Route every URI in an m3u8 back through this proxy."""
     if isinstance(content, (bytes, bytearray)):
         content = content.decode("utf-8", "replace")
 
@@ -430,11 +430,12 @@ class Handler(BaseHTTPRequestHandler):
                 if v:
                     hdrs[h] = v
         else:
+            # Match a plain browser referer fetch — NO Origin header.
+            # Some CDNs (Alibaba OSS, Tengine) reject cross-origin Origin headers
+            # on signed URLs, returning 403 HTML pages that <video> can't play.
             hdrs = {
                 "Accept": "*/*",
-                "Accept-Language": "en-US,en;q=0.9",
                 "Referer": referer,
-                "Origin": "https://officialmoviebox.com",
             }
             if cookie_param:
                 hdrs["Cookie"] = cookie_param
@@ -451,12 +452,29 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_body(502, json.dumps({"error": str(e), "target": target}),
                                    "application/json", head_only)
 
+        # ---------- media guard: reject error pages, log everything ----------
         media_ct = _guess_content_type_from_path(target)
         if media_ct:
-            upstream_ct = (r.headers.get("Content-Type") or "").lower()
-            bad = (upstream_ct.startswith(("text/html", "application/json",
-                                           "text/plain", "application/xml", "text/xml"))
-                   or r.status_code >= 400)
+            upstream_ct = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            upstream_status = r.status_code
+            upstream_len_h = r.headers.get("Content-Length") or "?"
+
+            bad = (
+                r.status_code >= 400
+                or upstream_ct.startswith((
+                    "text/html", "application/json", "text/plain",
+                    "application/xml", "text/xml",
+                ))
+            )
+
+            print(
+                f"[media] {'BAD' if bad else 'OK '} "
+                f"status={upstream_status} ct={upstream_ct or '?'} "
+                f"len={upstream_len_h} host={host or '?'} "
+                f"range={rng or '-'}",
+                flush=True,
+            )
+
             if bad:
                 try:
                     err_text = r.content[:2048].decode("utf-8", "replace")
@@ -464,14 +482,9 @@ class Handler(BaseHTTPRequestHandler):
                     err_text = f"(unreadable: {e})"
                 try: r.close()
                 except Exception: pass
-                print(f"[proxy] NON-VIDEO target={target}\n"
-                      f"        upstream_status={r.status_code}\n"
-                      f"        upstream_ct={upstream_ct}\n"
-                      f"        referer_sent={referer}\n"
-                      f"        body_preview={err_text[:400]!r}", flush=True)
                 return self._send_body(502, json.dumps({
                     "error": "upstream returned non-video",
-                    "upstream_status": r.status_code,
+                    "upstream_status": upstream_status,
                     "upstream_ct": upstream_ct,
                     "target": target,
                     "referer_sent": referer,
@@ -518,9 +531,16 @@ class Handler(BaseHTTPRequestHandler):
 
         self.send_response(r.status_code)
         self._cors()
-        out_ct = media_ct or r.headers.get("Content-Type")
+
+        # Trust the CDN's CT if it's clearly video/* or octet-stream
+        cdn_ct = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if cdn_ct.startswith("video/") or cdn_ct == "application/octet-stream":
+            out_ct = r.headers.get("Content-Type")
+        else:
+            out_ct = media_ct or r.headers.get("Content-Type")
         if out_ct:
             self.send_header("Content-Type", out_ct)
+
         for k in ("Content-Range", "Accept-Ranges", "ETag", "Last-Modified"):
             if k in r.headers:
                 self.send_header(k, r.headers[k])
@@ -568,8 +588,8 @@ def get_local_ip():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     index_ok  = os.path.exists(os.path.join(BASE_DIR, "index.html"))
-    vega_ok   = os.path.exists(os.path.join(BASE_DIR, DEFAULT_HTML))
     player_ok = os.path.exists(os.path.join(BASE_DIR, "player.html"))
+    vega_ok   = os.path.exists(os.path.join(BASE_DIR, "vega.html"))
     on_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_PROJECT_ID"))
 
     banner = f"""
@@ -579,8 +599,8 @@ if __name__ == "__main__":
   Plugins loaded:   {len(_PLUGINS)} ({', '.join(sorted(_PLUGINS)) or 'none'})
   Serving HTML from: {BASE_DIR}
     - index.html     {"[OK]" if index_ok else "[MISSING]"}
-    - {DEFAULT_HTML:<14} {"[OK]" if vega_ok else "[MISSING]"}
     - player.html    {"[OK]" if player_ok else "[MISSING]"}
+    - vega.html      {"[OK]" if vega_ok else "[MISSING]"}
 """
     if not on_railway:
         banner += f"\n  Local:   http://localhost:{port}/\n  Network: http://{get_local_ip()}:{port}/\n"
