@@ -9,20 +9,21 @@ Combined MovieBox proxy + provider aggregator + HTML server.
   GET /providers/<id>/search?q=...         -> plugin.search(q)
   GET /providers/<id>/streams?url=...      -> plugin.get_streams(url)
   GET /<any>.html                          -> that file
-  GET /?url=<url>&referer=<url>[&provider=][&cookie=]  -> proxied fetch
+  GET /?url=<url>&referer=<url>[&provider=][&cookie=] -> proxied fetch
   OPTIONS *                                -> CORS preflight
 
-M3U8 manifests are rewritten server-side so nested URIs route back through
-this proxy with correct referer + cookie + provider.
+Proxy config matches the known-working single-project server:
+  - impersonate="chrome120"  (chrome131 trips Tengine WAF → 426)
+  - Origin: https://officialmoviebox.com forwarded on CDN requests
+  - Accept-Language forwarded
+  - Caller-supplied Referer forwarded to CDN
+  - Caller-supplied Range forwarded verbatim
+  - ?cookie= forwarded as Cookie: header (browsers can't set it directly)
 
-For media requests:
-  - No Origin header is sent to the CDN (breaks signed URLs on Alibaba OSS / Tengine).
-  - Every request is logged: [media] OK/BAD status=.. ct=.. len=.. host=.. range=..
-  - If the upstream response is HTML/JSON (error page), we return 502 JSON so
-    the player can retry instead of trying to decode HTML as MP4.
+M3U8 manifests are rewritten so every nested URI routes back through this
+proxy with the correct referer + cookie + provider.
 
-Railway-ready: threading HTTP/1.1 server, $PORT, keepalive, SIGTERM handler,
-streaming Range support via curl_cffi.
+Railway-ready: threading HTTP/1.1 server, $PORT, keepalive, SIGTERM.
 """
 
 import importlib
@@ -52,7 +53,7 @@ def _keepalive_loop():
         target = KEEPALIVE_TARGETS[i % len(KEEPALIVE_TARGETS)]
         i += 1
         try:
-            r = creq.get(target, impersonate="chrome131", verify=False,
+            r = creq.get(target, impersonate="chrome120", verify=False,
                          timeout=20, allow_redirects=True)
             print(f"[keepalive] {time.strftime('%H:%M:%S')} {target} -> {r.status_code}", flush=True)
         except Exception as e:
@@ -80,10 +81,7 @@ ALLOWED_HOSTS = (
     ".bcdnxw.com", ".bcdnw.com", ".pbcdnw", ".macdn",
     "hakunaymatata.com", ".hakunaymatata.com",
     # hdhub4u + HubCloud chain
-    ".hdhub4u.cl",
-    ".hdhub4u.ec",
-    ".hdhub4u.kg",
-    ".hdhub4u.ms",
+    ".hdhub4u.cl", ".hdhub4u.ec", ".hdhub4u.kg", ".hdhub4u.ms",
     "hubcloud.foo", ".hubcloud.foo",
     "hubcloud.ist", ".hubcloud.ist",
     "hubcloud.cx", ".hubcloud.cx",
@@ -94,17 +92,10 @@ ALLOWED_HOSTS = (
     "hubstream.xyz", ".hubstream.xyz",
     "pixeldrain.com", ".pixeldrain.com",
     "workers.dev", ".workers.dev",
-    # MoviesDrive / Google Drive / file shorteners
-    ".moviesdrive.beer",
-    ".moviesdrive.net",
+    # MoviesDrive / Google Drive
+    ".moviesdrive.beer", ".moviesdrive.net",
     "drive.google.com", "drive.usercontent.google.com",
     "docs.google.com", "gdrive.com",
-    "driveleech.com", ".driveleech.com",
-    "gdflix.dev", ".gdflix.dev", ".gdflix.pro", ".gdflix.dad",
-    "filepress.live", ".filepress.live",
-    "gdtot.pro", ".gdtot.pro",
-    "mega.nz", ".mega.nz",
-    "dropbox.com", ".dropbox.com",
 )
 
 CHUNK_SIZE = 262144
@@ -153,8 +144,7 @@ def _rewrite_m3u8(content, base_url, referer, cookie=None, provider_id=None):
     for line in content.split("\n"):
         s = line.strip()
         if not s:
-            out.append(line)
-            continue
+            out.append(line); continue
         if s.startswith("#"):
             if 'URI="' in s:
                 s = re.sub(
@@ -180,16 +170,13 @@ def _load_providers():
         with open(PROVIDERS_FILE, "r", encoding="utf-8") as f:
             src = json.load(f)
     except Exception as e:
-        print(f"[providers] failed to load {PROVIDERS_FILE}: {e}", flush=True)
+        print(f"[providers] failed to load: {e}", flush=True)
         return {}
-
     out = {}
     for pid, info in src.items():
         url = (info.get("url") or "").strip()
-        try:
-            host = (urlparse(url).hostname or "").lower() if url else ""
-        except Exception:
-            host = ""
+        try: host = (urlparse(url).hostname or "").lower() if url else ""
+        except Exception: host = ""
         out[pid] = {
             "id": pid,
             "name": info.get("name") or pid,
@@ -225,7 +212,7 @@ def _load_plugins():
             cls = getattr(mod, "Provider", None)
             if cls is not None and getattr(cls, "id", None):
                 _PLUGINS[cls.id] = cls
-                print(f"[plugins] loaded {modname} -> provider '{cls.id}'", flush=True)
+                print(f"[plugins] loaded {modname} -> '{cls.id}'", flush=True)
         except Exception as e:
             print(f"[plugins] failed {modname}: {e}", flush=True)
 
@@ -248,7 +235,6 @@ class Handler(BaseHTTPRequestHandler):
         if ".ts" not in msg and ".m4s" not in msg and ".jpg" not in msg and ".webp" not in msg:
             print(msg, flush=True)
 
-    # ---------- helpers ----------
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
@@ -257,42 +243,30 @@ class Handler(BaseHTTPRequestHandler):
                          "Content-Type, Content-Length, Content-Range, Accept-Ranges")
 
     def _send_body(self, status, body, content_type, head_only=False):
-        if isinstance(body, str):
-            body = body.encode("utf-8")
+        if isinstance(body, str): body = body.encode("utf-8")
         self.send_response(status)
         self._cors()
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         if not head_only:
-            try:
-                self.wfile.write(body)
-            except (BrokenPipeError, ConnectionResetError):
-                pass
+            try: self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError): pass
 
     def _is_allowed(self, host, provider_id=None):
-        if not host:
-            return False
+        if not host: return False
         host = host.lower()
         if provider_id:
             prov = PROVIDERS.get(provider_id)
-            if not prov:
-                return False
+            if not prov: return False
             for h in [prov["host"]] + prov.get("cdn_hosts", []):
-                if h and (host == h or host.endswith("." + h)):
-                    return True
+                if h and (host == h or host.endswith("." + h)): return True
             return False
         for h in ALLOWED_HOSTS:
             if h.startswith("."):
-                if host == h[1:] or host.endswith(h):
-                    return True
+                if host == h[1:] or host.endswith(h): return True
             else:
-                if host == h or host.endswith("." + h):
-                    return True
-        for prov in PROVIDERS.values():
-            for h in [prov["host"]] + prov.get("cdn_hosts", []):
-                if h and (host == h or host.endswith("." + h)):
-                    return True
+                if host == h or host.endswith("." + h): return True
         return False
 
     def _serve_html(self, filename, head_only=False):
@@ -300,8 +274,7 @@ class Handler(BaseHTTPRequestHandler):
         path = os.path.join(BASE_DIR, safe)
         if not os.path.exists(path):
             return self._send_body(404, f"Not found: {safe}", "text/plain; charset=utf-8", head_only)
-        with open(path, "rb") as f:
-            html = f.read()
+        with open(path, "rb") as f: html = f.read()
         self.send_response(200)
         self._cors()
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -309,10 +282,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         if not head_only:
-            try:
-                self.wfile.write(html)
-            except (BrokenPipeError, ConnectionResetError):
-                pass
+            try: self.wfile.write(html)
+            except (BrokenPipeError, ConnectionResetError): pass
 
     def _handle_providers(self, path, qs, head_only):
         parts = path.strip("/").split("/")
@@ -331,49 +302,37 @@ class Handler(BaseHTTPRequestHandler):
                                    "application/json", head_only)
 
         action = parts[2] if len(parts) > 2 else None
-
         if action is None:
-            data = dict(prov)
-            data["has_plugin"] = pid in _PLUGINS
+            data = dict(prov); data["has_plugin"] = pid in _PLUGINS
             return self._send_body(200, json.dumps(data, indent=2), "application/json", head_only)
 
         if action not in ("search", "streams"):
-            return self._send_body(404, json.dumps({"error": "unknown action", "action": action}),
-                                   "application/json", head_only)
+            return self._send_body(404, json.dumps({"error": "unknown action"}), "application/json", head_only)
 
         cls = _PLUGINS.get(pid)
         if cls is None:
-            return self._send_body(501, json.dumps(
-                {"error": "no plugin for provider", "id": pid, "action": action}),
-                "application/json", head_only)
+            return self._send_body(501, json.dumps({"error": "no plugin", "id": pid}), "application/json", head_only)
 
         try:
             inst = cls(prov)
             if action == "search":
-                q = qs.get("q", [""])[0]
-                result = inst.search(q)
+                result = inst.search(qs.get("q", [""])[0])
             else:
-                target = qs.get("url", [""])[0]
-                result = inst.get_streams(target)
+                result = inst.get_streams(qs.get("url", [""])[0])
             return self._send_body(200, json.dumps(result, default=str), "application/json", head_only)
         except NotImplementedError as e:
-            return self._send_body(501, json.dumps(
-                {"error": "not implemented", "detail": str(e) or f"{pid}.{action}"}),
-                "application/json", head_only)
+            return self._send_body(501, json.dumps({"error": "not implemented", "detail": str(e)}),
+                                   "application/json", head_only)
         except Exception as e:
             print(f"[plugin] {pid}.{action} error: {e}", flush=True)
             return self._send_body(502, json.dumps({"error": "plugin error", "detail": str(e)}),
                                    "application/json", head_only)
 
-    # ---------- HTTP methods ----------
     def do_OPTIONS(self):
-        self.send_response(204)
-        self._cors()
-        self.send_header("Content-Length", "0")
-        self.end_headers()
+        self.send_response(204); self._cors()
+        self.send_header("Content-Length", "0"); self.end_headers()
 
-    def do_HEAD(self):
-        self.do_GET(head_only=True)
+    def do_HEAD(self): self.do_GET(head_only=True)
 
     def do_GET(self, head_only=False):
         u = urlparse(self.path)
@@ -398,22 +357,19 @@ class Handler(BaseHTTPRequestHandler):
 
         target = unquote(target)
         referer = unquote(qs.get("referer", ["https://officialmoviebox.com/"])[0])
+        cookie_param = qs.get("cookie", [None])[0]
 
-        try:
-            host = (urlparse(target).hostname or "").lower()
-        except Exception:
-            host = ""
+        try: host = (urlparse(target).hostname or "").lower()
+        except Exception: host = ""
 
         if not self._is_allowed(host, provider_id=provider_id):
             print(f"[proxy] BLOCK host={host} provider={provider_id} target={target}", flush=True)
             return self._send_body(403, json.dumps({"error": "host not allowed",
-                                                    "host": host,
-                                                    "provider": provider_id}),
+                                                    "host": host, "provider": provider_id}),
                                    "application/json", head_only)
 
+        # ── upstream headers (match the working single-project server) ──
         is_api = "officialmoviebox.com" in host
-        cookie_param = qs.get("cookie", [None])[0]
-
         if is_api:
             hdrs = {
                 "Accept": "application/json",
@@ -427,88 +383,76 @@ class Handler(BaseHTTPRequestHandler):
             }
             for h in ("x-client-info", "x-source"):
                 v = self.headers.get(h)
-                if v:
-                    hdrs[h] = v
+                if v: hdrs[h] = v
         else:
-            # Match a plain browser referer fetch — NO Origin header.
-            # Some CDNs (Alibaba OSS, Tengine) reject cross-origin Origin headers
-            # on signed URLs, returning 403 HTML pages that <video> can't play.
+            # CDN / asset host — same config as the working server
             hdrs = {
                 "Accept": "*/*",
+                "Accept-Language": "en-US,en;q=0.9",
                 "Referer": referer,
+                "Origin": "https://officialmoviebox.com",
             }
             if cookie_param:
                 hdrs["Cookie"] = cookie_param
 
         rng = self.headers.get("Range")
-        if rng:
-            hdrs["Range"] = rng
+        if rng: hdrs["Range"] = rng
 
+        # ── upstream fetch (chrome120, not chrome131) ──
         try:
-            r = creq.get(target, headers=hdrs, impersonate="chrome131",
+            r = creq.get(target, headers=hdrs, impersonate="chrome120",
                          verify=False, timeout=120, allow_redirects=True, stream=True)
         except Exception as e:
             print(f"[proxy] FAIL {target} -> {e}", flush=True)
             return self._send_body(502, json.dumps({"error": str(e), "target": target}),
                                    "application/json", head_only)
 
-        # ---------- media guard: reject error pages, log everything ----------
+        # ── media guard: reject HTML/JSON error pages for .mp4/.mkv/etc ──
         media_ct = _guess_content_type_from_path(target)
         if media_ct:
-            upstream_ct = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-            upstream_status = r.status_code
-            upstream_len_h = r.headers.get("Content-Length") or "?"
-
+            upstream_ct = (r.headers.get("Content-Type") or "").lower()
             bad = (
-                r.status_code >= 400
-                or upstream_ct.startswith((
-                    "text/html", "application/json", "text/plain",
-                    "application/xml", "text/xml",
-                ))
+                upstream_ct.startswith(("text/html", "application/json",
+                                        "text/plain", "application/xml", "text/xml"))
+                or r.status_code >= 400
             )
-
             print(
                 f"[media] {'BAD' if bad else 'OK '} "
-                f"status={upstream_status} ct={upstream_ct or '?'} "
-                f"len={upstream_len_h} host={host or '?'} "
-                f"range={rng or '-'}",
+                f"status={r.status_code} ct={upstream_ct[:25] or '?'} "
+                f"len={r.headers.get('Content-Length') or '?'} "
+                f"host={host} range={rng or '-'}",
                 flush=True,
             )
-
             if bad:
-                try:
-                    err_text = r.content[:2048].decode("utf-8", "replace")
-                except Exception as e:
-                    err_text = f"(unreadable: {e})"
+                try: err_text = r.content[:2048].decode("utf-8", "replace")
+                except Exception as e: err_text = f"(unreadable: {e})"
                 try: r.close()
                 except Exception: pass
                 return self._send_body(502, json.dumps({
                     "error": "upstream returned non-video",
-                    "upstream_status": upstream_status,
+                    "upstream_status": r.status_code,
                     "upstream_ct": upstream_ct,
                     "target": target,
                     "referer_sent": referer,
                     "body_preview": err_text[:400],
                 }), "application/json", head_only)
 
-        # ---------- manifest rewrite ----------
+        # ── m3u8 rewrite ──
         manifest_ct = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
         is_manifest = (
             urlparse(target).path.lower().endswith(".m3u8")
             or manifest_ct in M3U8_CONTENT_TYPES
         )
         if is_manifest and r.status_code < 400 and not head_only:
-            try:
-                raw = r.content
+            try: raw = r.content
             except Exception as e:
                 try: r.close()
                 except Exception: pass
-                return self._send_body(502, json.dumps(
-                    {"error": "manifest read failed", "detail": str(e)}),
-                    "application/json", head_only)
+                return self._send_body(502, json.dumps({"error": "manifest read failed",
+                                                        "detail": str(e)}),
+                                       "application/json", head_only)
             try: r.close()
             except Exception: pass
-
             rewritten = _rewrite_m3u8(raw, target, referer, cookie_param, provider_id)
             body = rewritten.encode("utf-8")
             self.send_response(r.status_code)
@@ -517,13 +461,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
-            try:
-                self.wfile.write(body)
-            except (BrokenPipeError, ConnectionResetError):
-                pass
+            try: self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError): pass
             return
-        # ---------- /manifest rewrite ----------
 
+        # ── response headers ──
         upstream_len = r.headers.get("Content-Length")
         encoding = r.headers.get("Content-Encoding")
         compressed = encoding is not None and encoding.lower() not in ("", "identity")
@@ -532,18 +474,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(r.status_code)
         self._cors()
 
-        # Trust the CDN's CT if it's clearly video/* or octet-stream
         cdn_ct = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
         if cdn_ct.startswith("video/") or cdn_ct == "application/octet-stream":
             out_ct = r.headers.get("Content-Type")
         else:
             out_ct = media_ct or r.headers.get("Content-Type")
-        if out_ct:
-            self.send_header("Content-Type", out_ct)
+        if out_ct: self.send_header("Content-Type", out_ct)
 
         for k in ("Content-Range", "Accept-Ranges", "ETag", "Last-Modified"):
-            if k in r.headers:
-                self.send_header(k, r.headers[k])
+            if k in r.headers: self.send_header(k, r.headers[k])
         if not is_api and "Cache-Control" in r.headers:
             self.send_header("Cache-Control", r.headers["Cache-Control"])
         elif is_api:
@@ -563,12 +502,11 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             for chunk in r.iter_content(chunk_size=CHUNK_SIZE):
-                if chunk:
-                    self.wfile.write(chunk)
+                if chunk: self.wfile.write(chunk)
         except (BrokenPipeError, ConnectionResetError, socket.timeout):
             pass
         except Exception as e:
-            print(f"[stream] write error on {target}: {e}", flush=True)
+            print(f"[stream] write error: {e}", flush=True)
         finally:
             try: r.close()
             except Exception: pass
@@ -577,30 +515,25 @@ class Handler(BaseHTTPRequestHandler):
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(("8.8.8.8", 80))
-        return s.getsockname()[0]
-    except Exception:
-        return "127.0.0.1"
-    finally:
-        s.close()
+        s.connect(("8.8.8.8", 80)); return s.getsockname()[0]
+    except Exception: return "127.0.0.1"
+    finally: s.close()
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     index_ok  = os.path.exists(os.path.join(BASE_DIR, "index.html"))
     player_ok = os.path.exists(os.path.join(BASE_DIR, "player.html"))
-    vega_ok   = os.path.exists(os.path.join(BASE_DIR, "vega.html"))
     on_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_PROJECT_ID"))
 
     banner = f"""
-✓ MovieBox proxy + provider aggregator running
+✓ MovieBox proxy + provider aggregator
   PORT={port}
   Providers loaded: {len(PROVIDERS)}
   Plugins loaded:   {len(_PLUGINS)} ({', '.join(sorted(_PLUGINS)) or 'none'})
   Serving HTML from: {BASE_DIR}
     - index.html     {"[OK]" if index_ok else "[MISSING]"}
     - player.html    {"[OK]" if player_ok else "[MISSING]"}
-    - vega.html      {"[OK]" if vega_ok else "[MISSING]"}
 """
     if not on_railway:
         banner += f"\n  Local:   http://localhost:{port}/\n  Network: http://{get_local_ip()}:{port}/\n"
