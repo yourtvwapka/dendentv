@@ -1,4 +1,4 @@
-"""HDHub4u provider plugin (v3 — exhaustive HubCloud link extraction)."""
+"""HDHub4u provider plugin (v4 — hubdrive/hubcloud resolver with debug)."""
 
 import base64
 import codecs
@@ -22,9 +22,19 @@ HUB_PATTERNS = [
     r"filepress\.\w+",
     r"kolop\.\w+",
     r"workers\.dev",
-    r"ampproject\.org/v/s/",
     r"googleusercontent\.com",
     r"pixeldrain\.com",
+]
+
+# Actual playable-file patterns (for scanning hubdrive/hubcloud landing pages)
+FILE_PATTERNS = [
+    r"\.mkv(\?|$)",
+    r"\.mp4(\?|$)",
+    r"\.m3u8(\?|$)",
+    r"hubcdn\.\w+/",
+    r"workers\.dev/",
+    r"pixeldrain\.com/api/file",
+    r"pixeldrain\.com/u/",
 ]
 
 INTERMEDIATE_PATH_HINTS = (
@@ -63,7 +73,7 @@ class Provider:
     def _get(self, url, **kw):
         return self.session.get(url, timeout=45, allow_redirects=True, **kw)
 
-    # ---------- search ----------
+    # ---------- search (unchanged) ----------
     def search(self, q):
         q = (q or "").strip()
         if not q:
@@ -141,22 +151,22 @@ class Provider:
         base_host = self.base.split("//", 1)[-1].split("/")[0]
         return base_host in low
 
-    # ---------- get_streams (v3) ----------
+    # ---------- get_streams (v4 with debug) ----------
     def get_streams(self, page_url):
         page_url = (page_url or "").strip()
         if not page_url:
             return {"streams": []}
 
+        debug = {"candidates": [], "resolutions": []}
+
         try:
             r = self._get(page_url)
             r.raise_for_status()
         except Exception as e:
-            print(f"[{self.id}] page error: {e}", flush=True)
-            return {"streams": [], "page": page_url}
+            return {"streams": [], "page": page_url, "debug": {"error": str(e)}}
 
         all_urls = set()
 
-        # 1. all attributes
         soup = BeautifulSoup(r.text, "html.parser")
         for tag in soup.find_all(True):
             for attr_val in tag.attrs.values():
@@ -166,7 +176,6 @@ class Provider:
                         if any(re.search(p, v, re.I) for p in HUB_PATTERNS):
                             all_urls.add(v.strip())
 
-        # 2. script bodies
         for script in soup.find_all("script"):
             body = script.string or script.get_text() or ""
             for m in re.finditer(r"https?://[^\s\"'<>()\\]+", body):
@@ -174,20 +183,17 @@ class Provider:
                 if any(re.search(p, u, re.I) for p in HUB_PATTERNS):
                     all_urls.add(u.rstrip(".,;)\"'"))
 
-        # 3. raw HTML
         for m in re.finditer(r"https?://[^\s\"'<>()\\]+", r.text):
             u = m.group(0)
             if any(re.search(p, u, re.I) for p in HUB_PATTERNS):
                 all_urls.add(u.rstrip(".,;)\"'"))
 
-        # 4. iframes
         for iframe in soup.find_all("iframe", src=True):
             src = iframe["src"].strip()
             if src.startswith(("http://", "https://")):
                 if any(re.search(p, src, re.I) for p in HUB_PATTERNS):
                     all_urls.add(src)
 
-        # 5. follow intermediate links (upload/xxx, go/xxx, r/xxx, etc.)
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
             if not href.startswith(("http://", "https://")):
@@ -203,18 +209,20 @@ class Provider:
                 except Exception:
                     continue
 
-        print(f"[{self.id}] found {len(all_urls)} candidates", flush=True)
-        for u in list(all_urls)[:5]:
-            print(f"[{self.id}]   {u[:150]}", flush=True)
+        debug["candidates"] = sorted(list(all_urls))[:15]
 
-        # 6. resolve each hubcloud/gadgetsweb chain
         streams, seen = [], set()
         for u in all_urls:
             if u in seen:
                 continue
             seen.add(u)
             try:
-                final = self._resolve_hubcloud(u)
+                final, attempt = self._resolve_hubcloud(u)
+                debug["resolutions"].append({
+                    "input": u[:200],
+                    "attempt": attempt,
+                    "result": final[:200] if final else None,
+                })
                 if final and final not in seen:
                     seen.add(final)
                     streams.append({
@@ -224,11 +232,12 @@ class Provider:
                         "label": "HDHub",
                     })
             except Exception as e:
-                print(f"[{self.id}] resolve failed for {u[:80]}: {e}", flush=True)
-                continue
+                debug["resolutions"].append({
+                    "input": u[:200],
+                    "error": str(e)[:200],
+                })
 
-        print(f"[{self.id}] get_streams → {len(streams)} streams", flush=True)
-        return {"streams": streams, "page": page_url}
+        return {"streams": streams, "page": page_url, "debug": debug}
 
     @staticmethod
     def _decrypt_token(token):
@@ -239,19 +248,29 @@ class Provider:
         return json.loads(t)
 
     def _resolve_hubcloud(self, url):
-        r = self._get(url)
-        if r.status_code >= 400:
-            return None
-        # If already a file, return as-is
-        ct = (r.headers.get("content-type") or "").lower()
-        if any(k in ct for k in ("video/", "application/octet-stream", "application/zip")):
-            return str(r.url)
+        """Return (final_url, attempt_description)."""
+        try:
+            r = self._get(url)
+        except Exception as e:
+            return None, f"GET error: {e}"
 
-        # Look for token
+        if r.status_code >= 400:
+            return None, f"HTTP {r.status_code}"
+
+        ct = (r.headers.get("content-type") or "").lower()
+        clen = r.headers.get("Content-Length") or "0"
+
+        # Already a file
+        if any(k in ct for k in ("video/", "application/octet-stream", "application/zip", "application/x-matroska")):
+            return str(r.url), f"direct file ({ct}, {clen} bytes)"
+
+        html_text = r.text
+
+        # 1. Token decrypt
         m = (
-            re.search(r'id=["\']token["\'][^>]*value=["\']([^"\']+)', r.text)
-            or re.search(r'name=["\']token["\'][^>]*value=["\']([^"\']+)', r.text)
-            or re.search(r'token\s*=\s*["\']([A-Za-z0-9+/=]{40,})["\']', r.text)
+            re.search(r'id=["\']token["\'][^>]*value=["\']([^"\']+)', html_text)
+            or re.search(r'name=["\']token["\'][^>]*value=["\']([^"\']+)', html_text)
+            or re.search(r'token\s*=\s*["\']([A-Za-z0-9+/=]{40,})["\']', html_text)
         )
         if m:
             try:
@@ -259,23 +278,82 @@ class Provider:
                 next_url = payload.get("url") or payload.get("link")
                 if next_url:
                     r2 = self._get(next_url)
-                    if "text/html" not in (r2.headers.get("content-type") or "").lower():
-                        return str(r2.url)
-                    soup = BeautifulSoup(r2.text, "html.parser")
-                    for a in soup.find_all("a", href=True):
-                        href = a["href"]
-                        if href.startswith("http") and any(
-                            h in href for h in ("hubcdn", "pixeldrain", ".mkv", ".mp4", "hubcloud")
-                        ):
-                            return href
-                    return str(r2.url)
+                    ct2 = (r2.headers.get("content-type") or "").lower()
+                    if not any(k in ct2 for k in ("text/html", "text/plain")):
+                        return str(r2.url), "token → non-html"
+                    direct = self._scan_for_direct(r2.text)
+                    if direct:
+                        return direct, "token → follow → direct"
+                    return str(r2.url), "token → follow (no direct found)"
+            except Exception as e:
+                pass
+
+        # 2. Direct scan of page
+        direct = self._scan_for_direct(html_text)
+        if direct:
+            return direct, "page scan found direct"
+
+        # 3. POST to common endpoints
+        for endpoint in ("/ajax/download", "/api/download", "/download", "/dl"):
+            try:
+                r2 = self.session.post(
+                    urljoin(url, endpoint),
+                    data={"id": url.rstrip("/").split("/")[-1]},
+                    timeout=30, allow_redirects=True,
+                )
+                if r2.status_code == 200:
+                    ct2 = (r2.headers.get("content-type") or "").lower()
+                    if not any(k in ct2 for k in ("text/html", "text/plain")):
+                        return str(r2.url), f"POST {endpoint} → file"
+                    try:
+                        data = r2.json()
+                        for k in ("url", "link", "download", "file"):
+                            if data.get(k):
+                                return data[k], f"POST {endpoint} → JSON.{k}"
+                    except Exception:
+                        pass
+                    direct = self._scan_for_direct(r2.text)
+                    if direct:
+                        return direct, f"POST {endpoint} → direct"
             except Exception:
                 pass
 
-        # Fallback: look for direct link patterns on the hubcloud page
-        soup = BeautifulSoup(r.text, "html.parser")
+        # 4. If the page itself is a file server (hubdrive sometimes serves directly)
+        try:
+            head = self.session.head(url, timeout=20, allow_redirects=True)
+            ac = (head.headers.get("accept-ranges") or "").lower()
+            ct3 = (head.headers.get("content-type") or "").lower()
+            clen3 = int(head.headers.get("Content-Length") or "0")
+            if ac == "bytes" or clen3 > 1_000_000:
+                return str(head.url), f"accepts ranges ({ct3}, {clen3} bytes)"
+        except Exception:
+            pass
+
+        return None, "no match"
+
+    def _scan_for_direct(self, text):
+        if not text:
+            return None
+        soup = BeautifulSoup(text, "html.parser")
+
         for a in soup.find_all("a", href=True):
             href = a["href"]
-            if any(k in href.lower() for k in ("hubcdn", "pixeldrain", ".mkv", ".mp4", "workers.dev")):
+            if any(re.search(p, href, re.I) for p in FILE_PATTERNS):
                 return href
+
+        for tag in soup.find_all(True):
+            for attr_val in tag.attrs.values():
+                vals = attr_val if isinstance(attr_val, list) else [attr_val]
+                for v in vals:
+                    if isinstance(v, str) and "http" in v:
+                        if any(re.search(p, v, re.I) for p in FILE_PATTERNS):
+                            return v
+
+        for script in soup.find_all("script"):
+            body = script.string or script.get_text() or ""
+            for m in re.finditer(r"https?://[^\s\"'<>()\\]+", body):
+                u = m.group(0)
+                if any(re.search(p, u, re.I) for p in FILE_PATTERNS):
+                    return u.rstrip(".,;)\"'")
+
         return None
