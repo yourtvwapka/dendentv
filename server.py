@@ -53,7 +53,7 @@ def _keepalive_loop():
         target = KEEPALIVE_TARGETS[i % len(KEEPALIVE_TARGETS)]
         i += 1
         try:
-            r = creq.get(target, impersonate="chrome120", verify=False,
+            r = creq.get(target, impersonate="chrome131", verify=False,
                          timeout=20, allow_redirects=True)
             print(f"[keepalive] {time.strftime('%H:%M:%S')} {target} -> {r.status_code}", flush=True)
         except Exception as e:
@@ -74,6 +74,7 @@ BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_HTML = "index.html"
 
 ALLOWED_HOSTS = (
+    # MovieBox
     "officialmoviebox.com", ".officialmoviebox.com",
     ".moviebox.co", ".moviebox.ng", ".moviebox.ph", ".movieboxapi",
     ".aoneroom.com", ".aoneroom", ".aonyx",
@@ -81,15 +82,28 @@ ALLOWED_HOSTS = (
     "hakunaymatata.com", ".hakunaymatata.com",
     # hdhub4u + HubCloud chain
     ".hdhub4u.cl",
+    ".hdhub4u.ec",
+    ".hdhub4u.kg",
     "hubcloud.foo", ".hubcloud.foo",
+    "hubcloud.ist", ".hubcloud.ist",
     "gadgetsweb.xyz", ".gadgetsweb.xyz",
     "hubcdn.fans", ".hubcdn.fans",
     "hubdrive.space", ".hubdrive.space",
+    "hubdrive.pics", ".hubdrive.pics",
+    "hubstream.xyz", ".hubstream.xyz",
     "pixeldrain.com", ".pixeldrain.com",
-    # MoviesDrive / Google Drive
+    "workers.dev", ".workers.dev",
+    # MoviesDrive / Google Drive / file shorteners
     ".moviesdrive.beer",
+    ".moviesdrive.net",
     "drive.google.com", "drive.usercontent.google.com",
     "docs.google.com", "gdrive.com",
+    "driveleech.com", ".driveleech.com",
+    "gdflix.dev", ".gdflix.dev", ".gdflix.pro", ".gdflix.dad",
+    "filepress.live", ".filepress.live",
+    "gdtot.pro", ".gdtot.pro",
+    "mega.nz", ".mega.nz",
+    "dropbox.com", ".dropbox.com",
 )
 
 CHUNK_SIZE = 262144
@@ -104,6 +118,7 @@ CONTENT_TYPE_OVERRIDES = {
     ".mpd":  "application/dash+xml",
     ".srt":  "application/x-subrip",
     ".vtt":  "text/vtt",
+    ".mkv":  "video/x-matroska",
 }
 
 def _guess_content_type_from_path(path):
@@ -429,7 +444,7 @@ class Handler(BaseHTTPRequestHandler):
             hdrs["Range"] = rng
 
         try:
-            r = creq.get(target, headers=hdrs, impersonate="chrome120",
+            r = creq.get(target, headers=hdrs, impersonate="chrome131",
                          verify=False, timeout=120, allow_redirects=True, stream=True)
         except Exception as e:
             print(f"[proxy] FAIL {target} -> {e}", flush=True)
