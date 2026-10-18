@@ -1,7 +1,5 @@
-"""HDHub4u provider plugin (v4 — hubdrive/hubcloud resolver with debug)."""
+"""HDHub4u provider plugin (v8 — hubdrive /ajax.php?ajax=download resolver)."""
 
-import base64
-import codecs
 import html
 import json
 import re
@@ -11,36 +9,18 @@ from bs4 import BeautifulSoup
 from curl_cffi import requests as creq
 
 HUB_PATTERNS = [
-    r"hubcloud\.\w+",
-    r"gadgetsweb\.\w+",
-    r"hubcdn\.\w+",
-    r"hubdrive\.\w+",
-    r"hubstream\.\w+",
-    r"hubfiles\.\w+",
-    r"gdflix\.\w+",
-    r"gdtot\.\w+",
-    r"filepress\.\w+",
-    r"kolop\.\w+",
-    r"workers\.dev",
-    r"googleusercontent\.com",
-    r"pixeldrain\.com",
+    r"hubcloud\.\w+", r"gadgetsweb\.\w+", r"hubcdn\.\w+",
+    r"hubdrive\.\w+", r"hubstream\.\w+", r"hubfiles\.\w+",
+    r"gdflix\.\w+", r"gdtot\.\w+", r"filepress\.\w+",
+    r"kolop\.\w+", r"workers\.dev",
+    r"googleusercontent\.com", r"pixeldrain\.com",
 ]
 
-# Actual playable-file patterns (for scanning hubdrive/hubcloud landing pages)
 FILE_PATTERNS = [
-    r"\.mkv(\?|$)",
-    r"\.mp4(\?|$)",
-    r"\.m3u8(\?|$)",
-    r"hubcdn\.\w+/",
-    r"workers\.dev/",
-    r"pixeldrain\.com/api/file",
-    r"pixeldrain\.com/u/",
+    r"\.mkv(\?|$)", r"\.mp4(\?|$)", r"\.m3u8(\?|$)",
+    r"hubcdn\.\w+/", r"workers\.dev/",
+    r"pixeldrain\.com/api/file", r"pixeldrain\.com/u/",
 ]
-
-INTERMEDIATE_PATH_HINTS = (
-    "/download", "/go/", "/redirect", "/file/", "/watch",
-    "/dl/", "/link/", "/open/", "/get/", "/upload", "/r/",
-)
 
 SEARCH_SELECTORS = [
     "article h2 a[href]", "article h3 a[href]", "article h4 a[href]",
@@ -73,7 +53,7 @@ class Provider:
     def _get(self, url, **kw):
         return self.session.get(url, timeout=45, allow_redirects=True, **kw)
 
-    # ---------- search (unchanged) ----------
+    # ---------- search (unchanged, working) ----------
     def search(self, q):
         q = (q or "").strip()
         if not q:
@@ -151,7 +131,7 @@ class Provider:
         base_host = self.base.split("//", 1)[-1].split("/")[0]
         return base_host in low
 
-    # ---------- get_streams (v4 with debug) ----------
+    # ---------- get_streams (v8) ----------
     def get_streams(self, page_url):
         page_url = (page_url or "").strip()
         if not page_url:
@@ -166,8 +146,8 @@ class Provider:
             return {"streams": [], "page": page_url, "debug": {"error": str(e)}}
 
         all_urls = set()
-
         soup = BeautifulSoup(r.text, "html.parser")
+
         for tag in soup.find_all(True):
             for attr_val in tag.attrs.values():
                 vals = attr_val if isinstance(attr_val, list) else [attr_val]
@@ -188,27 +168,6 @@ class Provider:
             if any(re.search(p, u, re.I) for p in HUB_PATTERNS):
                 all_urls.add(u.rstrip(".,;)\"'"))
 
-        for iframe in soup.find_all("iframe", src=True):
-            src = iframe["src"].strip()
-            if src.startswith(("http://", "https://")):
-                if any(re.search(p, src, re.I) for p in HUB_PATTERNS):
-                    all_urls.add(src)
-
-        for a in soup.find_all("a", href=True):
-            href = a["href"].strip()
-            if not href.startswith(("http://", "https://")):
-                href = urljoin(self.base, href)
-            path = urlparse(href).path.lower()
-            if any(hint in path for hint in INTERMEDIATE_PATH_HINTS):
-                try:
-                    r2 = self._get(href)
-                    for m in re.finditer(r"https?://[^\s\"'<>()\\]+", r2.text):
-                        u = m.group(0)
-                        if any(re.search(p, u, re.I) for p in HUB_PATTERNS):
-                            all_urls.add(u.rstrip(".,;)\"'"))
-                except Exception:
-                    continue
-
         debug["candidates"] = sorted(list(all_urls))[:15]
 
         streams, seen = [], set()
@@ -216,144 +175,164 @@ class Provider:
             if u in seen:
                 continue
             seen.add(u)
+            host = urlparse(u).netloc.lower()
+
+            # Skip hubdrive homepages — no file path
+            if host.endswith("hubdrive.pics") and "/file/" not in u.lower():
+                debug["resolutions"].append({"input": u[:150],
+                                             "attempt": "skipped (homepage)"})
+                continue
+
             try:
-                final, attempt = self._resolve_hubcloud(u)
+                final, attempt = self._resolve_any(u)
                 debug["resolutions"].append({
-                    "input": u[:200],
-                    "attempt": attempt,
+                    "input": u[:200], "attempt": attempt,
                     "result": final[:200] if final else None,
                 })
                 if final and final not in seen:
                     seen.add(final)
-                    streams.append({
-                        "url": final,
-                        "quality": "Auto",
-                        "format": "MP4",
-                        "label": "HDHub",
-                    })
+                    streams.append({"url": final, "quality": "Auto",
+                                    "format": "MP4", "label": "HDHub"})
             except Exception as e:
-                debug["resolutions"].append({
-                    "input": u[:200],
-                    "error": str(e)[:200],
-                })
+                debug["resolutions"].append({"input": u[:200],
+                                             "error": str(e)[:200]})
 
         return {"streams": streams, "page": page_url, "debug": debug}
 
-    @staticmethod
-    def _decrypt_token(token):
-        t = base64.b64decode(token).decode()
-        t = base64.b64decode(t).decode()
-        t = codecs.decode(t, "rot13")
-        t = base64.b64decode(t).decode()
-        return json.loads(t)
+    def _resolve_any(self, url):
+        host = urlparse(url).netloc.lower()
+        if "hubdrive" in host:
+            return self._resolve_hubdrive(url)
+        if "hubcloud" in host:
+            return self._resolve_hubcloud(url)
+        return self._resolve_generic(url)
 
+    # ---------- HubDrive (uses confirmed ajax.php API) ----------
+    def _resolve_hubdrive(self, url):
+        m = re.search(r"/file/([^/?#]+)", url) or re.search(r"/([A-Za-z0-9_-]+)/?$", url)
+        if not m:
+            return None, "hubdrive: no file id"
+        file_id = m.group(1)
+
+        # Load file page first (sets any cookies / session state)
+        try:
+            self._get(url)
+        except Exception as e:
+            return None, f"hubdrive: page GET error: {e}"
+
+        # POST to ajax endpoint
+        origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        ajax_url = origin + "/ajax.php?ajax=download"
+        try:
+            r = self.session.post(
+                ajax_url,
+                data={"id": file_id},
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": url,
+                    "Origin": origin,
+                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                },
+                timeout=30,
+                allow_redirects=True,
+            )
+        except Exception as e:
+            return None, f"hubdrive: ajax error: {e}"
+
+        if r.status_code != 200:
+            return None, f"hubdrive: ajax HTTP {r.status_code} body={r.text[:100]!r}"
+
+        try:
+            j = r.json()
+        except Exception:
+            return None, f"hubdrive: ajax non-json: {r.text[:150]!r}"
+
+        code = str(j.get("code") or "")
+        file_url = j.get("file") or j.get("url") or j.get("link")
+
+        if code == "200" and file_url:
+            return file_url, "hubdrive: ajax OK"
+        return None, f"hubdrive: code={code} file={file_url!r} msg={j.get('message') or j.get('nama')!r}"
+
+    # ---------- HubCloud (try same ajax pattern, then look for embedded hubdrive) ----------
     def _resolve_hubcloud(self, url):
-        """Return (final_url, attempt_description)."""
         try:
             r = self._get(url)
         except Exception as e:
-            return None, f"GET error: {e}"
+            return None, f"hubcloud: GET error: {e}"
 
         if r.status_code >= 400:
-            return None, f"HTTP {r.status_code}"
+            return None, f"hubcloud: HTTP {r.status_code}"
 
-        ct = (r.headers.get("content-type") or "").lower()
-        clen = r.headers.get("Content-Length") or "0"
-
-        # Already a file
-        if any(k in ct for k in ("video/", "application/octet-stream", "application/zip", "application/x-matroska")):
-            return str(r.url), f"direct file ({ct}, {clen} bytes)"
-
-        html_text = r.text
-
-        # 1. Token decrypt
-        m = (
-            re.search(r'id=["\']token["\'][^>]*value=["\']([^"\']+)', html_text)
-            or re.search(r'name=["\']token["\'][^>]*value=["\']([^"\']+)', html_text)
-            or re.search(r'token\s*=\s*["\']([A-Za-z0-9+/=]{40,})["\']', html_text)
-        )
-        if m:
+        # If the hubcloud page embeds a hubdrive link, follow it
+        for m in re.finditer(r"https?://hubdrive\.\w+/file/[^\s\"'<>]+", r.text):
             try:
-                payload = self._decrypt_token(m.group(1))
-                next_url = payload.get("url") or payload.get("link")
-                if next_url:
-                    r2 = self._get(next_url)
-                    ct2 = (r2.headers.get("content-type") or "").lower()
-                    if not any(k in ct2 for k in ("text/html", "text/plain")):
-                        return str(r2.url), "token → non-html"
-                    direct = self._scan_for_direct(r2.text)
-                    if direct:
-                        return direct, "token → follow → direct"
-                    return str(r2.url), "token → follow (no direct found)"
-            except Exception as e:
-                pass
-
-        # 2. Direct scan of page
-        direct = self._scan_for_direct(html_text)
-        if direct:
-            return direct, "page scan found direct"
-
-        # 3. POST to common endpoints
-        for endpoint in ("/ajax/download", "/api/download", "/download", "/dl"):
-            try:
-                r2 = self.session.post(
-                    urljoin(url, endpoint),
-                    data={"id": url.rstrip("/").split("/")[-1]},
-                    timeout=30, allow_redirects=True,
-                )
-                if r2.status_code == 200:
-                    ct2 = (r2.headers.get("content-type") or "").lower()
-                    if not any(k in ct2 for k in ("text/html", "text/plain")):
-                        return str(r2.url), f"POST {endpoint} → file"
-                    try:
-                        data = r2.json()
-                        for k in ("url", "link", "download", "file"):
-                            if data.get(k):
-                                return data[k], f"POST {endpoint} → JSON.{k}"
-                    except Exception:
-                        pass
-                    direct = self._scan_for_direct(r2.text)
-                    if direct:
-                        return direct, f"POST {endpoint} → direct"
+                final, attempt = self._resolve_hubdrive(m.group(0))
+                if final:
+                    return final, f"hubcloud → hubdrive ({attempt})"
             except Exception:
                 pass
 
-        # 4. If the page itself is a file server (hubdrive sometimes serves directly)
-        try:
-            head = self.session.head(url, timeout=20, allow_redirects=True)
-            ac = (head.headers.get("accept-ranges") or "").lower()
-            ct3 = (head.headers.get("content-type") or "").lower()
-            clen3 = int(head.headers.get("Content-Length") or "0")
-            if ac == "bytes" or clen3 > 1_000_000:
-                return str(head.url), f"accepts ranges ({ct3}, {clen3} bytes)"
-        except Exception:
-            pass
+        # Try hubcloud's own ajax endpoint
+        m = re.search(r"/drive/([^/?#]+)", url) or re.search(r"/([A-Za-z0-9_-]+)/?$", url)
+        if m:
+            file_id = m.group(1)
+            origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+            try:
+                resp = self.session.post(
+                    origin + "/ajax.php?ajax=download",
+                    data={"id": file_id},
+                    headers={
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Referer": url,
+                        "Origin": origin,
+                    },
+                    timeout=30,
+                )
+                if resp.status_code == 200:
+                    try:
+                        j = resp.json()
+                        if str(j.get("code")) == "200" and (j.get("file") or j.get("url")):
+                            return j.get("file") or j.get("url"), "hubcloud: ajax OK"
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
-        return None, "no match"
+        # Fallback: scan for direct file links
+        direct = self._scan_for_direct(r.text)
+        if direct:
+            return direct, "hubcloud: direct scan"
+        return None, "hubcloud: no match"
+
+    def _resolve_generic(self, url):
+        try:
+            r = self._get(url)
+        except Exception as e:
+            return None, f"generic: GET error: {e}"
+
+        ct = (r.headers.get("content-type") or "").lower()
+        if any(k in ct for k in ("video/", "application/octet-stream",
+                                 "application/zip", "video/x-matroska")):
+            return str(r.url), f"generic: direct file ({ct})"
+
+        direct = self._scan_for_direct(r.text)
+        if direct:
+            return direct, "generic: scan"
+        return None, "generic: no match"
 
     def _scan_for_direct(self, text):
         if not text:
             return None
         soup = BeautifulSoup(text, "html.parser")
-
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if any(re.search(p, href, re.I) for p in FILE_PATTERNS):
                 return href
-
-        for tag in soup.find_all(True):
-            for attr_val in tag.attrs.values():
-                vals = attr_val if isinstance(attr_val, list) else [attr_val]
-                for v in vals:
-                    if isinstance(v, str) and "http" in v:
-                        if any(re.search(p, v, re.I) for p in FILE_PATTERNS):
-                            return v
-
         for script in soup.find_all("script"):
             body = script.string or script.get_text() or ""
             for m in re.finditer(r"https?://[^\s\"'<>()\\]+", body):
                 u = m.group(0)
                 if any(re.search(p, u, re.I) for p in FILE_PATTERNS):
                     return u.rstrip(".,;)\"'")
-
         return None
