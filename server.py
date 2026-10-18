@@ -91,13 +91,28 @@ ALLOWED_HOSTS = (
     "hubdrive.pics", ".hubdrive.pics",
     "hubstream.xyz", ".hubstream.xyz",
     "pixeldrain.com", ".pixeldrain.com",
+    "pixeldrain.dev", ".pixeldrain.dev",
     "workers.dev", ".workers.dev",
+    # NEW: generator + mirror hosts
+    "gamerxyt.com", ".gamerxyt.com",
+    "pixel.hubcloud.cx",
+    "video-downloads.googleusercontent.com",
+    "gigabytes.icu", ".gigabytes.icu",
+    "airbender.buzz", ".airbender.buzz",
+    "bzzhr.co", ".bzzhr.co",
+    "ddflix.xyz", ".ddflix.xyz",
+    "gdflix.dev", ".gdflix.dev", ".gdflix.pro", ".gdflix.dad",
+    "driveleech.com", ".driveleech.com",
+    "filepress.live", ".filepress.live",
+    "gdtot.pro", ".gdtot.pro",
+    "kolop.xyz", ".kolop.xyz",
     # MoviesDrive / Google Drive
     ".moviesdrive.beer", ".moviesdrive.net",
     "drive.google.com", "drive.usercontent.google.com",
     "docs.google.com", "gdrive.com",
+    "mega.nz", ".mega.nz",
+    "dropbox.com", ".dropbox.com",
 )
-
 CHUNK_SIZE = 262144
 
 CONTENT_TYPE_OVERRIDES = {
