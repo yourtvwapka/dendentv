@@ -1,4 +1,4 @@
-"""MoviesDrive provider plugin (v8 — tries post meta, then Playwright-free scan)."""
+"""MoviesDrive provider plugin (v9 — cloud-link extraction from every source)."""
 
 import html
 import re
@@ -7,19 +7,7 @@ from urllib.parse import quote, urlencode, urljoin, urlparse
 from bs4 import BeautifulSoup
 from curl_cffi import requests as creq
 
-GDRIVE_ID_PATTERNS = [
-    r"/file/d/([a-zA-Z0-9_-]+)",
-    r"[?&]id=([a-zA-Z0-9_-]+)",
-]
-
-FILE_HOST_PATTERNS = [
-    r"drive\.google\.com", r"docs\.google\.com",
-    r"drive\.usercontent\.google\.com",
-    r"driveleech\.\w+", r"gdflix\.\w+", r"filepress\.\w+",
-    r"gdtot\.\w+", r"kolop\.\w+", r"filebee\.\w+",
-    r"mega\.nz", r"dropbox\.com",
-    r"hubdrive\.\w+", r"hubcloud\.\w+",
-]
+from providers._hubcloud import find_cloud_links, resolve_cloud_url
 
 SEARCH_SELECTORS = [
     "h2.entry-title a[href]", "h3.entry-title a[href]",
@@ -32,7 +20,7 @@ SEARCH_SELECTORS = [
 REJECT_URL_HINTS = (
     "/category/", "/tag/", "/author/", "/feed/", "/page/",
     "/wp-content/", "/wp-admin/", "/wp-json/", "/xmlrpc",
-    "?s=", "/#", "#comment", "javascript:", "mailto:",
+    "?s=", "/#", "javascript:", "mailto:",
     "/dmca", "/privacy", "/contact", "/about",
     "/telegram", "/disclaimer", "/how-to-",
 )
@@ -44,11 +32,12 @@ class Provider:
     def __init__(self, info):
         self.info = info
         self.base = (info.get("url") or "").rstrip("/") + "/"
-        self.session = creq.Session(impersonate="chrome131", verify=False)
+        self.session = creq.Session(impersonate="chrome120", verify=False)
 
     def _get(self, url, **kw):
         return self.session.get(url, timeout=45, allow_redirects=True, **kw)
 
+    # ---------- search (unchanged) ----------
     def search(self, q):
         q = (q or "").strip()
         if not q:
@@ -81,12 +70,10 @@ class Provider:
                 items.append({"title": title, "url": url, "type": "movie"})
         q_lower = q.lower()
         q_words = [w for w in re.split(r"\W+", q_lower) if len(w) >= 3]
-        title_matches = [
-            it for it in items
-            if q_lower in it["title"].lower()
-            or all(w in it["title"].lower() for w in q_words)
-        ]
-        return title_matches or items
+        matches = [it for it in items
+                   if q_lower in it["title"].lower()
+                   or all(w in it["title"].lower() for w in q_words)]
+        return matches or items
 
     def _scrape_page(self, url):
         try:
@@ -100,12 +87,12 @@ class Provider:
             for a in soup.select(sel):
                 href = (a.get("href") or "").strip()
                 title = a.get_text(" ", strip=True)
-                if not self._accept(href, title):
-                    continue
-                if href in seen:
+                if not self._accept(href, title) or href in seen:
                     continue
                 seen.add(href)
-                results.append({"title": title, "url": urljoin(self.base, href), "type": "movie"})
+                results.append({"title": title,
+                                "url": urljoin(self.base, href),
+                                "type": "movie"})
             if results:
                 return results
         return results
@@ -123,178 +110,115 @@ class Provider:
         base_host = self.base.split("//", 1)[-1].split("/")[0]
         return base_host in low
 
-    # ---------- get_streams (v8) ----------
+    # ---------- get_streams ----------
     def get_streams(self, page_url):
         page_url = (page_url or "").strip()
         if not page_url:
             return {"streams": []}
 
-        debug = {"sources": {}, "all_urls": []}
-        all_urls = set()
+        debug = {"sources": {}, "cloud_links": [], "resolved": []}
+        texts = []
 
-        path = urlparse(page_url).path.strip("/")
-        slug = path.split("/")[-1] if path else ""
-        post_id = None
-
-        # Fetch full post object via wp-json (has meta, content, everything)
-        if slug:
-            try:
-                r = self._get(self.base + "wp-json/wp/v2/posts?" + urlencode({"slug": slug}))
-                if r.status_code == 200:
-                    data = r.json()
-                    if isinstance(data, list) and data:
-                        post = data[0]
-                        post_id = post.get("id")
-                        debug["sources"]["post_id"] = post_id
-
-                        # Content
-                        content = post.get("content", {}).get("rendered", "") or ""
-                        content_urls = self._extract_file_urls(content)
-                        all_urls |= content_urls
-                        debug["sources"]["content_bytes"] = len(content)
-                        debug["sources"]["content_urls"] = len(content_urls)
-
-                        # Excerpt
-                        excerpt = post.get("excerpt", {}).get("rendered", "") or ""
-                        excerpt_urls = self._extract_file_urls(excerpt)
-                        all_urls |= excerpt_urls
-                        debug["sources"]["excerpt_bytes"] = len(excerpt)
-                        debug["sources"]["excerpt_urls"] = len(excerpt_urls)
-
-                        # Meta (depends on theme exposing it)
-                        meta = post.get("meta") or {}
-                        meta_urls = set()
-                        if isinstance(meta, dict):
-                            for k, v in meta.items():
-                                if isinstance(v, str) and "http" in v:
-                                    for m in re.finditer(r"https?://[^\s\"'<>()\\]+", v):
-                                        u = m.group(0).rstrip(".,;)\"'")
-                                        if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
-                                            meta_urls.add(u)
-                                elif isinstance(v, list):
-                                    for item in v:
-                                        if isinstance(item, str) and "http" in item:
-                                            for m in re.finditer(r"https?://[^\s\"'<>()\\]+", item):
-                                                u = m.group(0).rstrip(".,;)\"'")
-                                                if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
-                                                    meta_urls.add(u)
-                        all_urls |= meta_urls
-                        debug["sources"]["meta_keys"] = sorted(list(meta.keys())) if isinstance(meta, dict) else []
-                        debug["sources"]["meta_urls"] = sorted(list(meta_urls))[:5]
-            except Exception as e:
-                debug["sources"]["wp_json_error"] = str(e)
-
-        # Try single-post endpoint with ?context=edit (sometimes exposes meta)
-        if post_id:
-            try:
-                r = self._get(self.base + f"wp-json/wp/v2/posts/{post_id}?context=edit")
-                if r.status_code == 200:
-                    data = r.json()
-                    meta = data.get("meta") or {}
-                    if isinstance(meta, dict):
-                        meta_urls = set()
-                        for k, v in meta.items():
-                            if isinstance(v, str) and "http" in v:
-                                meta_urls |= self._extract_file_urls(v)
-                        all_urls |= meta_urls
-                        debug["sources"]["edit_meta_urls"] = sorted(list(meta_urls))[:5]
-                        debug["sources"]["edit_meta_keys"] = sorted(list(meta.keys()))
-            except Exception as e:
-                debug["sources"]["edit_error"] = str(e)
-
-        # Try custom REST endpoints the theme may expose
-        if post_id:
-            for endpoint in (
-                f"wp-json/moviesdrive/v1/downloads?post_id={post_id}",
-                f"wp-json/moviesdrive/v2/downloads?id={post_id}",
-                f"wp-json/movie/v1/links?post_id={post_id}",
-                f"wp-json/wp/v2/download?post={post_id}",
-            ):
-                try:
-                    r = self._get(self.base + endpoint)
-                    if r.status_code == 200 and len(r.text) > 30:
-                        urls = self._extract_file_urls(r.text)
-                        if urls:
-                            all_urls |= urls
-                            debug["sources"].setdefault("custom_endpoints", []).append({
-                                "endpoint": endpoint, "urls": len(urls),
-                            })
-                except Exception:
-                    continue
-
-        # Fallback: rendered page scan
+        # 1. plain fetch
         try:
             r = self._get(page_url)
-            page_urls = self._extract_file_urls(r.text)
-            all_urls |= page_urls
+            texts.append(("page", r.text))
             debug["sources"]["page_bytes"] = len(r.text)
-            debug["sources"]["page_urls"] = len(page_urls)
         except Exception as e:
             debug["sources"]["page_error"] = str(e)
 
-        debug["all_urls"] = sorted(list(all_urls))[:20]
+        # 2. with site referer (hotlink protection bypass)
+        try:
+            r = self.session.get(page_url, headers={
+                "Referer": self.base,
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) "
+                              "Chrome/120.0.0.0 Safari/537.36",
+            }, timeout=45, allow_redirects=True)
+            texts.append(("page-referer", r.text))
+        except Exception:
+            pass
 
-        streams = self._build_streams(all_urls)
+        # 3. ?download=1 variants
+        for suffix in ("?download=1", "?dl=1", "?download=true"):
+            try:
+                r = self._get(page_url + suffix)
+                texts.append((f"page{suffix}", r.text))
+            except Exception:
+                pass
+
+        # 4. wp-json post content + excerpt
+        try:
+            path = urlparse(page_url).path.strip("/")
+            slug = path.split("/")[-1] if path else ""
+            if slug:
+                r = self._get(self.base + "wp-json/wp/v2/posts?" +
+                              urlencode({"slug": slug}))
+                if r.status_code == 200:
+                    data = r.json()
+                    if isinstance(data, list) and data:
+                        rendered = data[0].get("content", {}).get("rendered", "")
+                        excerpt = data[0].get("excerpt", {}).get("rendered", "")
+                        if rendered:
+                            texts.append(("wp-content", rendered))
+                            debug["sources"]["wp_bytes"] = len(rendered)
+                        if excerpt:
+                            texts.append(("wp-excerpt", excerpt))
+        except Exception:
+            pass
+
+        # collect cloud links from every source
+        cloud_links = set()
+        for name, text in texts:
+            found = find_cloud_links(text)
+            if found:
+                cloud_links |= found
+                debug["sources"][name] = {"cloud_links": len(found)}
+
+        # search-recover URLs are hubcloud search pages; fetch them for more
+        search_recover = [u for u in cloud_links if "search-recover" in u]
+        for link in search_recover[:2]:
+            try:
+                r = self._get(link)
+                extra = find_cloud_links(r.text)
+                cloud_links |= extra
+                if extra:
+                    debug["sources"].setdefault("search-recover", []).append(
+                        {"url": link[:120], "found": len(extra)})
+            except Exception:
+                pass
+
+        # drop the search-recover URLs themselves; only real file pages remain
+        file_links = {u for u in cloud_links if "search-recover" not in u}
+        debug["cloud_links"] = sorted(file_links)[:15]
+        print(f"[drive] {len(file_links)} file cloud links on {page_url[:80]}",
+              flush=True)
+
+        # resolve every cloud link
+        streams = []
+        seen_urls = set()
+        for link in file_links:
+            try:
+                results = resolve_cloud_url(self.session, link, referer=page_url)
+                debug["resolved"].append({
+                    "input": link[:120],
+                    "streams": len(results),
+                    "first": results[0]["url"][:140] if results else None,
+                })
+                for s in results:
+                    if s["url"] not in seen_urls:
+                        seen_urls.add(s["url"])
+                        streams.append(s)
+            except Exception as e:
+                debug["resolved"].append({"input": link[:120],
+                                          "error": str(e)[:120]})
+
+        if not streams:
+            debug["hint"] = (
+                "No resolvable cloud links. The download widget may be JS-only. "
+                "If debug.cloud_links is non-empty but resolved is empty, the "
+                "site changed its mirror IDs — check the first entry."
+            )
+
+        print(f"[drive] get_streams → {len(streams)} streams", flush=True)
         return {"streams": streams, "page": page_url, "debug": debug}
-
-    def _extract_file_urls(self, text):
-        urls = set()
-        if not text:
-            return urls
-        for m in re.finditer(r"https?://[^\s\"'<>()\\]+", text):
-            u = m.group(0).rstrip(".,;)\"'")
-            if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
-                urls.add(u)
-        soup = BeautifulSoup(text, "html.parser")
-        for tag in soup.find_all(True):
-            for attr_val in tag.attrs.values():
-                vals = attr_val if isinstance(attr_val, list) else [attr_val]
-                for v in vals:
-                    if isinstance(v, str):
-                        for m in re.finditer(r"https?://[^\s\"'<>()\\]+", v):
-                            u = m.group(0).rstrip(".,;)\"'")
-                            if any(re.search(p, u, re.I) for p in FILE_HOST_PATTERNS):
-                                urls.add(u)
-        return urls
-
-    def _build_streams(self, urls):
-        streams, seen = [], set()
-        for u in urls:
-            if "search-recover" in u:
-                continue
-            fid, is_doc = self._extract_file_id(u)
-            if fid:
-                if fid in seen:
-                    continue
-                seen.add(fid)
-                streams.append({
-                    "url": self._direct_download_url(fid, is_doc),
-                    "quality": "Auto", "format": "MP4",
-                    "label": "Google Drive", "file_id": fid,
-                })
-            else:
-                if u in seen:
-                    continue
-                seen.add(u)
-                streams.append({
-                    "url": u, "quality": "Auto", "format": "",
-                    "label": "Direct",
-                })
-        return streams
-
-    @staticmethod
-    def _extract_file_id(url):
-        for pat in GDRIVE_ID_PATTERNS:
-            m = re.search(pat, url)
-            if m:
-                is_doc = any(x in url for x in
-                             ("docs.google.com", "sheets.google.com", "slides.google.com"))
-                return m.group(1), is_doc
-        return None, False
-
-    @staticmethod
-    def _direct_download_url(file_id, is_doc=False):
-        if is_doc:
-            return f"https://docs.google.com/document/d/{file_id}/export?format=pdf"
-        return (f"https://drive.usercontent.google.com/download"
-                f"?id={file_id}&export=download&authuser=0")
