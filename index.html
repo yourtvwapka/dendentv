@@ -511,19 +511,25 @@ async function doSearch(q) {
 async function handleCardClick(item) {
   if (item.isMovieBox && item.detailPath && item.subjectId) {
     const params = new URLSearchParams({
+      source: "moviebox",
       detailPath: item.detailPath,
-      mainDetailPath: item.detailPath,
       subjectId: item.subjectId,
-      isSeries: item.isSeries ? "1" : "0",
       title: item.title,
-      subtitle: "",
-      lang: "Original Audio",
     });
-    if (item.isSeries) { params.set("se", "1"); params.set("ep", "1"); }
-    location.href = "player.html?" + params.toString();
+    location.href = "detail.html?" + params.toString();
     return;
   }
-  if (!item.pageUrl) { showToast("This item cannot be played (no page URL)."); return; }
+  if (!item.pageUrl) {
+    showToast("This item has no playable page.");
+    return;
+  }
+  const params = new URLSearchParams({
+    source: item.providerId,
+    url: item.pageUrl,
+    title: item.title,
+  });
+  location.href = "detail.html?" + params.toString();
+}  if (!item.pageUrl) { showToast("This item cannot be played (no page URL)."); return; }
 
   showToast("Fetching streams from " + item.providerName + "…", 60000);
   const controller = new AbortController();
