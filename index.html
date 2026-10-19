@@ -797,6 +797,175 @@
     .row-scroll-btn{display:none}
     .nav-drawer{width:88vw}
   }
+
+  /* ═══ SITE FOOTER ═══ */
+  .site-footer{
+    position:relative;
+    background:linear-gradient(180deg,#08080a 0%, #0b0b0f 55%, #000 100%);
+    border-top:1px solid rgba(255,255,255,.07);
+    overflow:hidden;
+    isolation:isolate;
+  }
+  .site-footer::before{
+    content:"";
+    position:absolute;top:-1px;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent, rgba(229,9,20,.75), rgba(255,255,255,.4), rgba(229,9,20,.75), transparent);
+    opacity:.75;
+    pointer-events:none;
+  }
+  .footer-glow{
+    position:absolute;top:-240px;left:50%;transform:translateX(-50%);
+    width:920px;height:440px;pointer-events:none;z-index:-1;
+    background:radial-gradient(ellipse at center, rgba(229,9,20,.16), transparent 65%);
+  }
+
+  .footer-inner{max-width:1600px;margin:0 auto;padding:56px 22px 28px}
+
+  .footer-top{
+    display:grid;
+    grid-template-columns:minmax(280px,1.3fr) 2fr;
+    gap:56px;
+  }
+
+  .footer-brand{
+    display:flex;align-items:center;gap:10px;
+    font-size:22px;font-weight:800;letter-spacing:-.5px;color:#fff;
+    margin-bottom:14px;
+  }
+  .footer-brand .dot{
+    width:11px;height:11px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 14px var(--accent);
+  }
+  .footer-tagline{
+    font-size:13.5px;line-height:1.7;color:#8f8f9b;
+    max-width:400px;margin-bottom:22px;
+  }
+
+  .footer-news{display:flex;gap:8px;max-width:410px;margin-bottom:18px}
+  .footer-news input{
+    flex:1;min-width:0;height:42px;padding:0 14px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:9px;color:#fff;font-size:13px;font-family:inherit;
+    outline:none;transition:.15s;
+  }
+  .footer-news input::placeholder{color:#6b7280}
+  .footer-news input:focus{
+    border-color:rgba(229,9,20,.55);
+    background:rgba(255,255,255,.08);
+    box-shadow:0 0 0 3px rgba(229,9,20,.12);
+  }
+  .footer-news button{
+    height:42px;padding:0 20px;flex-shrink:0;
+    border-radius:9px;border:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:#fff;font-size:13px;font-weight:800;letter-spacing:.2px;
+    transition:.18s;
+    box-shadow:0 6px 18px rgba(229,9,20,.32);
+    white-space:nowrap;
+  }
+  .footer-news button:hover{transform:translateY(-1px);box-shadow:0 10px 26px rgba(229,9,20,.45)}
+  .footer-news button:active{transform:scale(.97)}
+
+  .footer-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+  .footer-badge{
+    font-size:10.5px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;
+    color:#cfcfd8;padding:5px 10px;border-radius:6px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.10);
+  }
+
+  .footer-social{display:flex;gap:10px}
+  .social-btn{
+    width:38px;height:38px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.10);
+    color:#b9b9c4;text-decoration:none;
+    transition:.18s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .social-btn:hover{
+    background:rgba(229,9,20,.14);
+    border-color:rgba(229,9,20,.45);
+    color:#fff;transform:translateY(-2px);
+  }
+  .social-btn:active{transform:scale(.94)}
+  .social-btn svg{width:17px;height:17px;fill:currentColor}
+
+  .footer-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px}
+  .footer-col{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  .footer-col h4{
+    font-size:11px;font-weight:800;letter-spacing:1.4px;
+    text-transform:uppercase;color:#6f6f7d;margin-bottom:14px;
+  }
+  .footer-link{
+    position:relative;display:inline-block;
+    padding:6px 0;background:none;border:none;
+    color:#a8a8b4;font-size:13px;font-weight:600;
+    text-align:left;transition:color .16s;
+    font-family:inherit;line-height:1.3;
+  }
+  .footer-link::after{
+    content:"";position:absolute;left:0;bottom:2px;
+    height:1px;width:0;background:var(--accent);
+    transition:width .22s cubic-bezier(.2,.9,.3,1);
+  }
+  .footer-link:hover{color:#fff}
+  .footer-link:hover::after{width:100%}
+
+  .footer-divider{
+    height:1px;margin:46px 0 22px;
+    background:linear-gradient(90deg, rgba(255,255,255,.10), rgba(255,255,255,.03) 60%, transparent);
+  }
+
+  .footer-bottom{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;
+  }
+  .footer-copy{font-size:12.5px;color:#7a7a86;font-weight:600}
+  .footer-attrib{font-size:11.5px;color:#5a5a66;max-width:520px;line-height:1.55}
+  .footer-top-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 16px;border-radius:999px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.12);
+    color:#d5d5de;font-size:12.5px;font-weight:700;
+    transition:.18s;flex-shrink:0;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .footer-top-btn:hover{
+    background:rgba(255,255,255,.12);
+    border-color:rgba(255,255,255,.26);
+    color:#fff;transform:translateY(-2px);
+  }
+  .footer-top-btn:active{transform:scale(.96)}
+  .footer-top-btn svg{width:14px;height:14px;fill:currentColor}
+
+  .footer-link:focus-visible,
+  .social-btn:focus-visible,
+  .footer-top-btn:focus-visible,
+  .footer-news button:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:3px;
+  }
+
+  @media (max-width:1024px){
+    .footer-top{grid-template-columns:1fr;gap:42px}
+    .footer-links{grid-template-columns:repeat(4,minmax(0,1fr))}
+  }
+  @media (max-width:768px){
+    .footer-inner{padding:44px 18px 24px}
+    .footer-links{grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 18px}
+    .footer-bottom{flex-direction:column;align-items:flex-start;gap:12px}
+    .footer-attrib{max-width:none}
+    .footer-divider{margin:34px 0 20px}
+  }
+  @media (max-width:480px){
+    .footer-news{flex-direction:column}
+    .footer-news button{width:100%}
+    .footer-brand{font-size:19px}
+  }
 </style>
 </head>
 <body>
@@ -918,6 +1087,97 @@
   </section>
 
 </main>
+
+<!-- ═══ PREMIUM SITE FOOTER ═══ -->
+<footer class="site-footer" id="siteFooter">
+  <div class="footer-glow" aria-hidden="true"></div>
+  <div class="footer-inner">
+
+    <div class="footer-top">
+      <div class="footer-brand-col">
+        <div class="footer-brand"><span class="dot"></span>Browse</div>
+        <p class="footer-tagline">
+          Hand-picked movies, binge-worthy series and everything in between —
+          streaming discovery built for people who love to watch.
+        </p>
+
+        <form class="footer-news" id="footerNews" novalidate>
+          <input id="footerEmail" type="email" placeholder="Get weekly picks in your inbox"
+                 autocomplete="email" aria-label="Email address" />
+          <button type="submit">Subscribe</button>
+        </form>
+
+        <div class="footer-badges">
+          <span class="footer-badge">4K UHD</span>
+          <span class="footer-badge">Dolby Atmos</span>
+          <span class="footer-badge">HDR10+</span>
+        </div>
+
+        <div class="footer-social" aria-label="Social links">
+          <a href="#" class="social-btn" aria-label="X">
+            <svg viewBox="0 0 24 24"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.5L6.4 22H3.3l7.3-8.3L1.6 2h6.4l4.4 5.9L18.9 2Zm-1.1 18h1.7L7.3 3.8H5.5L17.8 20Z"/></svg>
+          </a>
+          <a href="#" class="social-btn" aria-label="Instagram">
+            <svg viewBox="0 0 24 24"><path d="M12 2c2.7 0 3 0 4.1.06 1 .05 1.7.2 2.3.44.6.24 1.1.55 1.6 1.05.5.5.8 1 1.05 1.6.23.6.4 1.3.44 2.3C21.99 9 22 9.3 22 12s0 3-.06 4.1c-.05 1-.2 1.7-.44 2.3a4.4 4.4 0 0 1-1.05 1.6c-.5.5-1 .8-1.6 1.05-.6.23-1.3.4-2.3.44C15 22 14.7 22 12 22s-3 0-4.1-.06c-1-.05-1.7-.2-2.3-.44a4.4 4.4 0 0 1-1.6-1.05c-.5-.5-.8-1-1.05-1.6-.23-.6-.4-1.3-.44-2.3C2 15 2 14.7 2 12s0-3 .06-4.1c.05-1 .2-1.7.44-2.3.24-.6.55-1.1 1.05-1.6.5-.5 1-.8 1.6-1.05.6-.23 1.3-.4 2.3-.44C9 2 9.3 2 12 2Zm0 1.8c-2.7 0-3 0-4 .06-.9.04-1.4.2-1.7.32-.4.16-.7.35-1 .65-.3.3-.5.6-.65 1-.13.3-.28.8-.32 1.7-.06 1-.06 1.3-.06 4s0 3 .06 4c.04.9.2 1.4.32 1.7.16.4.35.7.65 1 .3.3.6.5 1 .65.3.13.8.28 1.7.32 1 .06 1.3.06 4 .06s3 0 4-.06c.9-.04 1.4-.2 1.7-.32.4-.16.7-.35 1-.65.3-.3.5-.6.65-1 .13-.3.28-.8.32-1.7.06-1 .06-1.3.06-4s0-3-.06-4c-.04-.9-.2-1.4-.32-1.7a2.6 2.6 0 0 0-.65-1c-.3-.3-.6-.5-1-.65-.3-.13-.8-.28-1.7-.32-1-.06-1.3-.06-4-.06Zm0 3.1a5.1 5.1 0 1 1 0 10.2 5.1 5.1 0 0 1 0-10.2Zm0 1.8a3.3 3.3 0 1 0 0 6.6 3.3 3.3 0 0 0 0-6.6Zm5.4-3.2a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z"/></svg>
+          </a>
+          <a href="#" class="social-btn" aria-label="YouTube">
+            <svg viewBox="0 0 24 24"><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8C22 15.2 22 12 22 12s0-3.2-.4-4.8ZM10 15.2V8.8l5.4 3.2-5.4 3.2Z"/></svg>
+          </a>
+          <a href="#" class="social-btn" aria-label="Facebook">
+            <svg viewBox="0 0 24 24"><path d="M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.25-1.5 1.55-1.5H17V4.6c-.3-.04-1.3-.13-2.45-.13-2.43 0-4.1 1.48-4.1 4.2v2.23H8v3.1h2.45V22h3.05Z"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <nav class="footer-links" aria-label="Footer">
+        <div class="footer-col">
+          <h4>Movies</h4>
+          <button class="footer-link" data-footer-cat="movie:popular">Popular</button>
+          <button class="footer-link" data-footer-cat="movie:in_theatres">In Theatres</button>
+          <button class="footer-link" data-footer-cat="movie:coming_soon">Coming Soon</button>
+          <button class="footer-link" data-footer-cat="movie:top_rated">Top Rated</button>
+          <button class="footer-link" data-footer-cat="movie:netflix">New on Netflix</button>
+        </div>
+        <div class="footer-col">
+          <h4>TV Shows</h4>
+          <button class="footer-link" data-footer-cat="tv:popular">Popular</button>
+          <button class="footer-link" data-footer-cat="tv:airing_tonight">Airing Tonight</button>
+          <button class="footer-link" data-footer-cat="tv:new_series">New Series</button>
+          <button class="footer-link" data-footer-cat="tv:top_rated">Top Rated</button>
+          <button class="footer-link" data-footer-cat="tv:free">Free to Watch</button>
+        </div>
+        <div class="footer-col">
+          <h4>Genres</h4>
+          <button class="footer-link" data-footer-genre="movie:28">Action</button>
+          <button class="footer-link" data-footer-genre="movie:35">Comedy</button>
+          <button class="footer-link" data-footer-genre="movie:18">Drama</button>
+          <button class="footer-link" data-footer-genre="movie:27">Horror</button>
+          <button class="footer-link" data-footer-genre="movie:878">Sci-Fi</button>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <button class="footer-link" data-footer-info="About">About</button>
+          <button class="footer-link" data-footer-info="Careers">Careers</button>
+          <button class="footer-link" data-footer-info="Help Center">Help Center</button>
+          <button class="footer-link" data-footer-info="Privacy Policy">Privacy Policy</button>
+          <button class="footer-link" data-footer-info="Terms of Use">Terms of Use</button>
+        </div>
+      </nav>
+    </div>
+
+    <div class="footer-divider"></div>
+
+    <div class="footer-bottom">
+      <p class="footer-copy">© <span id="footerYear">2025</span> Browse. All rights reserved.</p>
+      <p class="footer-attrib">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+      <button class="footer-top-btn" id="footerTopBtn">
+        <svg viewBox="0 0 24 24"><path d="M12 5.83 18.17 12l1.42-1.41L12 3l-7.59 7.59L5.83 12 12 5.83ZM12 11l6.17 6.17 1.42-1.41L12 8.17l-7.59 7.59L5.83 18 12 11Z"/></svg>
+        Back to top
+      </button>
+    </div>
+
+  </div>
+</footer>
 
 <!-- NAV DRAWER -->
 <div class="nav-backdrop" id="navBackdrop" hidden></div>
@@ -2999,6 +3259,75 @@ function navigateToDetail(tmdbId, mediaType, title) {
   });
   location.href = "detail.html?" + params.toString();
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   FOOTER — interactions
+   ═══════════════════════════════════════════════════════════════ */
+(function initFooter(){
+  const yearEl = document.getElementById("footerYear");
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // Back to top
+  const topBtn = document.getElementById("footerTopBtn");
+  if (topBtn) {
+    topBtn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  // Category shortcuts
+  document.querySelectorAll("[data-footer-cat]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const [type, key] = btn.dataset.footerCat.split(":");
+      selectCategory(type, key);
+    });
+  });
+
+  // Genre shortcuts
+  document.querySelectorAll("[data-footer-genre]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const [type, idStr] = btn.dataset.footerGenre.split(":");
+      S.filter.type = type;
+      S.filter.genre = Number(idStr);
+      S.filter.categoryKey = "popular";
+      S.filter.category = CATEGORIES[type].popular;
+      renderGenreChips();
+      loadCategory(1);
+    });
+  });
+
+  // Informational links
+  document.querySelectorAll("[data-footer-info]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      showToast(btn.dataset.footerInfo + " — coming soon");
+    });
+  });
+
+  // Social placeholders
+  document.querySelectorAll(".social-btn").forEach(a => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      showToast("Social links coming soon");
+    });
+  });
+
+  // Newsletter
+  const form = document.getElementById("footerNews");
+  const email = document.getElementById("footerEmail");
+  if (form && email) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = email.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) {
+        showToast("Please enter a valid email address");
+        email.focus();
+        return;
+      }
+      email.value = "";
+      showToast("You're in! Weekly picks are on the way 🍿");
+    });
+  }
+})();
 
 /* ═══════════════════════════════════════════════════════════════
    BOOT
