@@ -7,12 +7,6 @@ video streams (720p/1080p/4K) behind HTTP/2 — HTTP/1.1 clients receive a
 downgraded 480p ladder with playConfig.maxResolution=480. With HTTP/2, the
 same API returns the full quality ladder and playConfig.maxResolution
 reflects the real cap (1080 or higher).
-
-v2 fix (2026-10): CDNs like bcdnxw.hakunaymatata.com return HTTP 426 when
-requests look like bots (missing Sec-Fetch-*, Sec-Ch-Ua, Priority headers).
-Added full browser-header set + multi-strategy retry. Use ?direct=1 on any
-proxy URL to force a 302 to the CDN (browser loads it directly, using the
-user's IP and TLS fingerprint).
 """
 
 import importlib
@@ -108,97 +102,6 @@ def _guess_content_type_from_path(path):
         if p.endswith(ext):
             return ctype
     return None
-
-# ---------------------------------------------------------------- CDN helpers
-# Browser-like header set for CDN requests. curl_cffi's impersonate handles
-# TLS/HTTP2 fingerprint, but some WAFs also inspect these headers directly.
-_BROWSER_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-)
-
-def _build_cdn_headers(referer, cookie=None, range_hdr=None, extra=None):
-    h = {
-        "User-Agent": _BROWSER_UA,
-        "Accept": "*/*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "identity;q=1, *;q=0",
-        "Referer": referer,
-        "Origin": "https://officialmoviebox.com",
-        "Sec-Fetch-Dest": "video",
-        "Sec-Fetch-Mode": "no-cors",
-        "Sec-Fetch-Site": "cross-site",
-        "Sec-Ch-Ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Priority": "u=1, i",
-        "Upgrade-Insecure-Requests": "1",
-    }
-    if cookie:    h["Cookie"] = cookie
-    if range_hdr: h["Range"]  = range_hdr
-    if extra:     h.update(extra)
-    return h
-
-def _is_good_media_response(r):
-    """Return True if the upstream response actually contains media."""
-    if r is None:
-        return False
-    if r.status_code >= 400:
-        return False
-    ct = (r.headers.get("Content-Type") or "").lower()
-    return (
-        ct.startswith("video/")
-        or ct.startswith("audio/")
-        or ct.startswith("application/octet-stream")
-        or ct.startswith("application/vnd.apple.mpegurl")
-        or ct.startswith("application/x-mpegurl")
-        or ct.startswith("application/dash+xml")
-    )
-
-def _fetch_media_with_retry(target, referer, cookie, range_hdr):
-    """
-    Fetch a media URL, trying multiple fingerprints/HTTP versions/header
-    sets until we get real video bytes. Returns (response, strategy_name)
-    or (None, last_error_string).
-    """
-    strategies = [
-        # (impersonate, http_version, extra_headers, label)
-        ("chrome131", "v2",  {},                              "chrome131/v2"),
-        ("chrome120", "v2",  {},                              "chrome120/v2"),
-        ("chrome131", "v1.1", {},                             "chrome131/v1.1"),
-        ("chrome124", "v1.1", {},                             "chrome124/v1.1"),
-        ("chrome120", "v2",  {"Range": "bytes=0-"},           "chrome120/v2+range"),
-        ("safari17_0", "v2", {},                              "safari17/v2"),
-        ("firefox133", "v2", {},                              "firefox133/v2"),
-    ]
-    if range_hdr:
-        # Client already sent Range — don't override it, just try fingerprints
-        strategies = [(imp, hv, {}, lbl) for (imp, hv, _, lbl) in strategies]
-
-    last_error = None
-    for imp, hv, extra, label in strategies:
-        try:
-            hdrs = _build_cdn_headers(referer, cookie, range_hdr, extra)
-            r = creq.get(
-                target, headers=hdrs, impersonate=imp,
-                verify=False, timeout=(15, 120), allow_redirects=True,
-                stream=True, http_version=hv,
-            )
-            if _is_good_media_response(r):
-                print(f"[proxy] CDN OK via {label} for {target[:70]}", flush=True)
-                return r, label
-
-            ct  = (r.headers.get("Content-Type") or "")[:40]
-            st  = r.status_code
-            print(f"[proxy] CDN retry {label}: status={st} ct={ct!r}", flush=True)
-            try: r.close()
-            except Exception: pass
-        except Exception as e:
-            last_error = e
-            print(f"[proxy] CDN exception {label}: {e}", flush=True)
-            continue
-
-    return None, f"all strategies failed (last_error={last_error})"
 
 # ---------------------------------------------------------------- m3u8 rewrite
 M3U8_CONTENT_TYPES = (
@@ -324,15 +227,6 @@ class Handler(BaseHTTPRequestHandler):
             try: self.wfile.write(body)
             except (BrokenPipeError, ConnectionResetError): pass
 
-    def _send_redirect(self, target_url, head_only=False):
-        """302 redirect — used for ?direct=1 client-side bypass."""
-        self.send_response(302)
-        self.send_header("Location", target_url)
-        self._cors()
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", "0")
-        self.end_headers()
-
     def _is_allowed(self, host, provider_id=None):
         if not host: return False
         host = host.lower()
@@ -441,7 +335,6 @@ class Handler(BaseHTTPRequestHandler):
         target = unquote(target)
         referer = unquote(qs.get("referer", ["https://officialmoviebox.com/"])[0])
         cookie_param = qs.get("cookie", [None])[0]
-        direct_flag = qs.get("direct", ["0"])[0] == "1"
 
         try: host = (urlparse(target).hostname or "").lower()
         except Exception: host = ""
@@ -452,78 +345,49 @@ class Handler(BaseHTTPRequestHandler):
                                                     "host": host, "provider": provider_id}),
                                    "application/json", head_only)
 
-        # ── manual client-side bypass ────────────────────────────────────
-        # Append &direct=1 to any proxy URL to have the browser load the CDN
-        # directly (uses user's IP + TLS fingerprint). Useful when the server
-        # IP itself is being WAF-blocked by the CDN.
-        if direct_flag:
-            print(f"[proxy] DIRECT redirect host={host}", flush=True)
-            return self._send_redirect(target, head_only)
-
         is_api = "officialmoviebox.com" in host
-        is_media = _guess_content_type_from_path(target) is not None
+        if is_api:
+            hdrs = {
+                "Accept": "application/json",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": referer,
+                "Origin": "https://officialmoviebox.com",
+                "x-client-info": '{"timezone":"Asia/Colombo"}',
+                "x-source": "",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+            }
+            for h in ("x-client-info", "x-source"):
+                v = self.headers.get(h)
+                if v: hdrs[h] = v
+        else:
+            hdrs = {
+                "Accept": "*/*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": referer,
+                "Origin": "https://officialmoviebox.com",
+            }
+            if cookie_param: hdrs["Cookie"] = cookie_param
 
         rng = self.headers.get("Range")
+        if rng: hdrs["Range"] = rng
 
-        # ── upstream fetch ──────────────────────────────────────────────
-        if is_media:
-            # CDN request — use full browser headers + retry strategies
-            r, strategy = _fetch_media_with_retry(
-                target, referer, cookie_param, rng,
-            )
-            if r is None:
-                print(f"[proxy] MEDIA FAIL host={host} strategy={strategy}", flush=True)
-                return self._send_body(502, json.dumps({
-                    "error": "upstream returned non-video (all strategies failed)",
-                    "target": target,
-                    "host": host,
-                    "referer_sent": referer,
-                    "detail": strategy,
-                    "hint": "Append &direct=1 to this URL to force a 302 redirect "
-                            "and let the browser load it directly.",
-                }), "application/json", head_only)
-        else:
-            # API request — existing single attempt with v1.1 fallback
-            if is_api:
-                hdrs = {
-                    "Accept": "application/json",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Referer": referer,
-                    "Origin": "https://officialmoviebox.com",
-                    "x-client-info": '{"timezone":"Asia/Colombo"}',
-                    "x-source": "",
-                    "Cache-Control": "no-cache",
-                    "Pragma": "no-cache",
-                }
-                for h in ("x-client-info", "x-source"):
-                    v = self.headers.get(h)
-                    if v: hdrs[h] = v
-            else:
-                hdrs = {
-                    "User-Agent": _BROWSER_UA,
-                    "Accept": "*/*",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Referer": referer,
-                    "Origin": "https://officialmoviebox.com",
-                }
-                if cookie_param: hdrs["Cookie"] = cookie_param
-
-            if rng: hdrs["Range"] = rng
-
+        # ── upstream fetch: HTTP/2 forced to unlock higher quality tiers ──
+        try:
+            r = creq.get(target, headers=hdrs, impersonate="chrome120",
+                         verify=False, timeout=(15, 120), allow_redirects=True,
+                         stream=True, http_version="v2")
+        except Exception as e:
+            print(f"[proxy] UPSTREAM FAIL target={target} error={e}", flush=True)
+            # Fallback to HTTP/1.1 in case v2 is unavailable on this network
             try:
+                print(f"[proxy] retrying with HTTP/1.1...", flush=True)
                 r = creq.get(target, headers=hdrs, impersonate="chrome120",
                              verify=False, timeout=(15, 120), allow_redirects=True,
-                             stream=True, http_version="v2")
-            except Exception as e:
-                print(f"[proxy] UPSTREAM FAIL target={target} error={e}", flush=True)
-                try:
-                    print(f"[proxy] retrying with HTTP/1.1...", flush=True)
-                    r = creq.get(target, headers=hdrs, impersonate="chrome120",
-                                 verify=False, timeout=(15, 120), allow_redirects=True,
-                                 stream=True, http_version="v1.1")
-                except Exception as e2:
-                    return self._send_body(502, json.dumps({"error": str(e2), "target": target}),
-                                           "application/json", head_only)
+                             stream=True, http_version="v1.1")
+            except Exception as e2:
+                return self._send_body(502, json.dumps({"error": str(e2), "target": target}),
+                                       "application/json", head_only)
 
         # ── detect non-video responses for media requests ──
         media_ct = _guess_content_type_from_path(target)
@@ -558,8 +422,6 @@ class Handler(BaseHTTPRequestHandler):
                     "target": target,
                     "referer_sent": referer,
                     "body_preview": err_text[:400],
-                    "hint": "Append &direct=1 to this URL to force a 302 redirect "
-                            "and let the browser load it directly.",
                 }), "application/json", head_only)
 
         # ── m3u8 rewrite ──
