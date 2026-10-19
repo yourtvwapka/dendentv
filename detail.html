@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#000000" />
 <title>Details</title>
-<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 <style>
   :root {
     --accent: #e50914; --accent-2: #f6121d;
@@ -20,15 +19,38 @@
   button { font-family: inherit; cursor: pointer; }
   img { display: block; }
 
-  .page { max-width: 1400px; margin: 0 auto; padding: 0 20px 100px; }
+  /* ═══════════ POSTER BACKGROUND ═══════════ */
+  .bg-blur {
+    position: fixed; inset: -100px;
+    background-size: cover;
+    background-position: center;
+    filter: blur(80px) brightness(0.35) saturate(1.5);
+    z-index: -2;
+    opacity: 0;
+    transition: opacity .8s ease;
+    pointer-events: none;
+    will-change: opacity;
+  }
+  .bg-blur.visible { opacity: 1; }
+  .bg-overlay {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 10%, rgba(229,9,20,.06) 0%, transparent 60%),
+      linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.75) 55%, #000 100%);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .page { max-width: 1400px; margin: 0 auto; padding: 0 20px 100px; position: relative; }
+  body.has-footer .page { padding-bottom: 160px; }
 
   /* ═══════════ TOPBAR ═══════════ */
   .topbar {
     display: flex; align-items: center; gap: 12px;
     padding: 16px 20px;
     position: sticky; top: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,.98) 55%, rgba(0,0,0,.7) 80%, transparent);
-    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    background: linear-gradient(180deg, rgba(0,0,0,.9) 55%, rgba(0,0,0,.5) 80%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     z-index: 50;
     margin: 0 -20px;
   }
@@ -39,6 +61,7 @@
     color: #fff;
     display: flex; align-items: center; justify-content: center;
     font-size: 20px; transition: .15s;
+    flex-shrink: 0;
   }
   .back-btn:hover { background: rgba(255,255,255,.16); }
   .back-btn:active { transform: scale(.94); }
@@ -47,69 +70,24 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     min-width: 0;
   }
-  .topbar-spacer { flex: 1; min-width: 0; }
-  .cast-status-badge {
-    font-size: 12px; font-weight: 700;
-    color: var(--success);
-    background: rgba(34,197,94,.12);
-    border: 1px solid rgba(34,197,94,.35);
-    padding: 7px 12px; border-radius: 8px;
-    white-space: nowrap; max-width: 220px;
-    overflow: hidden; text-overflow: ellipsis;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .cast-status-badge::before {
-    content: ""; width: 6px; height: 6px; border-radius: 50%;
-    background: var(--success);
-    box-shadow: 0 0 8px var(--success);
-    animation: pulse 1.5s ease-in-out infinite;
-    flex-shrink: 0;
-  }
-  .cast-status-badge[hidden] { display: none; }
-  .cast-wrap { flex-shrink: 0; display: flex; align-items: center; }
-  google-cast-launcher {
-    width: 42px !important; height: 42px !important;
-    display: inline-block;
-    border-radius: 10px;
-    background: rgba(255,255,255,.08);
-    border: 1px solid rgba(255,255,255,.12);
-    padding: 9px;
-    --connected-color: #22c55e;
-    --disconnected-color: #ffffff;
-    cursor: pointer;
-    transition: .15s;
-  }
-  google-cast-launcher:hover { background: rgba(255,255,255,.16); }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 
-  /* ═══════════ HERO ═══════════ */
+  /* ═══════════ HERO (glassmorphic over blurred poster) ═══════════ */
   .hero {
     position: relative;
     margin: 20px 0 36px;
-    padding: 56px 40px 44px;
+    padding: 44px 40px 40px;
     border-radius: 22px;
     overflow: hidden;
-    background: #0a0a0d;
-    border: 1px solid var(--line);
+    background: rgba(10, 10, 13, 0.72);
+    backdrop-filter: blur(28px) saturate(1.1);
+    -webkit-backdrop-filter: blur(28px) saturate(1.1);
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 30px 80px rgba(0,0,0,.6);
     animation: heroIn .6s cubic-bezier(.2,.9,.3,1);
   }
   @keyframes heroIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-  .hero-backdrop {
-    position: absolute; inset: 0;
-    background-size: cover; background-position: center 30%;
-    z-index: 0;
-    opacity: 0.55;
-    filter: blur(2px) brightness(0.7);
-  }
-  .hero-backdrop::after {
-    content: '';
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse at 20% 40%, rgba(0,0,0,.35) 0%, rgba(0,0,0,.92) 65%),
-      linear-gradient(180deg, rgba(0,0,0,.4) 0%, rgba(0,0,0,.85) 80%, #0a0a0d 100%);
   }
   .hero-inner {
     position: relative; z-index: 1;
@@ -119,9 +97,8 @@
     align-items: end;
   }
   @media (max-width: 720px) {
-    .hero { padding: 32px 20px 28px; margin: 12px 0 24px; border-radius: 16px; }
+    .hero { padding: 28px 20px 24px; margin: 12px 0 24px; border-radius: 16px; backdrop-filter: blur(20px); }
     .hero-inner { grid-template-columns: 1fr; gap: 24px; text-align: center; }
-    .hero-backdrop { background-position: center 20%; }
   }
   .poster {
     position: relative;
@@ -129,8 +106,8 @@
     border-radius: 14px;
     overflow: hidden;
     background: linear-gradient(135deg, #1a1a20 0%, #0a0a0d 100%);
-    border: 1px solid rgba(255,255,255,.08);
-    box-shadow: 0 30px 60px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.04) inset;
+    border: 1px solid rgba(255,255,255,.1);
+    box-shadow: 0 30px 60px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.04) inset;
     transition: transform .3s ease;
   }
   .poster:hover { transform: scale(1.02); }
@@ -146,7 +123,7 @@
   .info h1 {
     font-size: 44px; line-height: 1.05; font-weight: 900;
     margin-bottom: 16px; letter-spacing: -1.5px;
-    text-shadow: 0 2px 20px rgba(0,0,0,.7);
+    text-shadow: 0 2px 20px rgba(0,0,0,.5);
   }
   @media (max-width: 900px) { .info h1 { font-size: 32px; letter-spacing: -.8px; } }
   @media (max-width: 720px) { .info h1 { font-size: 26px; letter-spacing: -.5px; } }
@@ -164,7 +141,7 @@
     100% { background-position: -200% 0; }
   }
   .meta {
-    display: flex; flex-wrap: wrap; gap: 6px 16px;
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
     font-size: 13.5px; color: #c3c3cd;
     margin-bottom: 14px;
     align-items: center;
@@ -172,7 +149,7 @@
   }
   @media (max-width: 720px) { .meta { justify-content: center; } }
   .meta .rating { color: #ffc93c; font-weight: 700; }
-  .meta .dot { color: var(--muted); opacity: .6; }
+  .meta .dot { color: var(--muted); opacity: .5; }
   .meta .badge {
     background: rgba(255,255,255,.1);
     border: 1px solid rgba(255,255,255,.18);
@@ -201,46 +178,119 @@
   }
   @media (max-width: 720px) { .synopsis { font-size: 13px; } }
 
-  /* action buttons */
+  /* ═══════════ PREMIUM PLAY BUTTON ═══════════ */
   .hero-actions {
     display: flex; flex-wrap: wrap; gap: 10px;
-    margin-top: 24px;
+    margin-top: 26px;
   }
   @media (max-width: 720px) { .hero-actions { justify-content: center; } }
-  .btn-play {
-    display: inline-flex; align-items: center; gap: 10px;
-    background: #fff; color: #000;
-    padding: 14px 30px; border-radius: 8px; border: none;
-    font-size: 15px; font-weight: 800;
-    transition: .15s;
-    box-shadow: 0 8px 24px rgba(255,255,255,.12);
+  .play-btn {
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 16px 36px;
+    background: #fff;
+    color: #0a0a0d;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -.2px;
+    cursor: pointer;
+    position: relative;
+    box-shadow:
+      0 8px 28px rgba(255,255,255,.1),
+      0 20px 48px rgba(0,0,0,.55);
+    transition: all .25s cubic-bezier(.2,.9,.3,1);
   }
-  .btn-play:hover { background: #e0e0e0; transform: translateY(-1px); }
-  .btn-play:active { transform: scale(.98); }
-  .btn-play svg { width: 20px; height: 20px; }
-  .btn-secondary {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(255,255,255,.12);
-    border: 1px solid rgba(255,255,255,.2);
-    color: #fff;
-    padding: 14px 20px; border-radius: 8px;
-    font-size: 14px; font-weight: 600;
-    transition: .15s;
+  .play-btn svg {
+    width: 20px; height: 20px;
+    color: #e50914;
+    fill: #e50914;
+    flex-shrink: 0;
   }
-  .btn-secondary:hover { background: rgba(255,255,255,.22); }
-  .btn-secondary:active { transform: scale(.97); }
-  .btn-secondary.active {
-    background: rgba(229,9,20,.2);
-    border-color: var(--accent);
-    color: #fff;
+  .play-btn:hover {
+    background: #f2f2f2;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+      0 12px 40px rgba(255,255,255,.15),
+      0 28px 64px rgba(0,0,0,.65);
   }
-  .btn-secondary svg { width: 18px; height: 18px; }
+  .play-btn:active {
+    transform: translateY(0) scale(.98);
+  }
+
+  /* ═══════════ CAST ═══════════ */
+  .cast-section { margin: 8px 0 40px; }
+  .section-title {
+    font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--muted); font-weight: 800;
+    margin-bottom: 16px;
+  }
+  .cast-scroller {
+    display: flex; gap: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 4px 2px 12px;
+    scroll-snap-type: x proximity;
+  }
+  .cast-scroller::-webkit-scrollbar { display: none; }
+  .cast-card {
+    flex-shrink: 0;
+    width: 108px;
+    text-align: center;
+    scroll-snap-align: start;
+    transition: transform .2s ease;
+  }
+  .cast-card:hover { transform: translateY(-2px); }
+  .cast-photo {
+    width: 108px; height: 108px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--card);
+    border: 2px solid rgba(255,255,255,.1);
+    margin: 0 auto 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    transition: border-color .2s;
+  }
+  .cast-card:hover .cast-photo { border-color: rgba(255,255,255,.25); }
+  .cast-photo-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 800;
+    color: rgba(255,255,255,.3);
+    background: linear-gradient(135deg, #1e1e25 0%, #2a2a33 100%);
+  }
+  .cast-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f5f5f7;
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+  .cast-role {
+    font-size: 11.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+  @media (max-width: 720px) {
+    .cast-card, .cast-photo { width: 88px; }
+    .cast-photo { height: 88px; }
+    .cast-name { font-size: 12px; }
+    .cast-role { font-size: 10.5px; }
+  }
 
   /* ═══════════ TABS ═══════════ */
   .tabs {
     display: flex; gap: 4px;
     border-bottom: 1px solid var(--line);
-    margin: 32px 0 28px;
+    margin: 12px 0 28px;
     overflow-x: auto; scrollbar-width: none;
   }
   .tabs::-webkit-scrollbar { display: none; }
@@ -268,11 +318,6 @@
   .tab-content { display: none; }
   .tab-content.active { display: block; }
   .section { margin-bottom: 36px; }
-  .section-title {
-    font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase;
-    color: var(--muted); font-weight: 800;
-    margin-bottom: 14px;
-  }
 
   /* pills */
   .pills { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -317,20 +362,9 @@
     box-shadow: 0 6px 20px rgba(229,9,20,.35);
   }
 
-  /* play row */
+  /* play row inside tab */
   .play-row { display: flex; gap: 10px; align-items: center; margin-top: 24px; padding-top: 26px; border-top: 1px solid var(--line); }
-  .play-btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    background: #fff; border: none; color: #000;
-    padding: 16px 34px; border-radius: 10px;
-    font-size: 16px; font-weight: 800;
-    transition: .15s;
-    box-shadow: 0 10px 30px rgba(255,255,255,.15);
-    letter-spacing: -.2px;
-  }
-  .play-btn:hover { background: #e0e0e0; transform: translateY(-1px); }
-  .play-btn:active { transform: scale(.98); }
-  .play-btn svg { width: 20px; height: 20px; }
+  .play-row .play-btn { padding: 16px 32px; font-size: 15.5px; }
 
   /* loading */
   .loading-block {
@@ -383,53 +417,69 @@
   }
   .unavailable-actions .btn:hover { background: #2e2e38; border-color: #4a4a58; }
 
-  /* provider progress */
-  .provider-progress {
-    display: flex; flex-direction: column; gap: 10px;
-    padding: 22px 26px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    margin-top: 16px;
+  /* ═══════════ PROVIDER FOOTER ═══════════ */
+  .provider-footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,10,13,.98);
+    border-top: 1px solid var(--line);
+    padding: 12px 20px;
+    z-index: 45;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transform: translateY(100%);
+    transition: transform .35s cubic-bezier(.2,.9,.3,1);
+    box-shadow: 0 -12px 40px rgba(0,0,0,.7);
   }
-  .provider-progress-title {
-    font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase;
-    color: var(--muted); font-weight: 800;
-    margin-bottom: 4px;
+  .provider-footer.show { transform: translateY(0); }
+  .provider-footer-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
   }
-  .provider-progress-row {
-    display: flex; align-items: center; gap: 12px;
-    font-size: 13.5px; color: #c3c3cd;
+  .provider-footer-title {
+    font-size: 11px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 800;
+    margin-right: auto;
   }
-  .provider-progress-row .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
+  .provider-footer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #c3c3cd;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .provider-footer-item .dot {
+    width: 7px; height: 7px; border-radius: 50%;
     flex-shrink: 0;
   }
-  .provider-progress-row.loading .status-dot { background: var(--warn); animation: pulse 1s ease-in-out infinite; }
-  .provider-progress-row.ok .status-dot { background: var(--success); }
-  .provider-progress-row.empty .status-dot { background: #6b7280; }
-  .provider-progress-row.error .status-dot { background: var(--accent); }
-  .provider-progress-row .status-text { margin-left: auto; font-size: 11.5px; color: var(--muted); font-weight: 600; }
-  .provider-progress-row.ok .status-text { color: var(--success); }
-  .provider-progress-row.error .status-text { color: #fca5a5; }
-
-  /* toast */
-  .toast {
-    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
-    background: rgba(20,20,24,.96);
-    border: 1px solid rgba(255,255,255,.12);
-    color: #fff; padding: 12px 22px;
-    border-radius: 10px; font-size: 13px; font-weight: 600;
-    box-shadow: 0 16px 40px rgba(0,0,0,.8);
-    z-index: 9999;
-    opacity: 0; pointer-events: none;
-    transition: opacity .2s, transform .2s;
-    display: flex; align-items: center; gap: 10px;
-    backdrop-filter: blur(12px);
+  .provider-footer-item.loading .dot { background: var(--warn); animation: pulse 1s ease-in-out infinite; }
+  .provider-footer-item.ok .dot { background: var(--success); box-shadow: 0 0 8px rgba(34,197,94,.6); }
+  .provider-footer-item.empty .dot { background: #6b7280; }
+  .provider-footer-item.error .dot { background: var(--accent); }
+  .provider-footer-item-status {
+    font-size: 11.5px;
+    color: var(--muted);
+    font-weight: 500;
   }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .toast.success { border-color: rgba(34,197,94,.4); }
-  .toast.error { border-color: rgba(229,9,20,.4); }
+  .provider-footer-item.ok .provider-footer-item-status { color: var(--success); }
+  .provider-footer-item.error .provider-footer-item-status { color: #fca5a5; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+  @media (max-width: 640px) {
+    .provider-footer { padding: 10px 14px; }
+    .provider-footer-inner { gap: 14px; font-size: 11.5px; }
+    .provider-footer-title { font-size: 10px; letter-spacing: 1.1px; }
+    .provider-footer-item-status { display: none; }
+  }
 
   #debugOutput {
     position: fixed; bottom: 0; left: 0; right: 0;
@@ -445,22 +495,26 @@
 </head>
 <body>
 
+<div class="bg-blur" id="bgBlur"></div>
+<div class="bg-overlay"></div>
+
 <div class="page">
   <div class="topbar">
     <button class="back-btn" id="backBtn" title="Back">←</button>
     <h1 id="pageTitle">Details</h1>
-    <div class="topbar-spacer"></div>
-    <div class="cast-status-badge" id="castStatusBadge" hidden></div>
-    <div class="cast-wrap">
-      <google-cast-launcher id="castLauncher"></google-cast-launcher>
-    </div>
   </div>
   <div id="main">
-    <div class="loading-block">
-      <div class="spinner"></div>
-      <div>Loading details…</div>
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="poster"><div class="fallback">?</div></div>
+        <div class="info"><div class="title-skeleton"></div></div>
+      </div>
     </div>
   </div>
+</div>
+
+<div class="provider-footer" id="providerFooter">
+  <div class="provider-footer-inner" id="providerFooterInner"></div>
 </div>
 
 <script>
@@ -473,6 +527,7 @@ const TMDB_API_KEY = "09c7460bdc6319d6538d786919306438";
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w500";
 const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w1280";
+const TMDB_IMG_PROFILE = "https://image.tmdb.org/t/p/w185";
 
 const HISTORY_KEY = "watchHistory";
 
@@ -488,7 +543,7 @@ const Q = {
   debug:      QS.get("debug") === "1",
 };
 
-/* Immediate title (no more "Loading…") */
+/* Immediate title */
 if (Q.title) {
   document.title = Q.title + " — Details";
   document.getElementById("pageTitle").textContent = Q.title;
@@ -552,6 +607,7 @@ const state = {
     isTV:     Q.isSeries,
     tmdbId:   Q.tmdbId,
     tmdbLoaded: false,
+    cast:     [],
   },
   moviebox: { detailPath: Q.detailPath, subjectId: Q.subjectId, data: null,
               status: "idle", error: null, selectedDub: 0, selectedSe: 0, selectedEp: 1 },
@@ -571,18 +627,22 @@ function imgUrl(v) {
   if (typeof v === "string") return v.startsWith("//") ? "https:" + v : v;
   return v.url || v.src || v.path || "";
 }
-function showToast(msg, kind = "") {
-  let el = document.getElementById("appToast");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "appToast";
-    el.className = "toast";
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.className = "toast show" + (kind ? " " + kind : "");
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => el.classList.remove("show"), 2600);
+
+/* ═══════════ POSTER BACKGROUND ═══════════ */
+function applyBackground(posterUrl) {
+  if (!posterUrl) return;
+  const bgEl = document.getElementById("bgBlur");
+  if (!bgEl) return;
+  if (bgEl.dataset.set === posterUrl) return;
+  bgEl.dataset.set = posterUrl;
+  // Preload to avoid flash
+  const img = new Image();
+  img.onload = () => {
+    bgEl.style.backgroundImage = `url('${posterUrl}')`;
+    bgEl.classList.add("visible");
+  };
+  img.onerror = () => {};
+  img.src = posterUrl;
 }
 
 /* ═══════════ TITLE NORMALIZATION ═══════════ */
@@ -624,7 +684,6 @@ function saveToHistory(entry) {
     const raw = localStorage.getItem(HISTORY_KEY);
     let history = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(history)) history = [];
-
     const entryKey = entry.tmdbId
       ? "tmdb:" + entry.tmdbId
       : entry.detailPath
@@ -632,7 +691,6 @@ function saveToHistory(entry) {
         : entry.url
           ? "url:" + entry.url
           : "title:" + entry.title;
-
     history = history.filter(h => {
       const hKey = h.tmdbId
         ? "tmdb:" + h.tmdbId
@@ -643,197 +701,12 @@ function saveToHistory(entry) {
             : "title:" + h.title;
       return hKey !== entryKey;
     });
-
-    const enriched = {
-      ...entry,
-      watchedAt: Date.now(),
-      entryKey,
-    };
-    history.unshift(enriched);
+    history.unshift({ ...entry, watchedAt: Date.now(), entryKey });
     history = history.slice(0, 60);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     console.log("[history] saved: " + entry.title + (entry.se ? " S" + entry.se + "E" + entry.ep : ""));
   } catch (e) {
     console.warn("[history] save failed:", e.message);
-  }
-}
-
-/* ═══════════ CASTING ═══════════ */
-const castState = {
-  available: false,
-  session: null,
-  sessionState: "NO_SESSION",
-  deviceName: "",
-};
-
-window.__onGCastApiAvailable = function (isAvailable) {
-  if (!isAvailable || !window.cast || !window.chrome?.cast) {
-    console.log("[cast] SDK not available");
-    return;
-  }
-  try {
-    cast.framework.CastContext.getInstance().setOptions({
-      receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-      autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-    });
-    castState.available = true;
-
-    const ctx = cast.framework.CastContext.getInstance();
-    ctx.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, (e) => {
-      castState.sessionState = e.sessionState;
-      castState.session = ctx.getCurrentSession();
-      updateCastUI();
-    });
-    ctx.addEventListener(cast.framework.CastContextEventType.CAST_STATE_CHANGED, (e) => {
-      updateCastUI();
-    });
-    updateCastUI();
-  } catch (e) {
-    console.warn("[cast] setup error:", e.message);
-  }
-};
-
-function updateCastUI() {
-  const badge = document.getElementById("castStatusBadge");
-  if (!badge) return;
-
-  const ctx = window.cast?.framework?.CastContext?.getInstance?.();
-  const session = ctx?.getCurrentSession?.();
-  const state = ctx?.getCastState?.() || "NO_DEVICES_AVAILABLE";
-
-  if (session && session.getCastDevice) {
-    const name = session.getCastDevice()?.friendlyName || "Cast device";
-    badge.textContent = "Casting to " + name;
-    badge.hidden = false;
-  } else if (state === "CONNECTED" || state === "CONNECTING") {
-    badge.textContent = "Casting";
-    badge.hidden = false;
-  } else {
-    badge.hidden = true;
-  }
-}
-
-function isCasting() {
-  const ctx = window.cast?.framework?.CastContext?.getInstance?.();
-  const session = ctx?.getCurrentSession?.();
-  return !!(session && session.getCastDevice);
-}
-
-function detectCastContentType(url) {
-  // Extract real URL from proxy
-  let real = url;
-  const m = url.match(/[?&]url=([^&]+)/);
-  if (m) { try { real = decodeURIComponent(m[1]); } catch (_) {} }
-  const path = real.split(/[?#]/)[0].toLowerCase();
-  if (path.endsWith(".m3u8")) return "application/x-mpegurl";
-  if (path.endsWith(".mp4")) return "video/mp4";
-  if (path.endsWith(".webm")) return "video/webm";
-  if (path.endsWith(".mkv")) return "video/x-matroska";
-  if (path.endsWith(".ts")) return "video/mp2t";
-  return "application/x-mpegurl";
-}
-
-async function castMedia(url, title, subtitle, posterUrl) {
-  const ctx = window.cast?.framework?.CastContext?.getInstance?.();
-  const session = ctx?.getCurrentSession?.();
-  if (!session) throw new Error("No cast session");
-
-  const absoluteUrl = url.startsWith("http") ? url : location.origin + url;
-
-  const mediaInfo = new chrome.cast.media.MediaInfo(absoluteUrl, detectCastContentType(absoluteUrl));
-  mediaInfo.streamType = chrome.cast.media.StreamType.BUFFERED;
-
-  mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
-  mediaInfo.metadata.title = title || "Untitled";
-  if (subtitle) mediaInfo.metadata.subtitle = subtitle;
-  if (posterUrl) mediaInfo.metadata.images = [{ url: posterUrl }];
-
-  const request = new chrome.cast.media.LoadRequest(mediaInfo);
-  await session.loadMedia(request);
-  console.log("[cast] loaded media: " + title);
-}
-
-/* Fetch the MovieBox play URL for casting */
-async function resolveMovieBoxCastUrl(dub, se, ep) {
-  const playParams = new URLSearchParams({
-    subjectId: String(dub.subjectId),
-    detailPath: dub.detailPath,
-  });
-  if (se && ep) { playParams.set("se", String(se)); playParams.set("ep", String(ep)); }
-
-  const realPlayUrl = BASE + "/wefeed-h5api-bff/subject/play?" + playParams;
-  const referer = BASE + "/movies/" + dub.detailPath;
-
-  const res = await fetch(PROXY + "/?url=" + encodeURIComponent(realPlayUrl) +
-                          "&referer=" + encodeURIComponent(referer));
-  if (!res.ok) throw new Error("Play API HTTP " + res.status);
-  const json = await res.json();
-  if (json.code !== 0) throw new Error("Play API error " + json.code);
-
-  const d = json.data?.data || json.data;
-  const signCookie = String(d?.signCookie || d?.cookie || "");
-  const list = [];
-  for (const key of ["streams","hls","dash","streamList","sources","urls","list"]) {
-    if (Array.isArray(d?.[key])) list.push(...d[key]);
-  }
-  if (!list.length && d?.url) list.push(d);
-  if (!list.length) throw new Error("No streams");
-
-  const pick = (target) => list.find(s => {
-    const q = String(s.resolutions || s.quality || s.definition || s.label || "");
-    return q.includes(String(target));
-  });
-  const chosen = pick(720) || pick(480) || list[0];
-  const rawUrl = chosen.url || chosen.playUrl || chosen.src || chosen.file || "";
-  if (!rawUrl) throw new Error("No stream URL");
-
-  let out = PROXY + "/?url=" + encodeURIComponent(rawUrl) +
-            "&referer=" + encodeURIComponent(referer);
-  if (signCookie) out += "&cookie=" + encodeURIComponent(signCookie);
-  return out;
-}
-
-async function tryCastMovieBox() {
-  const m = state.moviebox;
-  if (!m.data) return false;
-  const dub = m.data.dubs[m.selectedDub] || {
-    subjectId: m.data.subjectId, detailPath: m.data.detailPath, lanName: "Original Audio",
-  };
-  const se = m.data.isSeries ? (m.selectedSe || 1) : null;
-  const ep = m.data.isSeries ? (m.selectedEp || 1) : null;
-
-  try {
-    const urlPromise = resolveMovieBoxCastUrl(dub, se, ep);
-    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 9000));
-    const url = await Promise.race([urlPromise, timeout]);
-    const sub = dub.lanName + (se ? " · S" + se + "E" + ep : "");
-    await castMedia(url, state.hero.title, sub, state.hero.poster);
-    showToast("Casting to TV…", "success");
-    return true;
-  } catch (e) {
-    console.warn("[cast] moviebox failed:", e.message);
-    showToast("Cast unavailable — playing locally", "error");
-    return false;
-  }
-}
-
-async function tryCastServer(provider) {
-  const s = state[provider];
-  const stream = s.streams[s.selectedServer] || s.streams[0];
-  if (!stream?.url) return false;
-  const referer = provider === "hdhub" ? "https://new8.hdhub4u.cl/" : "https://new3.moviesdrive.beer/";
-  const proxied = PROXY + "/?url=" + encodeURIComponent(stream.url) +
-                  "&referer=" + encodeURIComponent(referer) +
-                  "&provider=" + provider;
-  try {
-    const sub = (stream.label || "") + (stream.quality && stream.quality !== "Auto" ? " · " + stream.quality : "");
-    await castMedia(proxied, state.hero.title, sub, state.hero.poster);
-    showToast("Casting to TV…", "success");
-    return true;
-  } catch (e) {
-    console.warn("[cast] server failed:", e.message);
-    showToast("Cast failed — playing locally", "error");
-    return false;
   }
 }
 
@@ -873,17 +746,30 @@ async function fetchTmdbDetails(tmdbId, mediaType) {
   }
 }
 
+async function fetchTmdbCredits(tmdbId, mediaType) {
+  if (!tmdbId) return [];
+  try {
+    const data = await tmdbFetch(`/${mediaType || "movie"}/${tmdbId}/credits`);
+    return (data.cast || []).slice(0, 14).map(c => ({
+      name:      c.name || "",
+      character: c.character || "",
+      profile:   c.profile_path ? TMDB_IMG_PROFILE + c.profile_path : "",
+    })).filter(c => c.name);
+  } catch (e) {
+    console.warn("[tmdb] credits failed:", e.message);
+    return [];
+  }
+}
+
 async function searchTmdbByTitle(title, isTVHint) {
   if (!title) return null;
   try {
     const data = await tmdbFetch("/search/multi", { query: title, page: 1, include_adult: "false" });
     const results = (data.results || []).filter(r => r.media_type === "movie" || r.media_type === "tv");
     if (!results.length) return null;
-
     const needle = cleanTitle(title);
     const yearMatch = String(title).match(/\b(19\d{2}|20\d{2})\b/);
     const targetYear = yearMatch ? yearMatch[1] : null;
-
     let best = null, bestScore = 0;
     for (const r of results) {
       const name = r.title || r.name || "";
@@ -1048,7 +934,6 @@ async function tryMovieBoxEndpoint(endpoint, query, isTV) {
     if (!resolved) return null;
     const subjects = findSubjects(resolved);
     const endpointName = endpoint.split("?")[0];
-
     if (subjects.length === 0) {
       console.log("[match] MovieBox '" + query + "' via " + endpointName + " → 0 results");
       return null;
@@ -1063,11 +948,9 @@ async function tryMovieBoxEndpoint(endpoint, query, isTV) {
     }
     scored.sort((a, b) => b.score - a.score);
     const best = scored[0];
-
     console.log("[match] MovieBox '" + query + "' via " + endpointName +
                 " → " + subjects.length + " results, best: '" +
                 (best?.subject.title || "none") + "' score=" + (best?.score || 0));
-
     if (best && best.score >= 45) return best.subject;
   } catch (e) {
     console.warn("[match] endpoint error:", e.message);
@@ -1173,13 +1056,11 @@ async function loadExternal(source, url) {
         || doc.querySelector("h1.entry-title, h1.page-title, h1")?.textContent || "";
       const ogImage = doc.querySelector('meta[property="og:image"]')?.content || "";
       const ogDesc = doc.querySelector('meta[property="og:description"]')?.content || "";
-
       if (ogTitle && (!state.hero.title || state.hero.title === Q.title || state.hero.title === "Loading…")) {
         state.hero.title = ogTitle.trim();
       }
       if (ogImage && !state.hero.poster) state.hero.poster = ogImage;
       if (ogDesc && !state.hero.overview) state.hero.overview = ogDesc;
-
       if (/\(Season\s*\d|S\d{2}E\d{2}|Complete\s*Series|Web\s*Series/i.test(ogTitle)) {
         state.hero.isTV = true;
       }
@@ -1208,12 +1089,17 @@ async function loadExternal(source, url) {
 async function enrichHeroWithTmdb() {
   if (state.hero.tmdbLoaded) return;
   let meta = null;
+  let mediaType = Q.mediaType || (state.hero.isTV ? "tv" : "movie");
+
   if (Q.tmdbId) {
-    meta = await fetchTmdbDetails(Q.tmdbId, Q.mediaType || (state.hero.isTV ? "tv" : "movie"));
+    meta = await fetchTmdbDetails(Q.tmdbId, mediaType);
   }
   if (!meta && state.hero.title && state.hero.title !== "Loading…") {
     const match = await searchTmdbByTitle(cleanForSearch(state.hero.title), state.hero.isTV);
-    if (match) meta = await fetchTmdbDetails(match.id, match.mediaType);
+    if (match) {
+      meta = await fetchTmdbDetails(match.id, match.mediaType);
+      mediaType = match.mediaType;
+    }
   }
   if (meta) {
     state.hero = {
@@ -1229,7 +1115,12 @@ async function enrichHeroWithTmdb() {
       isTV:     meta.isTV !== undefined ? meta.isTV : state.hero.isTV,
       tmdbId:   meta.tmdbId || state.hero.tmdbId,
       tmdbLoaded: true,
+      cast:     state.hero.cast || [],
     };
+    // Fetch cast list
+    const cast = await fetchTmdbCredits(meta.tmdbId, mediaType);
+    if (cast.length) state.hero.cast = cast;
+
     document.title = (state.hero.title || "Details") + " — Details";
     document.getElementById("pageTitle").textContent = state.hero.title || "Details";
     render();
@@ -1276,9 +1167,25 @@ function renderHero() {
     ? `<h1>${escapeHtml(h.title)}</h1>`
     : `<div class="title-skeleton"></div>`;
 
+  // Hero play button (only shows when moviebox is available)
+  let heroActions = "";
+  const m = state.moviebox;
+  if (m.data) {
+    const playText = m.data.isSeries
+      ? `Play S${m.selectedSe}E${String(m.selectedEp).padStart(2, "0")}`
+      : "Play Movie";
+    heroActions = `
+      <div class="hero-actions">
+        <button class="play-btn" data-action="play-moviebox">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          ${playText}
+        </button>
+      </div>
+    `;
+  }
+
   return `
     <div class="hero">
-      ${h.backdrop ? `<div class="hero-backdrop" style="background-image:url('${escapeHtml(h.backdrop)}')"></div>` : ''}
       <div class="hero-inner">
         <div class="poster">${posterHtml}</div>
         <div class="info">
@@ -1286,37 +1193,35 @@ function renderHero() {
           ${metaHtml ? `<div class="meta">${metaHtml}</div>` : ''}
           ${genresHtml}
           ${h.overview ? `<p class="synopsis">${escapeHtml(h.overview)}</p>` : ''}
+          ${heroActions}
         </div>
       </div>
     </div>
   `;
 }
 
-function renderProviderProgress() {
-  const providers = [
-    { id: "moviebox", name: "MovieBox" },
-    { id: "hdhub",    name: "hdhub4u" },
-    { id: "drive",    name: "moviesDrive" },
-  ];
-  const rows = providers.map(p => {
-    const s = state[p.id];
-    let cls = "loading", text = "Checking…";
-    if (s.status === "ok")    { cls = "ok";    text = "Available"; }
-    else if (s.status === "empty") { cls = "empty"; text = "Not found"; }
-    else if (s.status === "error") { cls = "error"; text = "Error"; }
-    else if (s.status === "idle")  { cls = "loading"; text = "Waiting…"; }
+function renderCastSection() {
+  const cast = state.hero.cast;
+  if (!cast || !cast.length) return "";
+  const cards = cast.map(c => {
+    const initial = (c.name || "?").charAt(0).toUpperCase();
+    const img = c.profile
+      ? `<img class="cast-photo" src="${escapeHtml(c.profile)}" alt="${escapeHtml(c.name)}" loading="lazy"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+         <div class="cast-photo cast-photo-fallback" style="display:none">${initial}</div>`
+      : `<div class="cast-photo cast-photo-fallback">${initial}</div>`;
     return `
-      <div class="provider-progress-row ${cls}">
-        <span class="status-dot"></span>
-        <span>${escapeHtml(p.name)}</span>
-        <span class="status-text">${text}</span>
+      <div class="cast-card">
+        ${img}
+        <div class="cast-name">${escapeHtml(c.name)}</div>
+        ${c.character ? `<div class="cast-role">${escapeHtml(c.character)}</div>` : ''}
       </div>
     `;
   }).join("");
   return `
-    <div class="provider-progress">
-      <div class="provider-progress-title">Checking stream availability</div>
-      ${rows}
+    <div class="cast-section">
+      <div class="section-title">Cast</div>
+      <div class="cast-scroller">${cards}</div>
     </div>
   `;
 }
@@ -1368,9 +1273,14 @@ function renderMovieBoxTab() {
   }
 
   const playText = d.isSeries
-    ? `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Play S${m.selectedSe}E${String(m.selectedEp).padStart(2, "0")}`
-    : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Play Movie`;
-  parts.push(`<div class="play-row"><button class="play-btn" data-action="play-moviebox">${playText}</button></div>`);
+    ? `Play S${m.selectedSe}E${String(m.selectedEp).padStart(2, "0")}`
+    : "Play Movie";
+  parts.push(`<div class="play-row">
+    <button class="play-btn" data-action="play-moviebox">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      ${playText}
+    </button>
+  </div>`);
 
   return parts.join("");
 }
@@ -1388,9 +1298,51 @@ function renderServerTab(provider) {
     </div></div>
     <div class="play-row">
       <button class="play-btn" data-action="play-server" data-provider="${provider}">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Play
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        Play
       </button>
     </div>`;
+}
+
+function updateProviderFooter() {
+  const footer = document.getElementById("providerFooter");
+  const inner = document.getElementById("providerFooterInner");
+  if (!footer || !inner) return;
+
+  const allTried = getAllTried();
+  if (allTried) {
+    footer.classList.remove("show");
+    document.body.classList.remove("has-footer");
+    return;
+  }
+
+  const providers = [
+    { id: "moviebox", name: "MovieBox" },
+    { id: "hdhub",    name: "hdhub4u" },
+    { id: "drive",    name: "moviesDrive" },
+  ];
+
+  const items = providers.map(p => {
+    const s = state[p.id];
+    let cls = "loading", text = "Checking";
+    if (s.status === "ok") { cls = "ok"; text = "Available"; }
+    else if (s.status === "empty") { cls = "empty"; text = "Not found"; }
+    else if (s.status === "error") { cls = "error"; text = "Error"; }
+    else if (s.status === "idle") { cls = "loading"; text = "Waiting"; }
+    return `
+      <div class="provider-footer-item ${cls}">
+        <span class="dot"></span>
+        <span>${escapeHtml(p.name)}</span>
+        <span class="provider-footer-item-status">${text}</span>
+      </div>
+    `;
+  }).join("");
+
+  inner.innerHTML =
+    '<div class="provider-footer-title">Checking availability</div>' + items;
+
+  footer.classList.add("show");
+  document.body.classList.add("has-footer");
 }
 
 function render() {
@@ -1398,11 +1350,13 @@ function render() {
   const available = getAvailableProviders();
   const allTried = getAllTried();
 
-  // Sync page title & document title
   if (state.hero.title) {
     document.getElementById("pageTitle").textContent = state.hero.title;
     document.title = state.hero.title + " — Details";
   }
+
+  // Apply poster as page background
+  if (state.hero.poster) applyBackground(state.hero.poster);
 
   if (!state.activeTab || !available.includes(state.activeTab)) {
     if (available.length > 0) {
@@ -1413,6 +1367,8 @@ function render() {
 
   const parts = [];
   parts.push(renderHero());
+  const castHtml = renderCastSection();
+  if (castHtml) parts.push(castHtml);
 
   if (state.bootError) {
     parts.push(`
@@ -1434,10 +1390,7 @@ function render() {
       const content = id === "moviebox" ? renderMovieBoxTab() : renderServerTab(id);
       parts.push(`<div class="tab-content ${isActive ? "active" : ""}" data-tab-content="${id}">${content}</div>`);
     }
-    if (!allTried) parts.push(renderProviderProgress());
-  } else if (!allTried) {
-    parts.push(renderProviderProgress());
-  } else {
+  } else if (allTried) {
     parts.push(`
       <div class="unavailable-banner">
         <div class="unavailable-icon">⚠</div>
@@ -1458,6 +1411,7 @@ function render() {
 
   main.innerHTML = parts.join("");
   bindEvents();
+  updateProviderFooter();
 }
 
 function bindEvents() {
@@ -1504,14 +1458,13 @@ function bindEvents() {
 }
 
 /* ═══════════ PLAY ═══════════ */
-async function playMovieBox() {
+function playMovieBox() {
   const m = state.moviebox;
   if (!m.data) return;
   const dub = m.data.dubs[m.selectedDub] || {
     subjectId: m.data.subjectId, detailPath: m.data.detailPath, lanName: "Original Audio",
   };
 
-  // Save to watch history
   saveToHistory({
     title: state.hero.title || m.data.title,
     poster: state.hero.poster || m.data.cover,
@@ -1528,13 +1481,6 @@ async function playMovieBox() {
     kind: "moviebox",
   });
 
-  // If casting, load to TV
-  if (isCasting()) {
-    const casted = await tryCastMovieBox();
-    if (casted) return;
-  }
-
-  // Normal navigation
   const params = new URLSearchParams({
     detailPath: dub.detailPath || m.data.detailPath,
     mainDetailPath: m.data.detailPath,
@@ -1551,12 +1497,11 @@ async function playMovieBox() {
   location.href = "player.html?" + params.toString();
 }
 
-async function playServer(provider) {
+function playServer(provider) {
   const s = state[provider];
   const stream = s.streams[s.selectedServer] || s.streams[0];
   if (!stream?.url) return;
 
-  // Save to watch history
   saveToHistory({
     title: state.hero.title || "Untitled",
     poster: state.hero.poster,
@@ -1570,12 +1515,6 @@ async function playServer(provider) {
     provider: provider,
     kind: "external",
   });
-
-  // If casting, load to TV
-  if (isCasting()) {
-    const casted = await tryCastServer(provider);
-    if (casted) return;
-  }
 
   const referer = provider === "hdhub" ? "https://new8.hdhub4u.cl/" : "https://new3.moviesdrive.beer/";
   const proxied = PROXY + "/?url=" + encodeURIComponent(stream.url)
@@ -1619,9 +1558,11 @@ async function boot(retry = false) {
 }
 
 async function bootFromTmdb() {
+  let mediaType = Q.mediaType || "movie";
   if (Q.tmdbId) {
-    const meta = await fetchTmdbDetails(Q.tmdbId, Q.mediaType || "movie");
+    const meta = await fetchTmdbDetails(Q.tmdbId, mediaType);
     if (meta) {
+      mediaType = meta.isTV ? "tv" : "movie";
       state.hero = {
         title:    meta.title || state.hero.title,
         poster:   meta.poster || state.hero.poster,
@@ -1635,7 +1576,12 @@ async function bootFromTmdb() {
         isTV:     meta.isTV,
         tmdbId:   meta.tmdbId,
         tmdbLoaded: true,
+        cast:     [],
       };
+      // Fetch cast in parallel with provider checks
+      fetchTmdbCredits(meta.tmdbId, mediaType).then(cast => {
+        if (cast.length) { state.hero.cast = cast; render(); }
+      });
       render();
     }
   }
@@ -1762,9 +1708,6 @@ document.getElementById("backBtn").addEventListener("click", () => {
   if (history.length > 1) history.back();
   else location.href = "index.html";
 });
-
-// Periodic cast status refresh (in case events are missed)
-setInterval(updateCastUI, 2000);
 
 boot();
 </script>
