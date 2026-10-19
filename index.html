@@ -6,11 +6,15 @@
 <meta name="theme-color" content="#000000" />
 <title>Browse — Movies & TV</title>
 
+<link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+<link rel="dns-prefetch" href="https://image.tmdb.org">
+<link rel="preconnect" href="https://api.themoviedb.org" crossorigin>
+<link rel="dns-prefetch" href="https://api.themoviedb.org">
+
 <style>
   :root{
     --accent:#e50914; --accent-2:#f6121d;
-    --bg:#000; --bg-2:#0a0a0d;
-    --card:#1e1e25; --card-2:#26262f;
+    --bg:#000; --card:#1e1e25; --card-2:#26262f;
     --line:#2a2a33; --text:#f5f5f7; --muted:#8a8a94;
     --radius:10px;
   }
@@ -64,10 +68,9 @@
   .poster img{width:100%;height:100%;object-fit:cover;transition:transform .25s ease}
   .card:hover .poster img{transform:scale(1.05)}
   .poster .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:rgba(255,255,255,.22)}
-  .poster .badge,.poster .provider-tag{position:absolute;padding:2px 6px;border-radius:999px;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(4px)}
+  .poster .badge,.poster .rating{position:absolute;padding:2px 6px;border-radius:999px;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(4px)}
   .poster .badge{top:6px;left:6px;background:rgba(0,0,0,.72);color:#fff}
-  .poster .provider-tag{bottom:6px;right:6px;background:rgba(229,9,20,.82);color:#fff;max-width:calc(100% - 12px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .poster .provider-tag.neutral{background:rgba(0,0,0,.72)}
+  .poster .rating{top:6px;right:6px;background:rgba(0,0,0,.72);color:#ffc93c;border-color:rgba(255,201,60,.35);text-transform:none}
 
   .card-title{font-size:13px;font-weight:600;line-height:1.3;color:#e5e5ea;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 2px}
 
@@ -78,32 +81,24 @@
   .empty strong{color:#fff;font-weight:700}
 
   .filter-bar{display:flex;flex-wrap:wrap;gap:8px;padding:4px 2px 16px;margin-bottom:14px}
-  .filter-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#e5e5ea;border-radius:999px;font-size:13px;font-weight:700;transition:.15s;-webkit-tap-highlight-color:transparent}
+  .filter-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#e5e5ea;border-radius:999px;font-size:13px;font-weight:700;transition:.15s}
   .filter-pill:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.20)}
   .filter-pill.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(229,9,20,.35)}
   .filter-pill .count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 7px;background:rgba(255,255,255,.15);border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.3px}
   .filter-pill.active .count{background:rgba(0,0,0,.25)}
-  .filter-pill .provider-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .filter-pill[data-provider="__moviebox"] .provider-dot{background:#e50914}
-  .filter-pill[data-provider="hdhub"] .provider-dot{background:#22c55e}
-  .filter-pill[data-provider="drive"] .provider-dot{background:#3b82f6}
-  .filter-pill.active .provider-dot{background:#fff}
 
-  /* sentinel + end message */
   .sentinel{grid-column:1/-1;height:1px;pointer-events:none;opacity:0}
   .end-msg{grid-column:1/-1;text-align:center;padding:36px 20px 20px;color:var(--muted);font-size:11.5px;letter-spacing:1.4px;text-transform:uppercase;user-select:none}
   .end-msg[hidden]{display:none}
   .search-loading{grid-column:1/-1;display:flex;align-items:center;justify-content:center;padding:30px;gap:12px;color:var(--muted);font-size:12.5px}
   .search-loading[hidden]{display:none}
 
-  /* page bar (search only) */
-  .page-bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(23,23,28,.92);border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03) inset;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:150;transition:opacity .18s,transform .18s}
+  .page-bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(23,23,28,.92);border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 12px 40px rgba(0,0,0,.6);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:150;transition:opacity .18s}
   .page-bar[hidden]{display:none}
   .page-bar.fade{opacity:.35}
   .page-bar.fade:hover{opacity:1}
-  .page-btn{width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:#e5e5ea;font-size:20px;line-height:1;font-weight:600;border-radius:999px;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent}
+  .page-btn{width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:#e5e5ea;font-size:20px;line-height:1;font-weight:600;border-radius:999px;cursor:pointer;transition:.15s}
   .page-btn:hover:not(:disabled){background:rgba(255,255,255,.10);color:#fff}
-  .page-btn:active:not(:disabled){transform:scale(.92)}
   .page-btn:disabled{opacity:.28;cursor:default}
   .page-label{font-size:12.5px;font-weight:700;color:#e5e5ea;font-variant-numeric:tabular-nums;min-width:70px;text-align:center;padding:0 6px;user-select:none}
   .page-label .page-cur{color:#fff}
@@ -113,7 +108,7 @@
   .page-bar .jump-input:focus{border-color:var(--accent)}
   .page-bar .jump-input::-webkit-outer-spin-button,
   .page-bar .jump-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-  .page-bar .jump-btn{height:34px;padding:0 12px;flex:none;background:var(--card-2);border:1px solid var(--line);color:#e5e5ea;font-size:12px;font-weight:700;border-radius:999px;cursor:pointer;transition:.15s;letter-spacing:.3px}
+  .page-bar .jump-btn{height:34px;padding:0 12px;flex:none;background:var(--card-2);border:1px solid var(--line);color:#e5e5ea;font-size:12px;font-weight:700;border-radius:999px;cursor:pointer;transition:.15s}
   .page-bar .jump-btn:hover{background:#26262f;border-color:#4a4a58;color:#fff}
 
   .toast{position:fixed;left:50%;bottom:80px;transform:translate(-50%,20px);padding:11px 18px;border-radius:10px;background:rgba(20,20,24,.96);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:13.5px;font-weight:600;box-shadow:0 12px 40px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;max-width:90vw;text-align:center}
@@ -145,34 +140,14 @@
   <div class="brand"><span class="dot"></span>Browse</div>
   <div class="search-wrap">
     <svg class="search-ico" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
-    <input id="searchInput" type="search" placeholder="Search movies and TV shows across all providers…" autocomplete="off" />
+    <input id="searchInput" type="search" placeholder="Search movies, TV shows, people…" autocomplete="off" />
     <button id="searchClear" hidden aria-label="Clear">✕</button>
   </div>
 </header>
 
 <main>
   <section id="browseSection">
-    <div class="section-head">
-      <h2>Trending Movies</h2>
-      <span class="hint" id="hintMovies">Popular right now</span>
-    </div>
-    <div class="row" id="rowMovies">
-      <div class="spinner-wrap"><div class="spinner"></div>Loading…</div>
-    </div>
-
-    <div class="section-head">
-      <h2>Trending TV Shows</h2>
-      <span class="hint" id="hintTV"></span>
-    </div>
-    <div class="row" id="rowTV">
-      <div class="spinner-wrap"><div class="spinner"></div>Loading…</div>
-    </div>
-
-    <div class="section-head">
-      <h2>All providers</h2>
-      <span class="hint" id="providerHint">—</span>
-    </div>
-    <div class="empty" id="providerList">Loading…</div>
+    <div id="browseRows"></div>
   </section>
 
   <section id="searchSection" hidden>
@@ -208,52 +183,53 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const PROXY_URL = location.origin;
-const BASE = "https://officialmoviebox.com";
+/* ═══════════════════════════════════════════════════
+   CONFIG
+   ═══════════════════════════════════════════════════ */
+const TMDB_API_KEY = "09c7460bdc6319d6538d786919306438";
+const TMDB_BASE = "https://api.themoviedb.org/3";
+const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w342";
+const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w780";
+const TMDB_LANG = "en-US";
 
-const MOVIEBOX_VIRTUAL = {
-  id: "__moviebox",
-  name: "MovieBox",
-  url: BASE,
-  has_plugin: true,
-  isVirtual: true,
-};
+/* Rows shown on the browse page */
+const BROWSE_ROWS = [
+  { title: "Trending Movies",  endpoint: "/trending/movie/week", mediaType: "movie", hint: "This week" },
+  { title: "Trending TV Shows", endpoint: "/trending/tv/week",    mediaType: "tv",    hint: "This week" },
+  { title: "New Releases",      endpoint: "/movie/now_playing",   mediaType: "movie", hint: "In theaters" },
+  { title: "Popular TV",        endpoint: "/tv/popular",          mediaType: "tv",    hint: "All time" },
+];
 
-const PAGE_SIZE = 40;
-const PREFETCH_AHEAD = 1;
+const PAGE_SIZE = 20; // TMDB default; each search page = 20 results
 
-let PROVIDERS = [];
-let currentSearchQuery = "";
-
-/* ─────── search pagination state ─────── */
+/* ═══════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════ */
 const S = {
   active: false,
   query: "",
   page: 0,
   hasMore: true,
   loading: false,
-  activeFilter: "all",
-  groups: {},             // pid -> accumulated items
-  totalCounts: {},        // pid -> count
-  seenKeys: new Set(),
-  itemMap: new Map(),     // itemKey -> item (for click lookup)
-  providerExhausted: {},  // pid -> true when no more pages
-  pageAnchors: [],        // DOM elements marking each loaded page start
-  currentPage: 1,
-  lastMs: 0,
+  totalPages: 0,
+  totalResults: 0,
+  activeType: "all",       // "all" | "movie" | "tv"
+  rawItems: [],            // full list from TMDB for current query (all pages loaded)
+  filteredItems: [],       // activeType filter applied
+  seenIds: new Set(),
+  itemMap: new Map(),      // tmdbId+type -> item
   abort: null,
-  pageItemCounts: [],     // how many items each page contributed (for anchor math)
+  lastMs: 0,
+  pageAnchors: [],
+  currentPage: 1,
 };
 
-/* ─────── helpers ─────── */
+/* ═══════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════ */
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
-}
-function imgUrl(v) {
-  if (!v) return "";
-  if (typeof v === "string") return v.startsWith("//") ? "https:" + v : v;
-  return v.url || v.src || v.path || "";
 }
 function showToast(msg, ms) {
   const t = document.getElementById("toast");
@@ -262,291 +238,156 @@ function showToast(msg, ms) {
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => t.classList.remove("show"), ms || 2400);
 }
-function proxyFor(url, referer, providerId) {
-  let q = PROXY_URL + "/?url=" + encodeURIComponent(url)
-        + "&referer=" + encodeURIComponent(referer || BASE + "/");
-  if (providerId) q += "&provider=" + encodeURIComponent(providerId);
-  return q;
-}
-function providerDisplayName(pid) {
-  if (pid === "__moviebox") return "MovieBox";
-  const p = PROVIDERS.find(x => x.id === pid);
-  return p?.name || pid;
-}
-function itemKey(item) {
-  return (item.detailPath || item.pageUrl || item.title || "") + "|" + item.providerId;
-}
 
-/* ─────── Nuxt3 decoder ─────── */
-const DEVALUE_WRAPPERS = {
-  ShallowReactive: v => v, Reactive: v => v, Ref: v => v,
-  ShallowRef: v => v, EmptyRef: () => undefined, EmptyShallowRef: () => undefined,
-  Set: v => v, Map: v => v, Date: v => v, RegExp: v => v, BigInt: v => v,
-  "null": () => null, "undefined": () => undefined, NaN: () => NaN,
-  Infinity: () => Infinity, "-Infinity": () => -Infinity,
-};
-function devalueResolve(arr) {
-  const cache = new Map();
-  function go(ref) {
-    if (ref === null || ref === undefined) return ref;
-    if (typeof ref !== "number") return ref;
-    if (cache.has(ref)) return cache.get(ref);
-    const v = arr[ref];
-    if (v === null || v === undefined || typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
-      cache.set(ref, v); return v;
-    }
-    if (Array.isArray(v)) {
-      if (v.length >= 1 && typeof v[0] === "string" && DEVALUE_WRAPPERS[v[0]]) {
-        const inner = v.length > 1 ? go(v[1]) : undefined;
-        const wrapped = DEVALUE_WRAPPERS[v[0]](inner);
-        cache.set(ref, wrapped); return wrapped;
-      }
-      const out = []; cache.set(ref, out);
-      for (const item of v) out.push(go(item));
-      return out;
-    }
-    if (typeof v === "object") {
-      const out = {}; cache.set(ref, out);
-      for (const k of Object.keys(v)) out[k] = go(v[k]);
-      return out;
-    }
-    cache.set(ref, v); return v;
+/* ═══════════════════════════════════════════════════
+   TMDB FETCHER
+   ═══════════════════════════════════════════════════ */
+async function tmdbFetch(path, params = {}, signal) {
+  const url = new URL(TMDB_BASE + path);
+  url.searchParams.set("api_key", TMDB_API_KEY);
+  url.searchParams.set("language", TMDB_LANG);
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
   }
-  return go(0);
-}
-function extractNuxt3Payload(html) {
-  const m = html.match(/<script[^>]*id=["']__NUXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/);
-  if (!m) return null;
-  try {
-    const arr = JSON.parse(m[1]);
-    if (!Array.isArray(arr)) return null;
-    return devalueResolve(arr);
-  } catch (_) { return null; }
-}
-function findSubjects(root) {
-  const seen = new Set();
-  const out = [];
-  const visited = new WeakSet();
-  function walk(node, depth) {
-    if (depth > 40 || !node || typeof node !== "object" || visited.has(node)) return;
-    visited.add(node);
-    if (Array.isArray(node)) { for (const item of node) walk(item, depth + 1); return; }
-    if (typeof node.detailPath === "string" && node.detailPath.length > 0 &&
-        typeof node.title === "string" && node.title.length > 0 && node.subjectId !== undefined) {
-      if (!seen.has(node.detailPath)) {
-        seen.add(node.detailPath);
-        out.push({
-          title: node.title, detailPath: node.detailPath,
-          subjectId: String(node.subjectId || ""),
-          image: imgUrl(node.cover),
-          isTV: Number(node.subjectType) === 2,
-          hasResource: node.hasResource !== false,
-        });
-      }
-    }
-    for (const k of Object.keys(node)) walk(node[k], depth + 1);
-  }
-  walk(root, 0);
-  return out.filter(s => s.hasResource);
+  const res = await fetch(url.toString(), { signal });
+  if (!res.ok) throw new Error("TMDB " + res.status);
+  return res.json();
 }
 
-/* ─────── provider discovery ─────── */
-async function loadProviders() {
-  try {
-    const res = await fetch(PROXY_URL + "/providers");
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const list = await res.json();
-    PROVIDERS = (list || []).filter(p => p && p.has_plugin);
-  } catch (e) {
-    console.warn("[providers] fetch failed:", e);
-    PROVIDERS = [];
-  }
-  const hasMovieBoxProvider = PROVIDERS.some(
-    p => /moviebox/i.test(p.name) || /moviebox/i.test(p.url || "")
-  );
-  if (!hasMovieBoxProvider) PROVIDERS = [MOVIEBOX_VIRTUAL, ...PROVIDERS];
-
-  document.getElementById("providerHint").textContent =
-    PROVIDERS.length + " source" + (PROVIDERS.length === 1 ? "" : "s");
-  document.getElementById("providerList").innerHTML =
-    PROVIDERS.map(p =>
-      `<span style="display:inline-block;margin:4px 6px 4px 0;padding:6px 12px;` +
-      `background:#1e1e25;border:1px solid #2a2a33;border-radius:999px;font-size:12.5px;` +
-      `font-weight:600;color:#e5e5ea">${escapeHtml(p.name)}</span>`
-    ).join("") +
-    '<div style="margin-top:14px;color:#8a8a94;font-size:13px">' +
-    'Type in the search bar above to search all providers at once.</div>';
-}
-
-/* ─────── trending ─────── */
-async function fetchMovieBoxTrending(tabId, page, signal) {
-  const params = new URLSearchParams({ page: String(page || 1), perPage: "36" });
-  if (tabId) params.set("tabId", tabId);
-  const realUrl = BASE + "/wefeed-h5api-bff/subject/trending?" + params;
-  const r = await fetch(proxyFor(realUrl, BASE + "/"), { signal });
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  const json = await r.json();
-  if (json.code !== 0) throw new Error("code " + json.code);
-  return json.data?.subjectList || [];
-}
-function normalizeMovieBoxItem(s) {
+/* Map TMDB result to a card item */
+function mapTmdbItem(r) {
+  const isTV = r.media_type === "tv" || (!r.title && !!r.name);
+  const title = r.title || r.name || "";
+  const dateStr = r.release_date || r.first_air_date || "";
   return {
-    providerId: MOVIEBOX_VIRTUAL.id,
-    providerName: MOVIEBOX_VIRTUAL.name,
-    title: s.title || "Untitled",
-    image: imgUrl(s.cover),
-    detailPath: s.detailPath || "",
-    subjectId: String(s.subjectId || ""),
-    pageUrl: "",
-    isSeries: Number(s.subjectType) === 2,
-    isMovieBox: true,
+    tmdbId: String(r.id),
+    mediaType: isTV ? "tv" : "movie",
+    isTV,
+    title,
+    year: dateStr ? dateStr.slice(0, 4) : "",
+    poster: r.poster_path ? TMDB_IMG_POSTER + r.poster_path : "",
+    backdrop: r.backdrop_path ? TMDB_IMG_BACKDROP + r.backdrop_path : "",
+    rating: r.vote_average ? Number(r.vote_average).toFixed(1) : "",
+    overview: r.overview || "",
+    popularity: r.popularity || 0,
   };
 }
-async function loadTrending() {
-  const rowMovies = document.getElementById("rowMovies");
-  const rowTV = document.getElementById("rowTV");
-  const [moviesR, tvR] = await Promise.allSettled([
-    fetchMovieBoxTrending("ONEROOM_MOVIE", 1),
-    fetchMovieBoxTrending(null, 1),
-  ]);
-  if (moviesR.status === "fulfilled") {
-    const items = moviesR.value.map(normalizeMovieBoxItem);
-    document.getElementById("hintMovies").textContent = items.length + " titles";
-    renderRow(rowMovies, items);
-  } else {
-    rowMovies.innerHTML = '<div class="empty">Could not load trending movies.</div>';
-    document.getElementById("hintMovies").textContent = "";
-  }
-  if (tvR.status === "fulfilled") {
-    const items = tvR.value.map(normalizeMovieBoxItem);
-    document.getElementById("hintTV").textContent = items.length + " shows";
-    renderRow(rowTV, items);
-  } else {
-    rowTV.innerHTML = '<div class="empty">Could not load trending TV shows.</div>';
-    document.getElementById("hintTV").textContent = "";
-  }
-}
 
-/* ─────── card rendering ─────── */
-function cardHtml(item) {
-  const badge = item.isSeries ? "TV" : "Movie";
-  const img = item.image
-    ? `<img src="${escapeHtml(item.image)}" alt="" loading="lazy"
+/* ═══════════════════════════════════════════════════
+   BROWSE ROWS
+   ═══════════════════════════════════════════════════ */
+function cardHtml(item, opts = {}) {
+  const badge = item.isTV ? "TV" : "Movie";
+  const img = item.poster
+    ? `<img src="${escapeHtml(item.poster)}" alt="" loading="lazy"
            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
     : "";
-  const fallback = `<div class="fallback" ${item.image ? 'style="display:none"' : ""}>
+  const fallback = `<div class="fallback" ${item.poster ? 'style="display:none"' : ""}>
     ${escapeHtml((item.title || "?").charAt(0).toUpperCase())}
   </div>`;
-  const providerClass = item.providerId === MOVIEBOX_VIRTUAL.id ? "" : "neutral";
-  return `<button class="card" data-key="${escapeHtml(itemKey(item))}">
+  const ratingBadge = item.rating ? `<span class="rating">★ ${escapeHtml(item.rating)}</span>` : "";
+  const key = item.tmdbId + "|" + item.mediaType;
+  return `<button class="card" data-key="${escapeHtml(key)}">
     <div class="poster">${img}${fallback}
       <span class="badge">${badge}</span>
-      <span class="provider-tag ${providerClass}">${escapeHtml(item.providerName)}</span>
+      ${ratingBadge}
     </div>
     <div class="card-title">${escapeHtml(item.title)}</div>
   </button>`;
 }
+
 function renderRow(container, items) {
-  if (!items || !items.length) { container.innerHTML = '<div class="empty">Nothing here.</div>'; return; }
-  container.innerHTML = items.map(cardHtml).join("");
+  if (!items || !items.length) {
+    container.innerHTML = '<div class="empty">Nothing to show.</div>';
+    return;
+  }
+  container.innerHTML = items.map(it => cardHtml(it)).join("");
   container.querySelectorAll(".card").forEach(el => {
     el.addEventListener("click", () => {
-      const key = el.dataset.key;
-      const item = S.itemMap.get(key) || items.find(it => itemKey(it) === key);
-      if (item) handleCardClick(item);
+      const [tmdbId, mediaType] = el.dataset.key.split("|");
+      const item = S.itemMap.get(el.dataset.key);
+      navigateToDetail(tmdbId, mediaType, item?.title || "");
     });
   });
-  for (const it of items) S.itemMap.set(itemKey(it), it);
+  for (const it of items) {
+    S.itemMap.set(it.tmdbId + "|" + it.mediaType, it);
+  }
 }
 
-/* ─────── search: per-provider page fetch ─────── */
-async function searchMovieBoxPage(q, page, signal) {
-  for (const param of ["keyword", "q", "query"]) {
+async function loadBrowseRows() {
+  const rowsWrap = document.getElementById("browseRows");
+  rowsWrap.innerHTML = BROWSE_ROWS.map((row, i) => `
+    <div class="section-head">
+      <h2>${escapeHtml(row.title)}</h2>
+      <span class="hint" id="hint-${i}">${escapeHtml(row.hint)}</span>
+    </div>
+    <div class="row" id="row-${i}">
+      <div class="spinner-wrap"><div class="spinner"></div>Loading…</div>
+    </div>
+  `).join("");
+
+  // Fetch all rows in parallel
+  await Promise.all(BROWSE_ROWS.map(async (row, i) => {
+    const container = document.getElementById("row-" + i);
+    const hint = document.getElementById("hint-" + i);
     try {
-      const apiUrl = BASE + "/wefeed-h5api-bff/subject/search?" +
-        new URLSearchParams({ [param]: q, page: String(page), perPage: String(PAGE_SIZE) });
-      const r = await fetch(proxyFor(apiUrl, BASE + "/"), { signal });
-      if (r.ok) {
-        const json = await r.json();
-        const list = json.data?.subjectList || json.data?.items || json.data?.list || [];
-        if (list.length) return list.map(normalizeMovieBoxItem);
+      const data = await tmdbFetch(row.endpoint, { page: 1 });
+      const items = (data.results || [])
+        .filter(r => r && r.poster_path && (r.media_type === row.mediaType || (!r.media_type && row.mediaType)))
+        .map(mapTmdbItem)
+        .filter(it => it.title);
+      if (items.length === 0) {
+        container.innerHTML = '<div class="empty">Nothing to show.</div>';
+        hint.textContent = "";
+        return;
       }
-    } catch (_) {}
-  }
-  // Nuxt fallback for page 1 only
-  if (page === 1) {
-    try {
-      const searchUrl = BASE + "/search?q=" + encodeURIComponent(q);
-      const r = await fetch(proxyFor(searchUrl, BASE + "/"), { signal });
-      if (!r.ok) return [];
-      const resolved = extractNuxt3Payload(await r.text());
-      if (!resolved) return [];
-      return findSubjects(resolved).map(s => ({
-        providerId: MOVIEBOX_VIRTUAL.id,
-        providerName: MOVIEBOX_VIRTUAL.name,
-        title: s.title, image: s.image,
-        detailPath: s.detailPath, subjectId: s.subjectId,
-        pageUrl: "", isSeries: s.isTV, isMovieBox: true,
-      }));
-    } catch (_) { return []; }
-  }
-  return [];
+      hint.textContent = items.length + " titles";
+      renderRow(container, items);
+    } catch (e) {
+      console.error("[browse row " + row.title + "]", e);
+      container.innerHTML = '<div class="empty">Failed to load.</div>';
+      hint.textContent = "";
+    }
+  }));
 }
 
-async function searchProviderPage(p, q, page, signal) {
-  if (page > 1) return [];  // plugins don't paginate; only page 1 is valid
-  try {
-    const url = PROXY_URL + "/providers/" + encodeURIComponent(p.id) +
-                "/search?q=" + encodeURIComponent(q);
-    const r = await fetch(url, { signal });
-    if (!r.ok) return [];
-    const json = await r.json();
-    const list = json.results || json.data || json.items || json.list || [];
-    return list.map(item => normalizeGenericItem(item, p));
-  } catch (e) {
-    if (e.name === "AbortError") throw e;
-    return [];
-  }
+/* ═══════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════ */
+function navigateToDetail(tmdbId, mediaType, title) {
+  if (!tmdbId) return;
+  const params = new URLSearchParams({
+    source: "tmdb",
+    tmdbId: String(tmdbId),
+    mediaType: mediaType || "movie",
+    title: title || "",
+  });
+  location.href = "detail.html?" + params.toString();
 }
 
-function normalizeGenericItem(item, p) {
-  const isMovieBoxShape = !!(item.detailPath && item.subjectId);
-  if (isMovieBoxShape) return normalizeMovieBoxItem(item);
-  return {
-    providerId: p.id,
-    providerName: p.name,
-    title: item.title || item.name || "Untitled",
-    image: imgUrl(item.image || item.cover || item.poster),
-    detailPath: "",
-    subjectId: "",
-    pageUrl: item.url || item.href || "",
-    isSeries: item.type === "tv" || item.isTV === true || Number(item.subjectType) === 2,
-    isMovieBox: false,
-  };
-}
-
-/* ─────── search: state + paginated loading ─────── */
+/* ═══════════════════════════════════════════════════
+   SEARCH
+   ═══════════════════════════════════════════════════ */
 function resetSearchState(q) {
   S.active = true;
   S.query = q;
   S.page = 0;
   S.hasMore = true;
   S.loading = false;
-  S.activeFilter = "all";
-  S.groups = {};
-  S.totalCounts = {};
-  S.seenKeys = new Set();
+  S.totalPages = 0;
+  S.totalResults = 0;
+  S.activeType = "all";
+  S.rawItems = [];
+  S.filteredItems = [];
+  S.seenIds = new Set();
   S.itemMap = new Map();
-  S.providerExhausted = {};
   S.pageAnchors = [];
-  S.pageItemCounts = [];
   S.currentPage = 1;
   S.lastMs = 0;
 }
 
 async function doSearch(q) {
   q = (q || "").trim();
-  currentSearchQuery = q;
   const browse = document.getElementById("browseSection");
   const search = document.getElementById("searchSection");
   const grid = document.getElementById("searchGrid");
@@ -564,22 +405,18 @@ async function doSearch(q) {
     return;
   }
 
-  // Reset UI
   browse.hidden = true;
   search.hidden = false;
   qLabel.textContent = q;
-  status.textContent = "Searching " + PROVIDERS.length + " source(s)…";
+  status.textContent = "Searching TMDB…";
   grid.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div>Searching…</div>';
   filterBar.innerHTML = "";
   loadingEl.hidden = true;
   endMsg.hidden = true;
   hidePageBar();
 
-  // Abort previous search
   if (S.abort) { try { S.abort.abort(); } catch (_) {} }
   S.abort = new AbortController();
-
-  // Reset state
   resetSearchState(q);
 
   await loadSearchPage(1);
@@ -590,47 +427,26 @@ async function loadSearchPage(n) {
   if (n > 1 && !S.hasMore) return;
 
   S.loading = true;
-
-  if (n > 1) {
-    document.getElementById("searchLoading").hidden = false;
-  }
+  if (n > 1) document.getElementById("searchLoading").hidden = false;
 
   const signal = S.abort ? S.abort.signal : undefined;
   const t0 = performance.now();
+  let data;
 
-  // Determine which providers to hit
-  const activeProviders = PROVIDERS.filter(p => !S.providerExhausted[p.id]);
-  if (!activeProviders.length) {
-    S.hasMore = false;
-    S.loading = false;
-    document.getElementById("searchLoading").hidden = true;
-    document.getElementById("searchEndMsg").hidden = false;
-    return;
-  }
-
-  let results;
   try {
-    results = await Promise.all(activeProviders.map(async p => {
-      try {
-        let items;
-        if (p.id === MOVIEBOX_VIRTUAL.id) {
-          items = await searchMovieBoxPage(S.query, n, signal);
-        } else {
-          items = await searchProviderPage(p, S.query, n, signal);
-        }
-        return { pid: p.id, items: items || [] };
-      } catch (e) {
-        if (e.name === "AbortError") throw e;
-        return { pid: p.id, items: [] };
-      }
-    }));
+    data = await tmdbFetch("/search/multi", {
+      query: S.query,
+      page: n,
+      include_adult: "false",
+    }, signal);
   } catch (e) {
     if (e.name === "AbortError") return;
     S.loading = false;
     document.getElementById("searchLoading").hidden = true;
     if (n === 1) {
       document.getElementById("searchGrid").innerHTML =
-        '<div class="empty">Search failed.</div>';
+        '<div class="empty"><strong>Search failed.</strong><br>' +
+        '<span style="font-size:12px">' + escapeHtml(e.message) + '</span></div>';
     }
     return;
   }
@@ -638,241 +454,164 @@ async function loadSearchPage(n) {
   if (signal && signal.aborted) return;
 
   S.lastMs += Math.round(performance.now() - t0);
+  S.totalPages = data.total_pages || 0;
+  S.totalResults = data.total_results || 0;
 
-  // Merge results, dedupe
-  const newItemsInterleaved = [];
-  const seenThisPage = new Set();
+  const results = (data.results || [])
+    .filter(r => r && (r.media_type === "movie" || r.media_type === "tv"))
+    .map(mapTmdbItem)
+    .filter(it => it.title && it.poster);
 
-  // Build interleaved list from all providers
-  const perProv = results.map(r => ({ pid: r.pid, arr: r.items, i: 0 }));
-  let remaining = true;
-  while (remaining) {
-    remaining = false;
-    for (const p of perProv) {
-      if (p.i < p.arr.length) {
-        const it = p.arr[p.i++];
-        const k = itemKey(it);
-        if (S.seenKeys.has(k)) continue;
-        if (seenThisPage.has(k)) continue;
-        seenThisPage.add(k);
-        newItemsInterleaved.push(it);
-        remaining = true;
-      }
-    }
-  }
-
-  // Register into state
-  for (const it of newItemsInterleaved) {
-    const k = itemKey(it);
-    S.seenKeys.add(k);
-    const group = S.groups[it.providerId] || (S.groups[it.providerId] = []);
-    group.push(it);
-    S.totalCounts[it.providerId] = group.length;
-    S.itemMap.set(k, it);
-  }
-
-  // Mark providers that returned 0 for this page (exhaustion)
-  for (const r of results) {
-    if (!r.items.length) {
-      S.providerExhausted[r.pid] = true;
-    }
-    // non-MovieBox only has 1 page
-    if (n === 1 && r.pid !== MOVIEBOX_VIRTUAL.id) {
-      S.providerExhausted[r.pid] = true;
-    }
+  // Dedupe against already-seen
+  const newItems = [];
+  for (const it of results) {
+    const key = it.tmdbId + "|" + it.mediaType;
+    if (S.seenIds.has(key)) continue;
+    S.seenIds.add(key);
+    S.rawItems.push(it);
+    S.itemMap.set(key, it);
+    newItems.push(it);
   }
 
   S.page = n;
+  S.hasMore = n < S.totalPages && n < 500; // TMDB caps at page 500
 
-  // Check if any provider has more
-  S.hasMore = !PROVIDERS.every(p => S.providerExhausted[p.id]);
-
-  // First page: reset grid
+  // Render
   const grid = document.getElementById("searchGrid");
-  if (n === 1) {
-    grid.innerHTML = "";
-  }
-
-  // Append new items (respect current filter)
-  const filter = S.activeFilter;
-  const itemsToAppend = filter === "all"
-    ? newItemsInterleaved
-    : newItemsInterleaved.filter(it => it.providerId === filter);
-
-  let pageAnchor = null;
-  let appendedThisPage = 0;
-
-  for (const it of itemsToAppend) {
-    grid.insertAdjacentHTML("beforeend", cardHtml(it));
-    if (!pageAnchor) pageAnchor = grid.lastElementChild;
-    appendedThisPage++;
-  }
-
-  // Register anchor for this page (only if filter is "all" — page bar makes sense there)
-  if (pageAnchor && filter === "all") {
-    S.pageAnchors.push(pageAnchor);
-  }
-  S.pageItemCounts.push(appendedThisPage);
-
-  // Insert sentinel + end msg if missing (they get wiped when we cleared grid.innerHTML)
-  ensureSearchFooter();
-
-  // Empty state on first page
-  if (n === 1 && newItemsInterleaved.length === 0) {
-    grid.innerHTML =
-      '<div class="empty"><strong>No results found.</strong><br>' +
-      '<span style="font-size:12px">Nothing matched "' + escapeHtml(S.query) + '" on any provider.</span></div>';
-  }
+  if (n === 1) grid.innerHTML = "";
+  rebuildFilterBar();
+  applyFilterAndRender(newItems);
 
   S.loading = false;
   document.getElementById("searchLoading").hidden = true;
+  document.getElementById("searchEndMsg").hidden = S.hasMore || S.rawItems.length === 0;
 
-  // Filter pills
-  rebuildFilterBar();
   updateSearchStatus();
-
-  // Page bar
-  if (filter === "all" && S.pageAnchors.length > 0) {
-    showPageBar();
-    updatePageBar();
-  } else {
-    hidePageBar();
-  }
-
-  // End message
-  document.getElementById("searchEndMsg").hidden = S.hasMore || newItemsInterleaved.length === 0;
-
-  // Prefetch
-  if (S.hasMore && !S.loading) {
-    maybePrefetch();
-  }
+  if (S.pageAnchors.length > 0) { showPageBar(); updatePageBar(); }
 }
 
-function ensureSearchFooter() {
-  const grid = document.getElementById("searchGrid");
-  const search = document.getElementById("searchSection");
-  // The sentinel/loading/endMsg elements live in the section, not the grid,
-  // so they persist across grid.innerHTML resets
-  // (nothing to do here — they're siblings of the grid)
-}
-
-/* ─────── filter bar ─────── */
 function rebuildFilterBar() {
   const filterBar = document.getElementById("filterBar");
-  const total = Object.values(S.totalCounts).reduce((a, b) => a + b, 0);
+  const movieCount = S.rawItems.filter(it => !it.isTV).length;
+  const tvCount = S.rawItems.filter(it => it.isTV).length;
+  const total = S.rawItems.length;
 
-  const pills = [];
-  pills.push(`
-    <button class="filter-pill ${S.activeFilter === "all" ? "active" : ""}" data-filter="all">
-      <span>All results</span>
-      <span class="count">${total}</span>
-    </button>
-  `);
-
-  for (const p of PROVIDERS) {
-    const count = S.totalCounts[p.id] || 0;
-    const name = providerDisplayName(p.id);
-    const isActive = S.activeFilter === p.id;
-    pills.push(`
-      <button class="filter-pill ${isActive ? "active" : ""}" data-filter="${escapeHtml(p.id)}" data-provider="${escapeHtml(p.id)}">
-        <span class="provider-dot"></span>
-        <span>${escapeHtml(name)}</span>
-        <span class="count">${count}</span>
-      </button>
-    `);
-  }
+  const pills = [
+    `<button class="filter-pill ${S.activeType === "all" ? "active" : ""}" data-type="all">
+      <span>All</span><span class="count">${total}</span>
+    </button>`,
+    `<button class="filter-pill ${S.activeType === "movie" ? "active" : ""}" data-type="movie">
+      <span>Movies</span><span class="count">${movieCount}</span>
+    </button>`,
+    `<button class="filter-pill ${S.activeType === "tv" ? "active" : ""}" data-type="tv">
+      <span>TV Shows</span><span class="count">${tvCount}</span>
+    </button>`,
+  ];
 
   filterBar.innerHTML = pills.join("");
 
   filterBar.querySelectorAll(".filter-pill").forEach(btn => {
     btn.addEventListener("click", () => {
-      const newFilter = btn.dataset.filter;
-      if (newFilter === S.activeFilter) return;
-      S.activeFilter = newFilter;
+      const newType = btn.dataset.type;
+      if (newType === S.activeType) return;
+      S.activeType = newType;
       rebuildFilterBar();
-      rerenderGridForFilter();
+      rerenderGrid();
+      if (newType !== "all") hidePageBar();
     });
   });
 }
 
-function rerenderGridForFilter() {
+function applyFilterAndRender(newItems) {
+  const itemsToRender = S.activeType === "all"
+    ? newItems
+    : newItems.filter(it => (S.activeType === "tv" ? it.isTV : !it.isTV));
+
+  if (!itemsToRender.length) return;
+
+  const grid = document.getElementById("searchGrid");
+  let firstNew = null;
+  for (const it of itemsToRender) {
+    const html = cardHtml(it);
+    grid.insertAdjacentHTML("beforeend", html);
+    if (!firstNew) firstNew = grid.lastElementChild;
+  }
+
+  if (firstNew && S.activeType === "all") {
+    S.pageAnchors.push(firstNew);
+  }
+
+  // Bind click on newly added cards
+  grid.querySelectorAll(".card:not([data-bound])").forEach(el => {
+    el.dataset.bound = "1";
+    el.addEventListener("click", () => {
+      const [tmdbId, mediaType] = el.dataset.key.split("|");
+      const item = S.itemMap.get(el.dataset.key);
+      navigateToDetail(tmdbId, mediaType, item?.title || "");
+    });
+  });
+}
+
+function rerenderGrid() {
   const grid = document.getElementById("searchGrid");
   grid.innerHTML = "";
   S.pageAnchors = [];
 
-  let items;
-  if (S.activeFilter === "all") {
-    // Interleave all groups
-    const perProv = Object.entries(S.groups).map(([pid, arr]) => ({ pid, arr, i: 0 }));
-    items = [];
-    let remaining = true;
-    while (remaining) {
-      remaining = false;
-      for (const p of perProv) {
-        if (p.i < p.arr.length) {
-          items.push(p.arr[p.i++]);
-          remaining = true;
-        }
-      }
-    }
-  } else {
-    items = S.groups[S.activeFilter] || [];
-  }
+  const items = S.activeType === "all"
+    ? S.rawItems
+    : S.rawItems.filter(it => (S.activeType === "tv" ? it.isTV : !it.isTV));
 
   if (!items.length) {
     grid.innerHTML =
-      '<div class="empty"><strong>No results from this provider.</strong><br>' +
-      '<span style="font-size:12px">Try "All results" to see other providers.</span></div>';
-    hidePageBar();
+      '<div class="empty"><strong>No results in this filter.</strong><br>' +
+      '<span style="font-size:12px">Try "All" to see everything.</span></div>';
     document.getElementById("searchEndMsg").hidden = true;
     return;
   }
 
-  // Append all
-  let currentAnchor = null;
-  let cardInPage = 0;
-  const anchorCount = S.pageAnchors.length;
-
-  // For filtered views, we can't track pages precisely — just append all
-  for (const it of items) {
-    grid.insertAdjacentHTML("beforeend", cardHtml(it));
+  // Re-render all with anchor tracking (per search page of 20)
+  let pageStart = 0;
+  const perPage = 20;
+  for (let i = 0; i < items.length; i++) {
+    if (i % perPage === 0) {
+      const marker = document.createElement("div");
+      marker.style.cssText = "grid-column:1/-1;height:0";
+      grid.appendChild(marker);
+      S.pageAnchors.push(marker);
+    }
+    grid.insertAdjacentHTML("beforeend", cardHtml(items[i]));
   }
 
-  // Page bar only in "all" view
-  if (S.activeFilter === "all") {
-    // Reconstruct anchors approximately: split by pageItemCounts totals
-    // Actually if we're re-rendering filtered, we lose precise page positions.
-    // Simpler: hide page bar when filtered.
-  }
+  grid.querySelectorAll(".card").forEach(el => {
+    el.addEventListener("click", () => {
+      const [tmdbId, mediaType] = el.dataset.key.split("|");
+      const item = S.itemMap.get(el.dataset.key);
+      navigateToDetail(tmdbId, mediaType, item?.title || "");
+    });
+  });
 
-  // End message
-  document.getElementById("searchEndMsg").hidden = S.hasMore || S.activeFilter !== "all";
-  if (S.activeFilter !== "all") {
-    hidePageBar();
-  } else {
-    // Not ideal — but we lose page anchors when re-rendering. Show end msg only.
-    hidePageBar();
-  }
+  document.getElementById("searchEndMsg").hidden = S.hasMore || S.activeType !== "all";
+  if (S.activeType !== "all") hidePageBar();
 }
 
-/* ─────── status line ─────── */
 function updateSearchStatus() {
   const status = document.getElementById("searchStatus");
-  const total = Object.values(S.totalCounts).reduce((a, b) => a + b, 0);
-  const breakdown = PROVIDERS
-    .map(p => {
-      const c = S.totalCounts[p.id] || 0;
-      if (c === 0) return null;
-      return escapeHtml(providerDisplayName(p.id)) + ": " + c;
-    })
-    .filter(Boolean)
-    .join(" · ");
-  status.innerHTML = `${total} results · ${S.lastMs}ms` +
-    (breakdown ? ' · ' + breakdown : '') +
-    (S.hasMore ? ' · more available' : '');
+  const breakdown = [];
+  const movieCount = S.rawItems.filter(it => !it.isTV).length;
+  const tvCount = S.rawItems.filter(it => it.isTV).length;
+  if (movieCount) breakdown.push("Movies: " + movieCount);
+  if (tvCount) breakdown.push("TV: " + tvCount);
+
+  status.innerHTML =
+    S.rawItems.length + " results" +
+    (S.lastMs ? " · " + S.lastMs + "ms" : "") +
+    (breakdown.length ? " · " + breakdown.join(" · ") : "") +
+    (S.hasMore ? " · more available" : "");
 }
 
-/* ─────── infinite scroll ─────── */
+/* ═══════════════════════════════════════════════════
+   INFINITE SCROLL
+   ═══════════════════════════════════════════════════ */
 const sentinelObserver = new IntersectionObserver((entries) => {
   for (const entry of entries) {
     if (!entry.isIntersecting) continue;
@@ -884,7 +623,6 @@ const sentinelObserver = new IntersectionObserver((entries) => {
 }, { rootMargin: "800px 0px" });
 sentinelObserver.observe(document.getElementById("searchSentinel"));
 
-// Scroll fallback
 let scrollTimer = null;
 window.addEventListener("scroll", () => {
   if (!S.active) return;
@@ -894,19 +632,13 @@ window.addEventListener("scroll", () => {
     scrollTimer = null;
     const bottom = window.scrollY + window.innerHeight;
     const docHeight = document.documentElement.scrollHeight;
-    if (docHeight - bottom < 900) {
-      loadSearchPage(S.page + 1);
-    }
+    if (docHeight - bottom < 900) loadSearchPage(S.page + 1);
   }, 200);
 }, { passive: true });
 
-function maybePrefetch() {
-  if (!S.hasMore || S.loading || !S.active) return;
-  // Prefetch one page ahead silently
-  // (skip for simplicity — infinite scroll handles it fast enough)
-}
-
-/* ─────── page bar (search only) ─────── */
+/* ═══════════════════════════════════════════════════
+   PAGE BAR (only for "All" filter in search)
+   ═══════════════════════════════════════════════════ */
 const pageBar = document.getElementById("pageBar");
 const pagePrev = document.getElementById("pagePrev");
 const pageNext = document.getElementById("pageNext");
@@ -924,7 +656,6 @@ function updatePageBar() {
   pageTotalEl.textContent = total + (S.hasMore ? "+" : "");
   pagePrev.disabled = S.currentPage <= 1;
   pageNext.disabled = S.currentPage >= total && !S.hasMore;
-  pageJump.max = S.hasMore ? "" : String(total);
 }
 
 function updateCurrentPageFromScroll() {
@@ -985,49 +716,18 @@ pageJump.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); handleJump(); pageJump.blur(); }
 });
 
-let pageBarFadeTimer = null;
 window.addEventListener("scroll", () => {
   if (S.active) updateCurrentPageFromScroll();
   if (!pageBar.hidden) {
     pageBar.classList.add("fade");
-    clearTimeout(pageBarFadeTimer);
-    pageBarFadeTimer = setTimeout(() => pageBar.classList.remove("fade"), 900);
+    clearTimeout(window._pageBarFade);
+    window._pageBarFade = setTimeout(() => pageBar.classList.remove("fade"), 900);
   }
 }, { passive: true });
 
-/* ─────── card click (delegated) ─────── */
-document.getElementById("searchGrid").addEventListener("click", (e) => {
-  const card = e.target.closest(".card");
-  if (!card) return;
-  const key = card.dataset.key;
-  const item = S.itemMap.get(key);
-  if (item) handleCardClick(item);
-});
-
-function handleCardClick(item) {
-  if (item.isMovieBox && item.detailPath && item.subjectId) {
-    const params = new URLSearchParams({
-      source: "moviebox",
-      detailPath: item.detailPath,
-      subjectId: item.subjectId,
-      title: item.title,
-    });
-    location.href = "detail.html?" + params.toString();
-    return;
-  }
-  if (!item.pageUrl) {
-    showToast("This item has no playable page.");
-    return;
-  }
-  const params = new URLSearchParams({
-    source: item.providerId,
-    url: item.pageUrl,
-    title: item.title,
-  });
-  location.href = "detail.html?" + params.toString();
-}
-
-/* ─────── search wiring ─────── */
+/* ═══════════════════════════════════════════════════
+   SEARCH INPUT
+   ═══════════════════════════════════════════════════ */
 const searchInput = document.getElementById("searchInput");
 const searchClear = document.getElementById("searchClear");
 let searchTimer = null;
@@ -1036,7 +736,7 @@ searchInput.addEventListener("input", (e) => {
   const v = e.target.value;
   searchClear.hidden = v.length === 0;
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => doSearch(v), 420);
+  searchTimer = setTimeout(() => doSearch(v), 500);
 });
 searchInput.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
@@ -1058,11 +758,10 @@ searchClear.addEventListener("click", () => {
   searchInput.focus();
 });
 
-/* ─────── boot ─────── */
-(async function boot() {
-  await loadProviders();
-  await loadTrending();
-})();
+/* ═══════════════════════════════════════════════════
+   BOOT
+   ═══════════════════════════════════════════════════ */
+loadBrowseRows();
 </script>
 </body>
 </html>
