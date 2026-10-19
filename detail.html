@@ -534,12 +534,17 @@
     .provider-footer-item-status { display: none; }
   }
 
-  /* ═══════════ TRAILER OVERLAY ═══════════ */
+  /* ═══════════ TRAILER OVERLAY ═══════════
+     Close button is OUTSIDE the player window, floating above its
+     top-right corner in the backdrop area — never overlaps YouTube's
+     native controls (share / fullscreen / logo). No custom fullscreen
+     icon; the iframe keeps allowfullscreen so YouTube's own fullscreen
+     button works exactly as native. */
   .trailer-overlay {
     position: fixed; inset: 0;
     z-index: 900;
     display: flex; align-items: center; justify-content: center;
-    padding: 20px;
+    padding: 72px 20px 20px;
     animation: trailerIn .28s ease;
   }
   .trailer-overlay[hidden] { display: none; }
@@ -553,16 +558,20 @@
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
   }
+  .trailer-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: min(1200px, calc((100vh - 140px) * 16 / 9));
+    z-index: 1;
+  }
   .trailer-container {
     position: relative;
     width: 100%;
-    max-width: 1200px;
     aspect-ratio: 16/9;
     background: #000;
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 30px 80px rgba(0,0,0,.9);
-    z-index: 1;
     animation: trailerZoom .32s cubic-bezier(.2,.9,.3,1);
   }
   @keyframes trailerZoom {
@@ -575,51 +584,49 @@
   .trailer-frame iframe {
     width: 100%; height: 100%; border: 0; display: block;
   }
-  .trailer-close,
-  .trailer-fullscreen {
+  .trailer-close {
     position: absolute;
-    top: 12px;
+    top: -56px;
+    right: 0;
     width: 44px; height: 44px;
     border-radius: 50%;
-    background: rgba(0,0,0,.72);
+    background: rgba(255,255,255,.10);
     border: 1px solid rgba(255,255,255,.25);
     color: #fff;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    z-index: 3;
+    font-size: 16px;
+    z-index: 2;
     transition: background .15s, transform .15s, border-color .15s;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    -webkit-tap-highlight-color: transparent;
   }
-  .trailer-close { right: 12px; font-size: 16px; }
-  .trailer-fullscreen { right: 66px; }
-  .trailer-fullscreen svg { width: 20px; height: 20px; fill: currentColor; }
-  .trailer-close:hover,
-  .trailer-fullscreen:hover {
-    background: rgba(0,0,0,.92);
-    border-color: rgba(255,255,255,.55);
+  .trailer-close:hover {
+    background: rgba(229,9,20,.85);
+    border-color: var(--accent);
     transform: scale(1.06);
   }
-  .trailer-close:active,
-  .trailer-fullscreen:active { transform: scale(.95); }
-
-  /* Fullscreen state — fills the viewport */
-  .trailer-container:fullscreen { border-radius: 0; max-width: none; aspect-ratio: auto; width: 100vw; height: 100vh; }
-  .trailer-container:-webkit-full-screen { border-radius: 0; max-width: none; aspect-ratio: auto; width: 100vw; height: 100vh; }
-  .trailer-container:fullscreen .trailer-close { top: 20px; right: 20px; }
-  .trailer-container:fullscreen .trailer-fullscreen { top: 20px; right: 74px; }
+  .trailer-close:active { transform: scale(.95); }
 
   @media (max-width: 640px) {
-    .trailer-overlay { padding: 0; }
-    .trailer-container {
-      max-width: none;
-      border-radius: 0;
-      aspect-ratio: auto;
-      width: 100vw;
-      height: 100dvh;
+    .trailer-overlay {
+      padding: 60px 0 0;
+      align-items: stretch;
     }
-    .trailer-close { top: 16px; right: 16px; }
-    .trailer-fullscreen { top: 16px; right: 70px; }
+    .trailer-wrapper {
+      width: 100vw;
+      max-width: 100vw;
+    }
+    .trailer-container {
+      aspect-ratio: auto;
+      height: 100%;
+      border-radius: 0;
+    }
+    .trailer-close {
+      top: -52px;
+      right: 14px;
+    }
   }
 
   #debugOutput {
@@ -662,12 +669,11 @@
 <!-- ═══════════ TRAILER OVERLAY ═══════════ -->
 <div class="trailer-overlay" id="trailerOverlay" hidden>
   <div class="trailer-backdrop" id="trailerBackdrop"></div>
-  <div class="trailer-container" id="trailerContainer">
-    <div class="trailer-frame" id="trailerFrame"></div>
-    <button class="trailer-fullscreen" id="trailerFullscreen" aria-label="Toggle fullscreen" title="Fullscreen">
-      <svg id="trailerFsIcon" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-    </button>
-    <button class="trailer-close" id="trailerClose" aria-label="Close trailer" title="Close">✕</button>
+  <div class="trailer-wrapper">
+    <button class="trailer-close" id="trailerClose" aria-label="Close trailer" title="Close (Esc)">✕</button>
+    <div class="trailer-container" id="trailerContainer">
+      <div class="trailer-frame" id="trailerFrame"></div>
+    </div>
   </div>
 </div>
 
@@ -1312,30 +1318,6 @@ async function enrichHeroWithTmdb() {
 }
 
 /* ═══════════ TRAILER OVERLAY ═══════════ */
-const TRAILER_FS_ENTER = "M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z";
-const TRAILER_FS_EXIT  = "M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z";
-
-function isMobileDevice() {
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
-    window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-}
-function isLandscape() {
-  if (screen.orientation && screen.orientation.type) {
-    return screen.orientation.type.startsWith("landscape");
-  }
-  return window.innerWidth > window.innerHeight;
-}
-function isTrailerFullscreen() {
-  const el = document.getElementById("trailerContainer");
-  return document.fullscreenElement === el ||
-         document.webkitFullscreenElement === el;
-}
-function updateTrailerFullscreenIcon() {
-  const icon = document.getElementById("trailerFsIcon");
-  if (!icon) return;
-  icon.querySelector("path").setAttribute("d", isTrailerFullscreen() ? TRAILER_FS_EXIT : TRAILER_FS_ENTER);
-}
-
 function openTrailer() {
   if (!state.hero.trailerKey) return;
   const overlay = document.getElementById("trailerOverlay");
@@ -1345,73 +1327,21 @@ function openTrailer() {
   frame.innerHTML = '<iframe src="' + url + '" title="Trailer" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
   overlay.hidden = false;
   document.body.style.overflow = "hidden";
-  updateTrailerFullscreenIcon();
 }
 
 function closeTrailer() {
   const overlay = document.getElementById("trailerOverlay");
   if (!overlay || overlay.hidden) return;
-  if (isTrailerFullscreen()) {
-    try {
-      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    } catch (_) {}
-  }
-  try {
-    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
-  } catch (_) {}
   overlay.hidden = true;
   document.getElementById("trailerFrame").innerHTML = "";
   document.body.style.overflow = "";
 }
 
-async function toggleTrailerFullscreen() {
-  const container = document.getElementById("trailerContainer");
-  if (!container) return;
-
-  if (isTrailerFullscreen()) {
-    try {
-      if (document.exitFullscreen) await document.exitFullscreen();
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    } catch (_) {}
-    try {
-      if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
-    } catch (_) {}
-    updateTrailerFullscreenIcon();
-    return;
-  }
-
-  try {
-    if (container.requestFullscreen) await container.requestFullscreen();
-    else if (container.webkitRequestFullscreen) await container.webkitRequestFullscreen();
-    else throw new Error("Fullscreen not supported");
-  } catch (e) {
-    console.warn("[trailer] fullscreen failed:", e.message);
-    return;
-  }
-
-  // Force landscape orientation when entering fullscreen on mobile
-  if (isMobileDevice()) {
-    try {
-      if (screen.orientation && screen.orientation.lock) {
-        await screen.orientation.lock("landscape").catch(() => {});
-      }
-    } catch (_) {}
-  }
-  updateTrailerFullscreenIcon();
-}
-
 document.getElementById("trailerClose").addEventListener("click", closeTrailer);
-document.getElementById("trailerFullscreen").addEventListener("click", toggleTrailerFullscreen);
 document.getElementById("trailerBackdrop").addEventListener("click", closeTrailer);
-document.addEventListener("fullscreenchange", updateTrailerFullscreenIcon);
-document.addEventListener("webkitfullscreenchange", updateTrailerFullscreenIcon);
 document.addEventListener("keydown", (e) => {
   const overlay = document.getElementById("trailerOverlay");
-  if (e.key === "Escape" && overlay && !overlay.hidden) {
-    // If we're inside fullscreen, the browser handles exit first — then this closes the overlay
-    closeTrailer();
-  }
+  if (e.key === "Escape" && overlay && !overlay.hidden) closeTrailer();
 });
 
 /* ═══════════ TRAILER BUTTON HELPER ═══════════ */
