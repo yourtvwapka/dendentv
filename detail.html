@@ -10,13 +10,11 @@
     --accent: #e50914; --accent-2: #f6121d;
     --line: #2a2a33; --card: #1e1e25; --card-2: #26262f;
     --text: #f5f5f7; --muted: #8a8a94; --bg: #000;
+    --warn: #f59e0b; --warn-bg: rgba(245,158,11,.08); --warn-bd: rgba(245,158,11,.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { min-height: 100%; background: var(--bg); color: var(--text); }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
   button { font-family: inherit; cursor: pointer; }
   img { display: block; }
 
@@ -27,7 +25,7 @@
     padding: 16px 20px;
     position: sticky; top: 0;
     background: linear-gradient(180deg, rgba(0,0,0,.95) 60%, transparent);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     z-index: 50;
     margin: 0 -20px;
   }
@@ -43,37 +41,70 @@
   .back-btn:active { transform: scale(.94); }
   .topbar h1 { font-size: 16px; font-weight: 700; }
 
-  /* hero */
+  /* ═══════════ HERO ═══════════ */
   .hero {
-    display: grid; grid-template-columns: 300px 1fr;
-    gap: 32px; margin: 24px 0 32px;
+    position: relative;
+    margin: 24px 0 32px;
+    padding: 32px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  .hero-backdrop {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.22;
+    z-index: 0;
+    filter: blur(1px);
+  }
+  .hero-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 55%, rgba(0,0,0,.75) 100%);
+  }
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 32px;
   }
   @media (max-width: 720px) {
-    .hero { grid-template-columns: 1fr; gap: 20px; text-align: center; }
+    .hero { padding: 20px; }
+    .hero-inner { grid-template-columns: 1fr; gap: 20px; text-align: center; }
   }
   .poster {
-    position: relative; aspect-ratio: 2/3;
-    border-radius: 14px; overflow: hidden;
+    position: relative;
+    aspect-ratio: 2/3;
+    border-radius: 14px;
+    overflow: hidden;
     background: linear-gradient(135deg, #1a1a20 0%, #0a0a0d 100%);
-    border: 1px solid var(--line);
-    max-width: 300px;
+    border: 1px solid rgba(255,255,255,.08);
+    max-width: 260px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.6);
   }
-  @media (max-width: 720px) { .poster { max-width: 200px; margin: 0 auto; } }
+  @media (max-width: 720px) { .poster { max-width: 180px; margin: 0 auto; } }
   .poster img { width: 100%; height: 100%; object-fit: cover; }
   .poster .fallback {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     font-size: 64px; font-weight: 800; color: rgba(255,255,255,.2);
   }
+  .info { min-width: 0; }
   .info h1 {
-    font-size: 32px; line-height: 1.2; font-weight: 800;
+    font-size: 32px; line-height: 1.15; font-weight: 800;
     margin-bottom: 12px; letter-spacing: -.5px;
   }
   @media (max-width: 720px) { .info h1 { font-size: 24px; } }
   .meta {
     display: flex; flex-wrap: wrap; gap: 8px 14px;
     font-size: 13px; color: var(--muted);
-    margin-bottom: 16px;
+    margin-bottom: 14px;
+    align-items: center;
   }
   @media (max-width: 720px) { .meta { justify-content: center; } }
   .meta .badge {
@@ -83,12 +114,25 @@
     font-size: 11px; font-weight: 700; letter-spacing: .4px;
     text-transform: uppercase; color: #e5e5ea;
   }
+  .meta .rating { color: #ffc93c; }
+  .genres {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 720px) { .genres { justify-content: center; } }
+  .genre-tag {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.10);
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; color: #c3c3cd;
+  }
   .synopsis {
     font-size: 14px; line-height: 1.65; color: #c3c3cd;
     max-width: 720px;
   }
+  @media (max-width: 720px) { .synopsis { font-size: 13px; } }
 
-  /* tabs */
+  /* ═══════════ TABS ═══════════ */
   .tabs {
     display: flex; gap: 4px;
     border-bottom: 1px solid var(--line);
@@ -104,19 +148,18 @@
     position: relative; white-space: nowrap;
     border-bottom: 2px solid transparent;
     transition: .15s; margin-bottom: -1px;
+    display: flex; align-items: center; gap: 8px;
   }
   .tab:hover { color: #e5e5ea; }
   .tab.active { color: #fff; border-bottom-color: var(--accent); }
-  .tab.loading { opacity: .55; }
-  .tab .spinner-sm {
-    display: inline-block; width: 12px; height: 12px;
-    border: 2px solid currentColor; border-top-color: transparent;
-    border-radius: 50%; animation: spin 1s linear infinite;
-    margin-right: 6px; vertical-align: middle;
+  .tab .tab-spinner {
+    width: 12px; height: 12px;
+    border: 2px solid rgba(255,255,255,.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* tab content */
   .tab-content { display: none; }
   .tab-content.active { display: block; }
   .section { margin-bottom: 32px; }
@@ -149,7 +192,6 @@
     cursor: pointer; outline: none;
   }
   .season-select:focus { border-color: #4a4a58; }
-
   .episodes-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
     gap: 10px;
@@ -166,24 +208,9 @@
     background: var(--accent); border-color: var(--accent); color: #fff;
     box-shadow: 0 0 0 3px rgba(229,9,20,.15);
   }
-  .ep-btn.watched::after {
-    content: "✓"; position: absolute; top: 3px; right: 5px;
-    font-size: 10px; color: #22c55e; font-weight: 800;
-  }
-  .ep-btn.active.watched::after { color: #fff; }
-  .ep-progress {
-    position: absolute; left: 4px; right: 4px; bottom: 3px;
-    height: 2px; background: rgba(255,255,255,.15);
-    border-radius: 2px; overflow: hidden;
-  }
-  .ep-progress > i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
 
   /* play button */
-  .play-row {
-    display: flex; gap: 10px; align-items: center;
-    margin-top: 20px; padding-top: 24px;
-    border-top: 1px solid var(--line);
-  }
+  .play-row { display: flex; gap: 10px; align-items: center; margin-top: 20px; padding-top: 24px; border-top: 1px solid var(--line); }
   .play-btn {
     display: inline-flex; align-items: center; gap: 10px;
     background: var(--accent); border: none; color: #fff;
@@ -194,39 +221,88 @@
   }
   .play-btn:hover { background: var(--accent-2); transform: translateY(-1px); }
   .play-btn:active { transform: scale(.98); }
-  .play-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
   /* states */
   .loading-block {
     display: flex; align-items: center; gap: 12px;
-    padding: 40px 20px;
-    color: var(--muted); font-size: 14px;
+    padding: 40px 20px; color: var(--muted); font-size: 14px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px;
   }
   .spinner {
     width: 22px; height: 22px;
     border: 2px solid rgba(255,255,255,.12);
     border-top-color: var(--accent);
     border-radius: 50%; animation: spin .8s linear infinite;
+    flex-shrink: 0;
   }
-  .error-block {
-    padding: 40px 20px; text-align: center;
-    color: var(--muted); font-size: 14px;
-  }
-  .error-block strong { color: #fff; display: block; margin-bottom: 6px; font-size: 15px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  .toast {
-    position: fixed; left: 50%; bottom: 24px;
-    transform: translate(-50%, 20px);
-    background: rgba(20,20,24,.96);
-    border: 1px solid rgba(255,255,255,.12);
-    color: #fff; padding: 12px 20px;
-    border-radius: 10px;
-    font-size: 13.5px; font-weight: 600;
-    opacity: 0; pointer-events: none;
-    transition: .2s; z-index: 200;
-    box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  .unavailable-banner {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 20px 24px;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-bd);
+    border-radius: 12px;
+    margin-top: 8px;
   }
-  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .unavailable-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(245,158,11,.15);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--warn); font-size: 20px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .unavailable-content { flex: 1; }
+  .unavailable-title {
+    font-size: 15px; font-weight: 700; color: #fcd34d;
+    margin-bottom: 6px;
+  }
+  .unavailable-text {
+    font-size: 13px; line-height: 1.6; color: #d0d0d8;
+  }
+  .unavailable-actions {
+    margin-top: 12px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .unavailable-actions .btn {
+    padding: 9px 16px; border-radius: 8px;
+    background: var(--card-2); border: 1px solid var(--line);
+    color: #e5e5ea; font-size: 12.5px; font-weight: 600;
+    transition: .15s;
+  }
+  .unavailable-actions .btn:hover { background: #2e2e38; border-color: #4a4a58; }
+
+  /* provider progress checklist */
+  .provider-progress {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 20px 24px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-top: 16px;
+  }
+  .provider-progress-title {
+    font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--muted); font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .provider-progress-row {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13px; color: #c3c3cd;
+  }
+  .provider-progress-row .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .provider-progress-row.loading .status-dot { background: var(--warn); animation: pulse 1s ease-in-out infinite; }
+  .provider-progress-row.ok .status-dot { background: #22c55e; }
+  .provider-progress-row.empty .status-dot { background: #6b7280; }
+  .provider-progress-row.error .status-dot { background: var(--accent); }
+  .provider-progress-row .status-text { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+  .provider-progress-row.ok .status-text { color: #22c55e; }
+  .provider-progress-row.error .status-text { color: #fca5a5; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 </style>
 </head>
 <body>
@@ -244,43 +320,90 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
 <script>
 /* ═══════════ CONFIG ═══════════ */
 const QS = new URLSearchParams(location.search);
 const PROXY = location.origin;
 const BASE = "https://officialmoviebox.com";
 
-const qsSource     = QS.get("source") || "";
-const qsDetailPath = QS.get("detailPath") || "";
-const qsSubjectId  = QS.get("subjectId") || "";
-const qsUrl        = QS.get("url") || "";
-const qsTitle      = QS.get("title") || "";
+const TMDB_API_KEY = "09c7460bdc6319d6538d786919306438";
+const TMDB_BASE = "https://api.themoviedb.org/3";
+const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w500";
+const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w1280";
+
+const Q = {
+  source:     QS.get("source") || "",
+  detailPath: QS.get("detailPath") || "",
+  subjectId:  QS.get("subjectId") || "",
+  url:        QS.get("url") || "",
+  title:      QS.get("title") || "",
+  tmdbId:     QS.get("tmdbId") || "",
+  mediaType:  QS.get("mediaType") || "",
+  isSeries:   QS.get("isSeries") === "1" || QS.get("mediaType") === "tv",
+};
+
+/* ═══════════ SOURCE DETECTION ═══════════ */
+function detectSource() {
+  // Explicit source wins
+  if (Q.source === "tmdb"    || Q.tmdbId)     return "tmdb";
+  if (Q.source === "moviebox" || Q.detailPath) return "moviebox";
+  if (Q.source === "hdhub")                    return "hdhub";
+  if (Q.source === "drive")                    return "drive";
+  // Guess from URL
+  if (Q.url) {
+    if (/hdhub4u/i.test(Q.url))     return "hdhub";
+    if (/moviesdrive/i.test(Q.url)) return "drive";
+    return "external";
+  }
+  return "";
+}
 
 /* ═══════════ STATE ═══════════ */
 const state = {
-  source: qsSource || (qsDetailPath ? "moviebox" : ""),
-  initialTitle: qsTitle,
-  activeTab: qsSource || "moviebox",
+  source: detectSource(),
+
+  hero: {
+    title:    Q.title || "Loading…",
+    poster:   "",
+    backdrop: "",
+    overview: "",
+    year:     "",
+    rating:   "",
+    runtime:  0,
+    genres:   [],
+    country:  "",
+    isTV:     Q.isSeries,
+    tmdbId:   Q.tmdbId,
+    tmdbLoaded: false,
+  },
 
   moviebox: {
-    detailPath: qsDetailPath, subjectId: qsSubjectId,
-    data: null, loading: false, searching: false, tried: false, error: null,
-    selectedDub: 0, selectedSe: 0, selectedEp: 0,
+    detailPath: Q.detailPath,
+    subjectId:  Q.subjectId,
+    data: null,
+    status: "idle",  // idle | loading | ok | empty | error
+    error: null,
+    selectedDub: 0,
+    selectedSe: 0,
+    selectedEp: 1,
   },
   hdhub: {
-    url: qsSource === "hdhub" ? qsUrl : "",
-    title: "", poster: "", description: "",
-    streams: [], loading: false, searching: false, tried: false, error: null,
+    url: "",
+    streams: [],
+    status: "idle",
+    error: null,
     selectedServer: 0,
   },
   drive: {
-    url: qsSource === "drive" ? qsUrl : "",
-    title: "", poster: "", description: "",
-    streams: [], loading: false, searching: false, tried: false, error: null,
+    url: "",
+    streams: [],
+    status: "idle",
+    error: null,
     selectedServer: 0,
   },
+
+  activeTab: "",
+  bootError: null,
 };
 
 /* ═══════════ HELPERS ═══════════ */
@@ -288,63 +411,105 @@ function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 }
-function proxy(url, referer, providerId) {
-  let q = PROXY + "/?url=" + encodeURIComponent(url)
-        + "&referer=" + encodeURIComponent(referer || BASE + "/");
-  if (providerId) q += "&provider=" + encodeURIComponent(providerId);
-  return q;
-}
-function absolute(base, path) { return new URL(path, base + "/").toString(); }
-function pick(obj, ...keys) {
-  for (const k of keys) { const v = obj?.[k]; if (v !== undefined && v !== null && v !== "") return v; }
-  return undefined;
-}
 function imgUrl(v) {
   if (!v) return "";
   if (typeof v === "string") return v.startsWith("//") ? "https:" + v : v;
-  return pick(v, "url", "src", "path") || "";
+  return v.url || v.src || v.path || "";
 }
-function formatDuration(s) {
-  if (!s || !isFinite(s)) return "";
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  return h > 0 ? h + "h " + m + "m" : m + "m";
+function cleanTitle(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
-function showToast(msg, ms) {
-  const t = document.getElementById("toast");
-  t.textContent = msg; t.classList.add("show");
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => t.classList.remove("show"), ms || 2400);
-}
-function titleScore(candidate, query) {
-  const c = (candidate || "").toLowerCase().trim();
-  const q = (query || "").toLowerCase().trim();
-  if (!c || !q) return 0;
-  if (c === q) return 3;
-  if (c.startsWith(q + " ") || c.startsWith(q + ":") || c.startsWith(q + "(") || c.startsWith(q + " [")) return 2;
-  if (c.includes(q)) return 1;
-  return 0;
-}
-function cleanTitle(t) {
-  return (t || "").replace(/\s*\((?:19|20)\d{2}\)\s*/g, " ")
-                   .replace(/\s+/g, " ").trim();
+function cleanForSearch(s) {
+  return String(s || "")
+    .replace(/\s*\((?:19|20)\d{2}\)\s*/g, " ")
+    .replace(/\s*\[\s*[Ss]\d+.*?\]\s*/g, " ")
+    .replace(/\s+Season\s+\d+.*$/i, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-/* localStorage position (matches player.html) */
-const POS_KEY_PREFIX = "ytv:pos:";
-function posKey(dp, se, ep) { return POS_KEY_PREFIX + dp + ":" + (se || "") + ":" + (ep || ""); }
-function loadSavedPosition(dp, se, ep) {
-  try { const v = parseFloat(localStorage.getItem(posKey(dp, se, ep)) || "0");
-        return isFinite(v) && v > 0 ? v : 0; }
-  catch (_) { return 0; }
+/* ═══════════ TMDB ═══════════ */
+async function tmdbFetch(path, params = {}) {
+  const url = new URL(TMDB_BASE + path);
+  url.searchParams.set("api_key", TMDB_API_KEY);
+  url.searchParams.set("language", "en-US");
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
+  }
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error("TMDB " + res.status);
+  return res.json();
+}
+
+async function fetchTmdbDetails(tmdbId, mediaType) {
+  if (!tmdbId) return null;
+  try {
+    const data = await tmdbFetch(`/${mediaType || "movie"}/${tmdbId}`);
+    return {
+      tmdbId:   data.id,
+      title:    data.title || data.name || "",
+      overview: data.overview || "",
+      poster:   data.poster_path ? TMDB_IMG_POSTER + data.poster_path : "",
+      backdrop: data.backdrop_path ? TMDB_IMG_BACKDROP + data.backdrop_path : "",
+      year:     (data.release_date || data.first_air_date || "").slice(0, 4),
+      rating:   data.vote_average ? data.vote_average.toFixed(1) : "",
+      runtime:  data.runtime || (data.episode_run_time && data.episode_run_time[0]) || 0,
+      genres:   (data.genres || []).map(g => g.name),
+      isTV:     mediaType === "tv",
+      country:  (data.production_countries && data.production_countries[0]?.name) || "",
+    };
+  } catch (e) {
+    console.warn("[tmdb] details failed:", e.message);
+    return null;
+  }
+}
+
+async function searchTmdbByTitle(title, isTVHint) {
+  if (!title) return null;
+  try {
+    const data = await tmdbFetch("/search/multi", { query: title, page: 1, include_adult: "false" });
+    const results = (data.results || []).filter(r => r.media_type === "movie" || r.media_type === "tv");
+    if (!results.length) return null;
+
+    const needle = cleanTitle(title);
+    const yearMatch = String(title).match(/\b(19\d{2}|20\d{2})\b/);
+    const targetYear = yearMatch ? yearMatch[1] : null;
+
+    let best = null, bestScore = 0;
+    for (const r of results) {
+      const name = r.title || r.name || "";
+      const norm = cleanTitle(name);
+      let score = 0;
+      if (norm === needle) score = 100;
+      else if (norm.startsWith(needle + " ") || norm.endsWith(" " + needle)) score = 85;
+      else if (norm.includes(needle) || needle.includes(norm)) score = 60;
+      else continue;
+
+      if (targetYear) {
+        const relYear = (r.release_date || r.first_air_date || "").slice(0, 4);
+        if (relYear === targetYear) score += 30;
+      }
+      if (r.popularity > 20) score += 5;
+      if (bestScore === 0 && isTVHint !== undefined && r.media_type === (isTVHint ? "tv" : "movie")) score += 5;
+
+      if (score > bestScore) { bestScore = score; best = r; }
+    }
+    return best && bestScore >= 55
+      ? { id: best.id, mediaType: best.media_type, title: best.title || best.name }
+      : null;
+  } catch (e) {
+    console.warn("[tmdb] search failed:", e.message);
+    return null;
+  }
 }
 
 /* ═══════════ NUXT DECODER ═══════════ */
 const DEVALUE_WRAPPERS = {
-  "ShallowReactive": v => v, "Reactive": v => v, "Ref": v => v,
-  "ShallowRef": v => v, "EmptyRef": () => undefined, "EmptyShallowRef": () => undefined,
-  "Set": v => v, "Map": v => v, "Date": v => v, "RegExp": v => v, "BigInt": v => v,
-  "null": () => null, "undefined": () => undefined, "NaN": () => NaN,
-  "Infinity": () => Infinity, "-Infinity": () => -Infinity,
+  ShallowReactive: v => v, Reactive: v => v, Ref: v => v,
+  ShallowRef: v => v, EmptyRef: () => undefined, EmptyShallowRef: () => undefined,
+  Set: v => v, Map: v => v, Date: v => v, RegExp: v => v, BigInt: v => v,
+  "null": () => null, "undefined": () => undefined, NaN: () => NaN,
+  Infinity: () => Infinity, "-Infinity": () => -Infinity,
 };
 function devalueResolve(arr) {
   const cache = new Map();
@@ -378,8 +543,11 @@ function devalueResolve(arr) {
 function extractNuxt3Payload(html) {
   const m = html.match(/<script[^>]*id=["']__NUXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/);
   if (!m) return null;
-  try { const arr = JSON.parse(m[1]); if (!Array.isArray(arr)) return null; return devalueResolve(arr); }
-  catch (_) { return null; }
+  try {
+    const arr = JSON.parse(m[1]);
+    if (!Array.isArray(arr)) return null;
+    return devalueResolve(arr);
+  } catch (_) { return null; }
 }
 function findDetailRoot(root) {
   const visited = new WeakSet(); let found = null;
@@ -394,7 +562,7 @@ function findDetailRoot(root) {
   }
   walk(root, 0); return found;
 }
-function findSubjectsInPayload(root) {
+function findSubjects(root) {
   const seen = new Set(), out = [], visited = new WeakSet();
   function walk(node, depth) {
     if (depth > 40 || !node || typeof node !== "object" || visited.has(node)) return;
@@ -405,18 +573,21 @@ function findSubjectsInPayload(root) {
         node.subjectId !== undefined && !seen.has(node.detailPath)) {
       seen.add(node.detailPath);
       out.push({
-        title: node.title, detailPath: node.detailPath,
+        title: node.title,
+        detailPath: node.detailPath,
         subjectId: String(node.subjectId || ""),
+        isTV: Number(node.subjectType) === 2,
         hasResource: node.hasResource !== false,
       });
     }
     for (const k of Object.keys(node)) walk(node[k], depth + 1);
   }
-  walk(root, 0); return out.filter(s => s.hasResource);
+  walk(root, 0);
+  return out.filter(s => s.hasResource);
 }
 function normalizeSeasons(rawSeasons, isSeries) {
   if (!Array.isArray(rawSeasons) || !rawSeasons.length) {
-    return [{ se: 0, title: "Movie", episodes: [{ ep: 1, title: "Play" }] }];
+    return [{ se: 0, title: "Movie", episodes: [{ ep: 1 }] }];
   }
   const out = [];
   for (const s of rawSeasons) {
@@ -425,231 +596,236 @@ function normalizeSeasons(rawSeasons, isSeries) {
     let eps = [];
     if (s.allEp) eps = String(s.allEp).split(",").map(n => Number(n.trim())).filter(n => n > 0);
     else if (s.maxEp) eps = Array.from({ length: Number(s.maxEp) }, (_, i) => i + 1);
-    if (!eps.length && resList.length) eps = [...new Set(resList.map(r => Number(r.epNum) || 1))].sort((a,b) => a-b);
+    if (!eps.length && resList.length) eps = [...new Set(resList.map(r => Number(r.epNum) || 1))].sort((a, b) => a - b);
     if (!eps.length) eps = [1];
     out.push({
       se: isSeries ? (se || 1) : 0,
       title: s.title || (isSeries ? "Season " + (se || 1) : "Movie"),
-      episodes: eps.map(ep => ({ ep, title: "Episode " + ep })),
+      episodes: eps.map(ep => ({ ep })),
     });
   }
   return out;
 }
 
-/* ═══════════ LOADERS ═══════════ */
-async function loadMovieBox(detailPath, subjectId) {
-  state.moviebox.tried = true;
-  if (!detailPath) { state.moviebox.error = "No detailPath"; render(); return; }
-  state.moviebox.loading = true; state.moviebox.error = null; render();
+/* ═══════════ SEARCHERS ═══════════ */
+async function searchMovieBox(title, isTV) {
+  if (!title) return null;
   try {
-    const realUrl = absolute(BASE, "/moviesDetail/" + detailPath);
-    const res = await fetch(proxy(realUrl));
+    const searchUrl = BASE + "/search?q=" + encodeURIComponent(title);
+    const res = await fetch(PROXY + "/?url=" + encodeURIComponent(searchUrl) + "&referer=" + encodeURIComponent(BASE + "/"));
+    if (!res.ok) return null;
+    const resolved = extractNuxt3Payload(await res.text());
+    if (!resolved) return null;
+    const subjects = findSubjects(resolved);
+    const needle = cleanTitle(title);
+    let best = null, bestScore = 0;
+    for (const s of subjects) {
+      if (isTV !== undefined && s.isTV !== isTV) continue;
+      const norm = cleanTitle(s.title);
+      let score = 0;
+      if (norm === needle) score = 100;
+      else if (norm.startsWith(needle + " ") || norm.endsWith(" " + needle)) score = 85;
+      else if (norm.includes(needle) || needle.includes(norm)) score = 60;
+      else continue;
+      if (score > bestScore) { bestScore = score; best = s; }
+    }
+    return best && bestScore >= 40 ? best : null;
+  } catch (e) {
+    console.warn("[moviebox search]", e);
+    return null;
+  }
+}
+
+async function searchProvider(pid, title) {
+  if (!title) return null;
+  try {
+    const res = await fetch(PROXY + "/providers/" + pid + "/search?q=" + encodeURIComponent(title));
+    if (!res.ok) return null;
+    const data = await res.json();
+    const results = data.results || [];
+    const needle = cleanTitle(title);
+    let best = null, bestScore = 0;
+    for (const r of results) {
+      const norm = cleanTitle(r.title);
+      let score = 0;
+      if (norm === needle) score = 100;
+      else if (norm.startsWith(needle + " ") || norm.endsWith(" " + needle)) score = 85;
+      else if (norm.includes(needle) || needle.includes(norm)) score = 60;
+      else continue;
+      if (score > bestScore) { bestScore = score; best = r; }
+    }
+    return best && bestScore >= 40 ? best.url : null;
+  } catch (e) {
+    console.warn("[search " + pid + "]", e);
+    return null;
+  }
+}
+
+/* ═══════════ PROVIDER LOADERS ═══════════ */
+async function loadMovieBox(detailPath, subjectId) {
+  state.moviebox.status = "loading";
+  state.moviebox.detailPath = detailPath;
+  state.moviebox.subjectId = subjectId || "";
+  render();
+
+  try {
+    const realUrl = BASE + "/moviesDetail/" + detailPath;
+    const res = await fetch(PROXY + "/?url=" + encodeURIComponent(realUrl) + "&referer=" + encodeURIComponent(BASE + "/"));
     if (!res.ok) throw new Error("HTTP " + res.status);
     const html = await res.text();
     const resolved = extractNuxt3Payload(html);
     if (!resolved) throw new Error("No Nuxt payload");
     const detail = findDetailRoot(resolved);
-    if (!detail) throw new Error("No subject/resource");
+    if (!detail) throw new Error("No subject");
 
     const subject = detail.subject;
     const resource = detail.resource || {};
     const isSeries = Number(subject.subjectType) === 2;
 
-    state.moviebox.detailPath = subject.detailPath || detailPath;
-    state.moviebox.subjectId  = String(subject.subjectId || subjectId || "");
     state.moviebox.data = {
-      subjectId: state.moviebox.subjectId,
-      detailPath: state.moviebox.detailPath,
+      subjectId: String(subject.subjectId || subjectId || ""),
+      detailPath: subject.detailPath || detailPath,
       title: subject.title || "",
       description: subject.description || "",
       cover: imgUrl(subject.cover),
-      year: (subject.releaseDate || "").slice(0, 4),
-      duration: Number(subject.duration) || 0,
-      genre: subject.genre || "",
-      rating: subject.imdbRatingValue || subject.rating || "",
       isSeries,
       dubs: (Array.isArray(subject.dubs) ? subject.dubs : []).filter(d => d && d.subjectId),
       seasons: normalizeSeasons(resource.seasons || [], isSeries),
     };
-    state.moviebox.loading = false;
     state.moviebox.selectedSe = state.moviebox.data.seasons[0]?.se ?? 0;
     state.moviebox.selectedEp = state.moviebox.data.seasons[0]?.episodes?.[0]?.ep ?? 1;
+    state.moviebox.status = "ok";
 
-    if (state.source === "moviebox") kickOffCrossSearch(state.moviebox.data.title);
+    // If hero is still using the URL title, upgrade it with MovieBox's title
+    if (state.hero.title === Q.title || !state.hero.title) {
+      state.hero.title = state.moviebox.data.title;
+      if (!state.hero.poster && state.moviebox.data.cover) state.hero.poster = state.moviebox.data.cover;
+      if (!state.hero.overview && state.moviebox.data.description) state.hero.overview = state.moviebox.data.description;
+    }
   } catch (e) {
     console.warn("[moviebox]", e);
-    state.moviebox.loading = false;
-    state.moviebox.error = e.message || "Failed";
+    state.moviebox.error = e.message;
+    state.moviebox.status = "error";
   }
   render();
 }
 
-async function loadHDHub(url) {
-  state.hdhub.tried = true;
-  if (!url) { state.hdhub.error = "No URL"; render(); return; }
-  state.hdhub.loading = true; state.hdhub.error = null; state.hdhub.url = url; render();
+async function loadExternal(source, url) {
+  if (!url) { state[source].status = "empty"; return; }
+  state[source].url = url;
+  state[source].status = "loading";
+  render();
 
+  const referer = source === "hdhub" ? "https://new8.hdhub4u.cl/" : "https://new3.moviesdrive.beer/";
+
+  // Fetch og:title, og:image, og:description
   try {
-    const res = await fetch(proxy(url, "https://new8.hdhub4u.cl/", "hdhub"));
+    const res = await fetch(PROXY + "/?url=" + encodeURIComponent(url) + "&referer=" + encodeURIComponent(referer) + "&provider=" + source);
     if (res.ok) {
       const html = await res.text();
       const doc = new DOMParser().parseFromString(html, "text/html");
-      state.hdhub.title = doc.querySelector('meta[property="og:title"]')?.content
-                       || doc.querySelector("h1.page-title, h1.entry-title, h1")?.textContent
-                       || state.initialTitle || "Untitled";
-      state.hdhub.poster = doc.querySelector('meta[property="og:image"]')?.content || "";
-      state.hdhub.description = doc.querySelector('meta[property="og:description"]')?.content || "";
-    }
-  } catch (e) { console.warn("[hdhub meta]", e); state.hdhub.title = state.initialTitle || "Untitled"; }
+      const ogTitle = doc.querySelector('meta[property="og:title"]')?.content
+        || doc.querySelector("h1.entry-title, h1.page-title, h1")?.textContent || "";
+      const ogImage = doc.querySelector('meta[property="og:image"]')?.content || "";
+      const ogDesc = doc.querySelector('meta[property="og:description"]')?.content || "";
 
+      if (ogTitle && (!state.hero.title || state.hero.title === Q.title || state.hero.title === "Loading…")) {
+        state.hero.title = ogTitle.trim();
+      }
+      if (ogImage && !state.hero.poster) state.hero.poster = ogImage;
+      if (ogDesc && !state.hero.overview) state.hero.overview = ogDesc;
+
+      if (/\(Season\s*\d|S\d{2}E\d{2}|Complete\s*Series|Web\s*Series/i.test(ogTitle)) {
+        state.hero.isTV = true;
+      }
+    }
+  } catch (e) { console.warn("[ext meta " + source + "]", e); }
+
+  // Fetch streams
   try {
-    const res = await fetch(PROXY + "/providers/hdhub/streams?url=" + encodeURIComponent(url));
+    const res = await fetch(PROXY + "/providers/" + source + "/streams?url=" + encodeURIComponent(url));
     if (res.ok) {
       const data = await res.json();
-      state.hdhub.streams = (data.streams || []).filter(s => s.url);
+      state[source].streams = (data.streams || []).filter(s => s.url);
+      state[source].status = state[source].streams.length ? "ok" : "empty";
+    } else {
+      state[source].status = "empty";
     }
-  } catch (e) { console.warn("[hdhub streams]", e); }
-
-  state.hdhub.loading = false; render();
-  if (state.source === "hdhub") kickOffCrossSearch(state.hdhub.title);
+  } catch (e) {
+    console.warn("[ext streams " + source + "]", e);
+    state[source].error = e.message;
+    state[source].status = "error";
+  }
+  render();
 }
 
-async function loadDrive(url) {
-  state.drive.tried = true;
-  if (!url) { state.drive.error = "No URL"; render(); return; }
-  state.drive.loading = true; state.drive.error = null; state.drive.url = url; render();
+/* ═══════════ HERO ENRICHMENT FROM TMDB ═══════════ */
+async function enrichHeroWithTmdb() {
+  if (state.hero.tmdbLoaded) return;
 
-  try {
-    const res = await fetch(proxy(url, "https://new3.moviesdrive.beer/", "drive"));
-    if (res.ok) {
-      const html = await res.text();
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      state.drive.title = doc.querySelector('meta[property="og:title"]')?.content
-                       || doc.querySelector("h1.entry-title, h1")?.textContent
-                       || state.initialTitle || "Untitled";
-      state.drive.poster = doc.querySelector('meta[property="og:image"]')?.content || "";
-      state.drive.description = doc.querySelector('meta[property="og:description"]')?.content || "";
-    }
-  } catch (e) { console.warn("[drive meta]", e); state.drive.title = state.initialTitle || "Untitled"; }
+  let meta = null;
 
-  try {
-    const res = await fetch(PROXY + "/providers/drive/streams?url=" + encodeURIComponent(url));
-    if (res.ok) {
-      const data = await res.json();
-      state.drive.streams = (data.streams || []).filter(s => s.url);
-    }
-  } catch (e) { console.warn("[drive streams]", e); }
-
-  state.drive.loading = false; render();
-  if (state.source === "drive") kickOffCrossSearch(state.drive.title);
-}
-
-/* ═══════════ CROSS-PROVIDER SEARCH ═══════════ */
-async function kickOffCrossSearch(title) {
-  const clean = cleanTitle(title);
-  if (!clean) return;
-
-  if (state.source !== "hdhub" && !state.hdhub.tried) {
-    state.hdhub.searching = true; render();
-    const url = await searchProvider("hdhub", clean);
-    state.hdhub.searching = false;
-    if (url) { state.hdhub.url = url; loadHDHub(url); }
-    else { state.hdhub.tried = true; render(); }
+  if (Q.tmdbId) {
+    meta = await fetchTmdbDetails(Q.tmdbId, Q.mediaType || (state.hero.isTV ? "tv" : "movie"));
   }
-  if (state.source !== "drive" && !state.drive.tried) {
-    state.drive.searching = true; render();
-    const url = await searchProvider("drive", clean);
-    state.drive.searching = false;
-    if (url) { state.drive.url = url; loadDrive(url); }
-    else { state.drive.tried = true; render(); }
-  }
-  if (state.source !== "moviebox" && !state.moviebox.tried) {
-    state.moviebox.searching = true; render();
-    const match = await searchMovieBox(clean);
-    state.moviebox.searching = false;
+
+  if (!meta && state.hero.title && state.hero.title !== "Loading…") {
+    const match = await searchTmdbByTitle(cleanForSearch(state.hero.title), state.hero.isTV);
     if (match) {
-      state.moviebox.detailPath = match.detailPath;
-      state.moviebox.subjectId = match.subjectId;
-      loadMovieBox(match.detailPath, match.subjectId);
-    } else { state.moviebox.tried = true; render(); }
+      meta = await fetchTmdbDetails(match.id, match.mediaType);
+    }
   }
-}
 
-async function searchProvider(id, title) {
-  try {
-    const res = await fetch(PROXY + "/providers/" + id + "/search?q=" + encodeURIComponent(title));
-    if (!res.ok) return null;
-    const data = await res.json();
-    const results = data.results || [];
-    let best = null, bestScore = 0;
-    for (const r of results) {
-      const s = titleScore(r.title, title);
-      if (s > bestScore) { bestScore = s; best = r; }
-    }
-    return bestScore >= 1 ? (best?.url || null) : null;
-  } catch (e) { console.warn("[search " + id + "]", e); return null; }
-}
-
-async function searchMovieBox(title) {
-  try {
-    const searchUrl = BASE + "/search?q=" + encodeURIComponent(title);
-    const res = await fetch(proxy(searchUrl));
-    if (!res.ok) return null;
-    const resolved = extractNuxt3Payload(await res.text());
-    if (!resolved) return null;
-    const subjects = findSubjectsInPayload(resolved);
-    let best = null, bestScore = 0;
-    for (const s of subjects) {
-      const sc = titleScore(s.title, title);
-      if (sc > bestScore) { bestScore = sc; best = s; }
-    }
-    return bestScore >= 1 && best ? { detailPath: best.detailPath, subjectId: best.subjectId } : null;
-  } catch (e) { console.warn("[mb search]", e); return null; }
+  if (meta) {
+    state.hero = {
+      title:    meta.title || state.hero.title,
+      poster:   meta.poster || state.hero.poster,
+      backdrop: meta.backdrop || state.hero.backdrop,
+      overview: meta.overview || state.hero.overview,
+      year:     meta.year || state.hero.year,
+      rating:   meta.rating || state.hero.rating,
+      runtime:  meta.runtime || state.hero.runtime,
+      genres:   meta.genres || state.hero.genres,
+      country:  meta.country || state.hero.country,
+      isTV:     meta.isTV !== undefined ? meta.isTV : state.hero.isTV,
+      tmdbId:   meta.tmdbId || state.hero.tmdbId,
+      tmdbLoaded: true,
+    };
+    render();
+  }
 }
 
 /* ═══════════ RENDER ═══════════ */
-function hasData(id) {
-  if (id === "moviebox") return !!state.moviebox.data;
-  if (id === "hdhub") return state.hdhub.streams.length > 0;
-  if (id === "drive") return state.drive.streams.length > 0;
-  return false;
-}
-function getHeroData() {
-  const mb = () => {
-    const d = state.moviebox.data;
-    return { poster: d.cover, title: d.title, year: d.year, duration: d.duration,
-             genre: d.genre, rating: d.rating, isSeries: d.isSeries, synopsis: d.description };
-  };
-  const hd = () => ({
-    poster: state.hdhub.poster, title: state.hdhub.title || state.initialTitle || "Untitled",
-    year: "", duration: 0, genre: "", rating: "", isSeries: false,
-    synopsis: state.hdhub.description || "",
-  });
-  const dr = () => ({
-    poster: state.drive.poster, title: state.drive.title || state.initialTitle || "Untitled",
-    year: "", duration: 0, genre: "", rating: "", isSeries: false,
-    synopsis: state.drive.description || "",
-  });
-  // prefer source
-  if (state.source === "moviebox" && state.moviebox.data) return mb();
-  if (state.source === "hdhub" && state.hdhub.title) return hd();
-  if (state.source === "drive" && state.drive.title) return dr();
-  // fallbacks
-  if (state.moviebox.data) return mb();
-  if (state.hdhub.title) return hd();
-  if (state.drive.title) return dr();
-  return null;
+function getAvailableProviders() {
+  const out = [];
+  if (state.moviebox.data) out.push("moviebox");
+  if (state.hdhub.streams.length > 0) out.push("hdhub");
+  if (state.drive.streams.length > 0) out.push("drive");
+  return out;
 }
 
-function renderHero(h) {
-  const meta = [];
-  if (h.year) meta.push('<span>' + escapeHtml(h.year) + '</span>');
-  meta.push('<span class="badge">' + (h.isSeries ? "Series" : "Movie") + '</span>');
-  if (h.duration) meta.push('<span>' + formatDuration(h.duration) + '</span>');
-  if (h.rating) meta.push('<span>⭐ ' + escapeHtml(h.rating) + '</span>');
-  if (h.genre) meta.push('<span>' + escapeHtml(h.genre) + '</span>');
+function getAllTried() {
+  const mbDone = state.moviebox.status === "ok" || state.moviebox.status === "empty" || state.moviebox.status === "error";
+  const hdDone = state.hdhub.status === "ok" || state.hdhub.status === "empty" || state.hdhub.status === "error";
+  const drDone = state.drive.status === "ok" || state.drive.status === "empty" || state.drive.status === "error";
+  return mbDone && hdDone && drDone;
+}
 
+function renderHero() {
+  const h = state.hero;
   const initial = (h.title || "?").charAt(0).toUpperCase();
+
+  const metaBits = [];
+  if (h.year) metaBits.push(`<span>${escapeHtml(h.year)}</span>`);
+  metaBits.push(`<span class="badge">${h.isTV ? "Series" : "Movie"}</span>`);
+  if (h.runtime) metaBits.push(`<span>${h.runtime}m</span>`);
+  if (h.rating) metaBits.push(`<span class="rating">★ ${escapeHtml(h.rating)}</span>`);
+  if (h.country) metaBits.push(`<span>${escapeHtml(h.country)}</span>`);
+
+  const genresHtml = h.genres && h.genres.length
+    ? `<div class="genres">${h.genres.map(g => `<span class="genre-tag">${escapeHtml(g)}</span>`).join("")}</div>`
+    : "";
+
   const posterHtml = h.poster
     ? `<img src="${escapeHtml(h.poster)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
        <div class="fallback" style="display:none">${initial}</div>`
@@ -657,34 +833,61 @@ function renderHero(h) {
 
   return `
     <div class="hero">
-      <div class="poster">${posterHtml}</div>
-      <div class="info">
-        <h1>${escapeHtml(h.title)}</h1>
-        <div class="meta">${meta.join("")}</div>
-        ${h.synopsis ? `<p class="synopsis">${escapeHtml(h.synopsis)}</p>` : ""}
+      ${h.backdrop ? `<div class="hero-backdrop" style="background-image:url('${escapeHtml(h.backdrop)}')"></div>` : ''}
+      <div class="hero-inner">
+        <div class="poster">${posterHtml}</div>
+        <div class="info">
+          <h1>${escapeHtml(h.title)}</h1>
+          <div class="meta">${metaBits.join("")}</div>
+          ${genresHtml}
+          ${h.overview ? `<p class="synopsis">${escapeHtml(h.overview)}</p>` : ''}
+        </div>
       </div>
-    </div>`;
+    </div>
+  `;
+}
+
+function renderProviderProgress() {
+  const providers = [
+    { id: "moviebox", name: "MovieBox" },
+    { id: "hdhub",    name: "hdhub4u" },
+    { id: "drive",    name: "moviesDrive" },
+  ];
+
+  const rows = providers.map(p => {
+    const s = state[p.id];
+    let cls = "loading", text = "Checking…";
+    if (s.status === "ok")    { cls = "ok";    text = "Available"; }
+    else if (s.status === "empty") { cls = "empty"; text = "Not found"; }
+    else if (s.status === "error") { cls = "error"; text = "Error"; }
+    else if (s.status === "idle")  { cls = "loading"; text = "Waiting…"; }
+    return `
+      <div class="provider-progress-row ${cls}">
+        <span class="status-dot"></span>
+        <span>${escapeHtml(p.name)}</span>
+        <span class="status-text">${text}</span>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="provider-progress">
+      <div class="provider-progress-title">Checking stream availability</div>
+      ${rows}
+    </div>
+  `;
 }
 
 function renderTabs(providers) {
   const labels = { moviebox: "MovieBox", hdhub: "hdhub4u", drive: "moviesDrive" };
   return `<nav class="tabs">${providers.map(id => {
     const isActive = id === state.activeTab;
-    const isLoading = (state[id].loading || state[id].searching) && !hasData(id);
-    const cls = ["tab"];
-    if (isActive) cls.push("active");
-    if (isLoading) cls.push("loading");
-    return `<button class="${cls.join(" ")}" data-tab="${id}">
-      ${isLoading ? '<span class="spinner-sm"></span>' : ""}${escapeHtml(labels[id])}
-    </button>`;
+    return `<button class="tab ${isActive ? "active" : ""}" data-tab="${id}">${escapeHtml(labels[id])}</button>`;
   }).join("")}</nav>`;
 }
 
 function renderMovieBoxTab() {
   const m = state.moviebox;
-  if (m.searching) return `<div class="loading-block"><div class="spinner"></div><div>Searching MovieBox…</div></div>`;
-  if (m.loading) return `<div class="loading-block"><div class="spinner"></div><div>Loading…</div></div>`;
-  if (m.error) return `<div class="error-block"><strong>${escapeHtml(m.error)}</strong></div>`;
   if (!m.data) return `<div class="loading-block"><div class="spinner"></div><div>Loading…</div></div>`;
 
   const d = m.data;
@@ -693,7 +896,7 @@ function renderMovieBoxTab() {
   if (d.dubs.length >= 1) {
     parts.push(`<div class="section"><div class="section-title">Audio</div><div class="pills">
       ${d.dubs.map((dub, i) => `
-        <button class="pill ${i === m.selectedDub ? 'active' : ''}" data-action="pick-dub" data-dub="${i}">
+        <button class="pill ${i === m.selectedDub ? "active" : ""}" data-action="pick-dub" data-dub="${i}">
           ${escapeHtml(dub.lanName || dub.lan || "Audio " + (i + 1))}
         </button>`).join("")}
     </div></div>`);
@@ -705,20 +908,15 @@ function renderMovieBoxTab() {
       <div class="season-row">
         <label>Season</label>
         <select class="season-select" id="seasonSelect">
-          ${d.seasons.map(s => `<option value="${s.se}" ${s.se === m.selectedSe ? 'selected' : ''}>${escapeHtml(s.title)}</option>`).join("")}
+          ${d.seasons.map(s => `<option value="${s.se}" ${s.se === m.selectedSe ? "selected" : ""}>${escapeHtml(s.title)}</option>`).join("")}
         </select>
       </div>` : "";
 
     const epGrid = `<div class="episodes-grid">
       ${season.episodes.map(e => {
         const isActive = season.se === m.selectedSe && e.ep === m.selectedEp;
-        const saved = loadSavedPosition(d.detailPath, season.se, e.ep);
-        const cls = ["ep-btn"];
-        if (isActive) cls.push("active");
-        if (saved > 0) cls.push("watched");
-        const prog = (saved > 0 && !isActive) ? `<span class="ep-progress"><i style="width:5%"></i></span>` : "";
-        return `<button class="${cls.join(" ")}" data-action="pick-ep" data-se="${season.se}" data-ep="${e.ep}">
-          E${String(e.ep).padStart(2, "0")}${prog}
+        return `<button class="ep-btn ${isActive ? "active" : ""}" data-action="pick-ep" data-se="${season.se}" data-ep="${e.ep}">
+          E${String(e.ep).padStart(2, "0")}
         </button>`;
       }).join("")}
     </div>`;
@@ -736,15 +934,12 @@ function renderMovieBoxTab() {
 
 function renderServerTab(provider) {
   const s = state[provider];
-  if (s.searching) return `<div class="loading-block"><div class="spinner"></div><div>Searching provider…</div></div>`;
-  if (s.loading) return `<div class="loading-block"><div class="spinner"></div><div>Resolving streams…</div></div>`;
-  if (s.error) return `<div class="error-block"><strong>${escapeHtml(s.error)}</strong></div>`;
-  if (!s.streams.length) return `<div class="error-block"><strong>No streams available</strong>The provider did not return any playable URLs.</div>`;
+  if (!s.streams.length) return `<div class="loading-block">No streams</div>`;
 
   return `
     <div class="section"><div class="section-title">Server</div><div class="pills">
       ${s.streams.map((st, i) => `
-        <button class="pill ${i === s.selectedServer ? 'active' : ''}" data-action="pick-server" data-provider="${provider}" data-server="${i}">
+        <button class="pill ${i === s.selectedServer ? "active" : ""}" data-action="pick-server" data-provider="${provider}" data-server="${i}">
           ${escapeHtml(st.label || ("Server " + (i + 1)))}
           ${st.quality && st.quality !== "Auto" ? " · " + escapeHtml(st.quality) : ""}
         </button>`).join("")}
@@ -756,50 +951,83 @@ function renderServerTab(provider) {
 
 function render() {
   const main = document.getElementById("main");
-  const providers = [];
-  if (state.moviebox.loading || state.moviebox.data || state.moviebox.searching) providers.push("moviebox");
-  if (state.hdhub.loading   || state.hdhub.streams.length   || state.hdhub.searching)   providers.push("hdhub");
-  if (state.drive.loading   || state.drive.streams.length   || state.drive.searching)   providers.push("drive");
 
-  if (!providers.includes(state.activeTab) && providers.length) state.activeTab = providers[0];
+  const available = getAvailableProviders();
+  const allTried = getAllTried();
 
-  const hero = getHeroData();
-  const out = [];
-
-  if (hero) out.push(renderHero(hero));
-  else if (state.moviebox.loading || state.hdhub.loading || state.drive.loading)
-    out.push('<div class="loading-block"><div class="spinner"></div><div>Loading details…</div></div>');
-  else out.push('<div class="error-block"><strong>Could not load details</strong>Try going back and clicking again.</div>');
-
-  if (hero && providers.length) {
-    out.push(renderTabs(providers));
-    for (const id of providers) {
-      const active = id === state.activeTab ? "active" : "";
-      let content = "";
-      if (id === "moviebox") content = renderMovieBoxTab();
-      else content = renderServerTab(id);
-      out.push(`<div class="tab-content ${active}" data-tab-content="${id}">${content}</div>`);
+  // Set active tab
+  if (!state.activeTab || !available.includes(state.activeTab)) {
+    if (available.length > 0) {
+      if (state.source && available.includes(state.source)) state.activeTab = state.source;
+      else state.activeTab = available[0];
     }
-  } else if (hero && !providers.length) {
-    if (state.moviebox.tried || state.hdhub.tried || state.drive.tried)
-      out.push('<div class="error-block"><strong>No playable servers</strong>This title could not be resolved.</div>');
-    else out.push('<div class="loading-block"><div class="spinner"></div><div>Searching other servers…</div></div>');
   }
 
-  main.innerHTML = out.join("");
+  const parts = [];
+  parts.push(renderHero());
+
+  if (state.bootError) {
+    parts.push(`
+      <div class="unavailable-banner">
+        <div class="unavailable-icon">⚠</div>
+        <div class="unavailable-content">
+          <div class="unavailable-title">${escapeHtml(state.bootError)}</div>
+          <div class="unavailable-text">Open this page from the catalog, or try again.</div>
+          <div class="unavailable-actions">
+            <button class="btn" onclick="location.href='index.html'">Back to catalog</button>
+          </div>
+        </div>
+      </div>
+    `);
+  } else if (available.length > 0) {
+    // Show tabs
+    parts.push(renderTabs(available));
+    for (const id of available) {
+      const isActive = id === state.activeTab;
+      const content = id === "moviebox" ? renderMovieBoxTab() : renderServerTab(id);
+      parts.push(`<div class="tab-content ${isActive ? "active" : ""}" data-tab-content="${id}">${content}</div>`);
+    }
+    // If not all tried yet, still show progress below
+    if (!allTried) {
+      parts.push(renderProviderProgress());
+    }
+  } else if (!allTried) {
+    // Still loading, no tabs yet
+    parts.push(renderProviderProgress());
+  } else {
+    // All tried, nothing found
+    parts.push(`
+      <div class="unavailable-banner">
+        <div class="unavailable-icon">⚠</div>
+        <div class="unavailable-content">
+          <div class="unavailable-title">No streams available</div>
+          <div class="unavailable-text">
+            We checked MovieBox, hdhub4u, and moviesDrive — this title isn't currently available on any provider.
+            Try a different title, or check back later.
+          </div>
+          <div class="unavailable-actions">
+            <button class="btn" id="retryAll">Retry all providers</button>
+            <button class="btn" onclick="location.href='index.html'">Back to catalog</button>
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  main.innerHTML = parts.join("");
   bindEvents();
 }
 
-/* ═══════════ EVENTS ═══════════ */
 function bindEvents() {
-  const main = document.getElementById("main");
-
-  main.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => { state.activeTab = tab.dataset.tab; render(); });
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      state.activeTab = tab.dataset.tab;
+      render();
+    });
   });
 
-  const sel = main.querySelector("#seasonSelect");
-  if (sel) sel.addEventListener("change", e => {
+  const seasonSelect = document.getElementById("seasonSelect");
+  if (seasonSelect) seasonSelect.addEventListener("change", (e) => {
     const se = Number(e.target.value);
     state.moviebox.selectedSe = se;
     const season = state.moviebox.data.seasons.find(s => s.se === se);
@@ -807,27 +1035,33 @@ function bindEvents() {
     render();
   });
 
-  main.querySelectorAll("[data-action]").forEach(btn => {
+  document.querySelectorAll("[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
       const a = btn.dataset.action;
-      if (a === "pick-dub") { state.moviebox.selectedDub = Number(btn.dataset.dub); render(); }
-      else if (a === "pick-ep") {
+      if (a === "pick-dub") {
+        state.moviebox.selectedDub = Number(btn.dataset.dub);
+        render();
+      } else if (a === "pick-ep") {
         state.moviebox.selectedSe = Number(btn.dataset.se);
         state.moviebox.selectedEp = Number(btn.dataset.ep);
         playMovieBox();
-      }
-      else if (a === "pick-server") {
+      } else if (a === "pick-server") {
         const p = btn.dataset.provider;
         state[p].selectedServer = Number(btn.dataset.server);
         render();
+      } else if (a === "play-moviebox") {
+        playMovieBox();
+      } else if (a === "play-server") {
+        playServer(btn.dataset.provider);
       }
-      else if (a === "play-moviebox") playMovieBox();
-      else if (a === "play-server") playServer(btn.dataset.provider);
     });
   });
+
+  const retryAll = document.getElementById("retryAll");
+  if (retryAll) retryAll.addEventListener("click", () => boot(true));
 }
 
-/* ═══════════ PLAY HANDLERS ═══════════ */
+/* ═══════════ PLAY ACTIONS ═══════════ */
 function playMovieBox() {
   const m = state.moviebox;
   if (!m.data) return;
@@ -839,7 +1073,7 @@ function playMovieBox() {
     mainDetailPath: m.data.detailPath,
     subjectId: dub.subjectId || m.data.subjectId,
     isSeries: m.data.isSeries ? "1" : "0",
-    title: m.data.title,
+    title: state.hero.title || m.data.title,
     subtitle: "",
     lang: dub.lanName || "Original Audio",
   });
@@ -852,40 +1086,211 @@ function playMovieBox() {
 
 function playServer(provider) {
   const s = state[provider];
-  if (!s.streams.length) return;
   const stream = s.streams[s.selectedServer] || s.streams[0];
   if (!stream?.url) return;
-
   const referer = provider === "hdhub" ? "https://new8.hdhub4u.cl/" : "https://new3.moviesdrive.beer/";
-  const proxied = proxy(stream.url, referer, provider);
-  const title = state.moviebox.data?.title || state.hdhub.title || state.drive.title || state.initialTitle || "Untitled";
+  const proxied = PROXY + "/?url=" + encodeURIComponent(stream.url)
+                + "&referer=" + encodeURIComponent(referer)
+                + "&provider=" + provider;
+  const title = state.hero.title || "Untitled";
   const subtitle = (stream.label || "") + (stream.quality && stream.quality !== "Auto" ? " · " + stream.quality : "");
-
   const params = new URLSearchParams({ streamUrl: proxied, title, subtitle });
   location.href = "player.html?" + params.toString();
 }
 
-/* ═══════════ BOOT ═══════════ */
+/* ═══════════ BOOT DISPATCHER ═══════════ */
+async function boot(retry = false) {
+  if (retry) {
+    state.moviebox = { ...state.moviebox, data: null, status: "idle", error: null };
+    state.hdhub   = { ...state.hdhub,   streams: [], status: "idle", error: null, url: "" };
+    state.drive   = { ...state.drive,   streams: [], status: "idle", error: null, url: "" };
+    state.activeTab = "";
+  }
+
+  document.getElementById("pageTitle").textContent = state.hero.title || "Details";
+  render();
+
+  const source = state.source;
+
+  if (source === "tmdb") {
+    await bootFromTmdb();
+  } else if (source === "moviebox") {
+    await bootFromMovieBox();
+  } else if (source === "hdhub" || source === "drive") {
+    await bootFromExternal(source);
+  } else if (source === "external") {
+    // Guess by URL
+    if (/hdhub4u/i.test(Q.url)) await bootFromExternal("hdhub");
+    else if (/moviesdrive/i.test(Q.url)) await bootFromExternal("drive");
+    else state.bootError = "Cannot determine source";
+  } else {
+    state.bootError = "No source specified";
+  }
+
+  render();
+}
+
+async function bootFromTmdb() {
+  // 1. Fetch TMDB details (fast)
+  if (Q.tmdbId) {
+    const meta = await fetchTmdbDetails(Q.tmdbId, Q.mediaType || "movie");
+    if (meta) {
+      state.hero = {
+        title:    meta.title || state.hero.title,
+        poster:   meta.poster || state.hero.poster,
+        backdrop: meta.backdrop || state.hero.backdrop,
+        overview: meta.overview || state.hero.overview,
+        year:     meta.year,
+        rating:   meta.rating,
+        runtime:  meta.runtime,
+        genres:   meta.genres,
+        country:  meta.country,
+        isTV:     meta.isTV,
+        tmdbId:   meta.tmdbId,
+        tmdbLoaded: true,
+      };
+      render();
+    }
+  }
+
+  const searchTitle = cleanForSearch(state.hero.title);
+  if (!searchTitle) {
+    state.moviebox.status = state.hdhub.status = state.drive.status = "empty";
+    render();
+    return;
+  }
+
+  // 2. Search all 3 providers in parallel
+  state.moviebox.status = state.hdhub.status = state.drive.status = "loading";
+  render();
+
+  const [mbMatch, hdUrl, drUrl] = await Promise.all([
+    searchMovieBox(searchTitle, state.hero.isTV),
+    searchProvider("hdhub", searchTitle),
+    searchProvider("drive", searchTitle),
+  ]);
+
+  // 3. Load streams for each match
+  await Promise.all([
+    (async () => {
+      if (mbMatch) await loadMovieBox(mbMatch.detailPath, mbMatch.subjectId);
+      else { state.moviebox.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (hdUrl) await loadExternal("hdhub", hdUrl);
+      else { state.hdhub.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (drUrl) await loadExternal("drive", drUrl);
+      else { state.drive.status = "empty"; render(); }
+    })(),
+  ]);
+}
+
+async function bootFromMovieBox() {
+  if (!Q.detailPath) {
+    state.bootError = "Missing detailPath";
+    return;
+  }
+
+  state.moviebox.status = "loading";
+  render();
+
+  await loadMovieBox(Q.detailPath, Q.subjectId);
+
+  // Cross-search others after MovieBox loads
+  const title = cleanForSearch(state.moviebox.data?.title || state.hero.title);
+  if (!title) {
+    state.hdhub.status = state.drive.status = "empty";
+    render();
+    return;
+  }
+
+  state.hdhub.status = state.drive.status = "loading";
+  render();
+
+  const [hdUrl, drUrl] = await Promise.all([
+    searchProvider("hdhub", title),
+    searchProvider("drive", title),
+  ]);
+
+  await Promise.all([
+    (async () => {
+      if (hdUrl) await loadExternal("hdhub", hdUrl);
+      else { state.hdhub.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (drUrl) await loadExternal("drive", drUrl);
+      else { state.drive.status = "empty"; render(); }
+    })(),
+  ]);
+
+  // Enrich hero with TMDB in background
+  enrichHeroWithTmdb();
+}
+
+async function bootFromExternal(source) {
+  if (!Q.url) {
+    state.bootError = "Missing url";
+    return;
+  }
+
+  state[source].status = "loading";
+  render();
+
+  await loadExternal(source, Q.url);
+
+  // Enrich hero with TMDB first (so title matches are better)
+  await enrichHeroWithTmdb();
+
+  const title = cleanForSearch(state.hero.title);
+  if (!title) {
+    if (source !== "moviebox") state.moviebox.status = "empty";
+    if (source !== "hdhub")   state.hdhub.status = "empty";
+    if (source !== "drive")   state.drive.status = "empty";
+    render();
+    return;
+  }
+
+  // Cross-search others
+  const toLoad = [];
+  if (source !== "moviebox") state.moviebox.status = "loading";
+  if (source !== "hdhub")   state.hdhub.status = "loading";
+  if (source !== "drive")   state.drive.status = "loading";
+  render();
+
+  const [mbMatch, hdUrl, drUrl] = await Promise.all([
+    source !== "moviebox" ? searchMovieBox(title, state.hero.isTV) : Promise.resolve(null),
+    source !== "hdhub"    ? searchProvider("hdhub", title) : Promise.resolve(null),
+    source !== "drive"    ? searchProvider("drive", title) : Promise.resolve(null),
+  ]);
+
+  await Promise.all([
+    (async () => {
+      if (source === "moviebox") return;
+      if (mbMatch) await loadMovieBox(mbMatch.detailPath, mbMatch.subjectId);
+      else { state.moviebox.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (source === "hdhub") return;
+      if (hdUrl) await loadExternal("hdhub", hdUrl);
+      else { state.hdhub.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (source === "drive") return;
+      if (drUrl) await loadExternal("drive", drUrl);
+      else { state.drive.status = "empty"; render(); }
+    })(),
+  ]);
+}
+
+/* ═══════════ INIT ═══════════ */
 document.getElementById("backBtn").addEventListener("click", () => {
   if (history.length > 1) history.back();
   else location.href = "index.html";
 });
-document.getElementById("pageTitle").textContent = qsTitle || "Details";
 
-if (state.source === "moviebox" || (!state.source && qsDetailPath)) {
-  state.source = "moviebox"; state.activeTab = "moviebox";
-  loadMovieBox(qsDetailPath, qsSubjectId);
-} else if (state.source === "hdhub") {
-  state.activeTab = "hdhub"; loadHDHub(qsUrl);
-} else if (state.source === "drive") {
-  state.activeTab = "drive"; loadDrive(qsUrl);
-} else if (qsDetailPath) {
-  state.source = "moviebox"; state.activeTab = "moviebox";
-  loadMovieBox(qsDetailPath, qsSubjectId);
-} else {
-  document.getElementById("main").innerHTML =
-    '<div class="error-block"><strong>No source specified</strong>Open this page from the catalog.</div>';
-}
+boot();
 </script>
 </body>
 </html>
