@@ -121,7 +121,6 @@
   .player-bigplay svg { width:34px; height:34px; fill:#fff; }
   .player-bigplay.is-play svg { margin-left: 3px; }
 
-  /* Caption overlay — uses CSS variables so styles are live-editable */
   .caption-overlay {
     position:absolute; left:50%; transform:translateX(-50%);
     bottom:8%; max-width:90%; text-align:center;
@@ -324,7 +323,6 @@
   }
   .error-detail b { color:#93c5fd; }
 
-  /* Drawer */
   .drawer-backdrop {
     position:fixed; inset:0; z-index:790;
     background:rgba(0,0,0,.72);
@@ -431,7 +429,6 @@
   }
   .drawer-empty { text-align:center; color:#6b7280; font-size:13px; padding:40px 20px; }
 
-  /* Log panel */
   .log-panel { position:fixed; inset:0; z-index:600; background:rgba(13,13,15,.97); display:flex; flex-direction:column; }
   .log-panel[hidden] { display:none; }
   .log-head { display:flex; align-items:center; gap:6px; padding:10px 12px; border-bottom:1px solid var(--line); background:#101014; flex-wrap:wrap; }
@@ -448,7 +445,6 @@
   .log-entry .log-lvl { color:#4b5563; flex-shrink:0; font-size:10px; font-weight:700; }
   .log-entry .log-msg { flex:1; word-break:break-all; white-space:pre-wrap; min-width:0; }
 
-  /* Caption settings panel */
   .cap-settings-backdrop {
     position:fixed; inset:0; z-index:800;
     background:rgba(0,0,0,.72);
@@ -490,7 +486,6 @@
     overflow-y:auto;
   }
 
-  /* Preview box */
   .cap-settings-preview {
     position:relative;
     height:90px;
@@ -572,7 +567,6 @@
     background:var(--accent); border-color:var(--accent);
   }
 
-  /* Ad gate */
   .ad-gate {
     position: fixed; inset: 0; z-index: 100;
     background: radial-gradient(circle at top, rgba(229,9,20,.18), transparent 55%),
@@ -860,13 +854,23 @@
     <div class="cap-settings-row">
       <label for="capTextColor">Text color</label>
       <input type="color" id="capTextColor" value="#ffffff">
+      <div style="flex:1"></div>
+    </div>
+
+    <div class="cap-settings-row">
+      <label for="capTextOpacity">Text opacity</label>
       <input type="range" id="capTextOpacity" min="0" max="100" step="5" value="100">
       <span class="cap-val" id="capTextOpacityVal">100%</span>
     </div>
 
     <div class="cap-settings-row">
-      <label for="capBgColor">Background</label>
+      <label for="capBgColor">BG color</label>
       <input type="color" id="capBgColor" value="#000000">
+      <div style="flex:1"></div>
+    </div>
+
+    <div class="cap-settings-row">
+      <label for="capBgOpacity">BG opacity</label>
       <input type="range" id="capBgOpacity" min="0" max="100" step="5" value="50">
       <span class="cap-val" id="capBgOpacityVal">50%</span>
     </div>
@@ -1006,7 +1010,6 @@ const drawerBody = document.getElementById("drawerBody");
 const drawerTitle = document.getElementById("drawerTitle");
 const drawerEyebrow = document.getElementById("drawerEyebrow");
 
-/* Caption settings DOM refs */
 const capSettingsPanel = document.getElementById("capSettingsPanel");
 const capSettingsBackdrop = document.getElementById("capSettingsBackdrop");
 const capSettingsPreview = document.getElementById("capSettingsPreview");
@@ -1018,7 +1021,7 @@ const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z";
 const player = {
   streams: [],
   currentIdx: 0,
-  preferredQuality: null,   // null = "auto" (720→480→highest); number = locked tier (e.g. 1080)
+  preferredQuality: null,   // null = auto (720→480→highest); number = locked tier
   hls: null,
   signCookie: "",
   triedUrls: new Set(),
@@ -1077,18 +1080,14 @@ function setRetryStatus(text, cls) {
   retryStatusText.textContent = text;
 }
 
-/* ═══════════ QUALITY DEFAULT PICKER ═══════════
-   - preferredQuality === null → prefer 720p, fall back to 480p, else highest
-   - preferredQuality === number → exact match, else highest <= preferred, else highest */
+/* ═══════════ QUALITY DEFAULT PICKER ═══════════ */
 function pickStreamIndex(streams, preferredQuality) {
   if (!streams.length) return 0;
 
   if (preferredQuality != null) {
-    // Exact match first
     const exact = streams.findIndex(s => parseInt(s.quality, 10) === preferredQuality);
     if (exact >= 0) return exact;
 
-    // Highest available at-or-below preferred
     let bestIdx = -1, bestQ = -1;
     for (let i = 0; i < streams.length; i++) {
       const q = parseInt(streams[i].quality, 10);
@@ -1097,12 +1096,10 @@ function pickStreamIndex(streams, preferredQuality) {
       }
     }
     if (bestIdx >= 0) return bestIdx;
-
-    // Fallback to highest
     return 0;
   }
 
-  // Auto mode: 720 → 480 → highest
+  // Auto: 720p → 480p → highest
   for (const target of [720, 480]) {
     const idx = streams.findIndex(s => parseInt(s.quality, 10) === target);
     if (idx >= 0) return idx;
@@ -1410,6 +1407,7 @@ function normalizeStreams(data, pageReferer) {
     });
   }
 
+  // Sort descending by quality
   streams.sort((a, b) => {
     const ai = parseInt(a.quality, 10), bi = parseInt(b.quality, 10);
     if (isNaN(ai) && isNaN(bi)) return 0;
@@ -1418,18 +1416,18 @@ function normalizeStreams(data, pageReferer) {
     return bi - ai;
   });
 
+  // ═══ IMPORTANT: We do NOT cap streams by playConfig.maxResolution ═══
+  // The API often reports maxResolution=480, which was hiding 1080p/4K tiers
+  // from the user. We surface every stream the API returns so users can pick
+  // any quality. Default selection (720p → 480p → highest) is handled
+  // separately in startPlayback() via pickStreamIndex().
   const maxRes = Number(d?.playConfig?.maxResolution) || 0;
-  let finalStreams = streams;
   if (maxRes > 0) {
-    const capped = streams.filter((s) => {
-      const q = parseInt(s.quality, 10);
-      return !isNaN(q) && q <= maxRes;
-    });
-    if (capped.length) finalStreams = capped;
+    logPush("LOG", "[play] playConfig.maxResolution=" + maxRes + "p (ignored — showing all tiers)");
   }
 
-  logPush("LOG", "[play] got " + finalStreams.length + " streams: " + finalStreams.map(s => s.quality).join(", "));
-  return { streams: finalStreams, signCookie };
+  logPush("LOG", "[play] got " + streams.length + " streams: " + streams.map(s => s.quality).join(", "));
+  return { streams, signCookie };
 }
 
 /* ═══════════ PLAYBACK CONTROLLER ═══════════ */
@@ -1474,7 +1472,6 @@ async function startPlayback(opts = {}) {
       player.streams = streams;
       player.signCookie = signCookie || "";
 
-      // Default quality: prefer 720p → 480p → highest (or user's saved choice)
       player.currentIdx = pickStreamIndex(streams, player.preferredQuality);
       const chosen = streams[player.currentIdx];
       logPush("LOG", "[quality] preferred=" +
@@ -1528,7 +1525,6 @@ async function tryStream(stream, idx) {
   try {
     if (isHls && !video.canPlayType("application/vnd.apple.mpegurl")) await attachHls(url);
     else await attachNative(url);
-    // Keep menu/label in sync (in case we landed on a fallback stream)
     buildQualityMenu();
   } catch (err) {
     logPush("ERR", "[stream] attach failed:", err.message);
@@ -1638,7 +1634,6 @@ async function advanceToNextStream(reason) {
         player.streams = streams;
         if (signCookie) player.signCookie = signCookie;
 
-        // Re-pick based on preferred quality
         player.currentIdx = pickStreamIndex(streams, player.preferredQuality);
         buildQualityMenu();
         logPush("LOG", "[stream] API refresh returned " + streams.length + " fresh streams");
@@ -2011,7 +2006,6 @@ function buildQualityMenu() {
       qualityList.hidden = true;
       qualityBtn.classList.remove("open");
 
-      // Remember user's explicit choice
       const q = parseInt(player.streams[idx].quality, 10);
       player.preferredQuality = isNaN(q) ? null : q;
 
@@ -2142,7 +2136,6 @@ function renderCues(e) {
   const cues = tt.activeCues;
   if (!cues || !cues.length) { captionOverlay.hidden = true; return; }
 
-  // Render one .cap-line per logical line — gives per-line background boxes
   const lines = [];
   for (let i = 0; i < cues.length; i++) {
     const raw = (cues[i].text || "").replace(/<[^>]+>/g, "").trim();
@@ -2174,13 +2167,13 @@ document.addEventListener("click", (e) => {
 /* ═══════════ CAPTION STYLE SETTINGS ═══════════ */
 const CAP_STYLE_KEY = "playerCaptionStyle";
 const DEFAULT_CAP_STYLE = {
-  font: "sans",       // sans | serif | mono
-  size: 100,          // 50..200 (%)
+  font: "sans",
+  size: 100,
   textColor: "#ffffff",
-  textOpacity: 100,   // 0..100 (%)
+  textOpacity: 100,
   bgColor: "#000000",
-  bgOpacity: 50,      // 0..100 (%)
-  position: 8,        // 2..60 (% from bottom)
+  bgOpacity: 50,
+  position: 8,
   bold: false,
   shadow: true,
 };
@@ -2212,7 +2205,6 @@ function buildCapCssVars() {
     serif: 'Georgia, "Times New Roman", serif',
     mono: 'ui-monospace, "Courier New", Consolas, monospace',
   };
-  // 100% == 1.2em (≈ 19px on 16px base)
   const sizeEm = (capStyle.size / 100) * 1.2;
   return {
     "--cap-font-family": fontMap[capStyle.font] || fontMap.sans,
@@ -2231,7 +2223,6 @@ function applyCapStyle() {
   }
   captionOverlay.style.bottom = capStyle.position + "%";
 
-  // Preview line positioned within its box
   const previewLine = capSettingsPreview.querySelector(".cap-line");
   if (previewLine) previewLine.style.bottom = capStyle.position + "%";
 }
@@ -2266,7 +2257,6 @@ function closeCapSettings() {
   resetIdleTimer();
 }
 
-/* Wire up settings inputs */
 document.getElementById("capFontFamily").addEventListener("change", (e) => {
   capStyle.font = e.target.value; saveCapStyle(); applyCapStyle();
 });
@@ -2624,7 +2614,6 @@ player.currentSe = Number(P.se) || 0;
 player.currentEp = Number(P.ep) || 1;
 if (P.isSeries) drawerToggleBtn.hidden = false;
 
-// Apply persisted caption style right away
 applyCapStyle();
 updateCapUI();
 
