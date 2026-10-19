@@ -20,50 +20,122 @@
   .player { position:fixed; inset:0; background:#000; }
   .player-stage { position:absolute; inset:0; overflow:hidden; background:#000; }
   .player video { width:100%; height:100%; object-fit:contain; background:#000; display:block; }
-  .player-ui { position:absolute; inset:0; transition:opacity .25s ease; user-select:none; }
-  .player-ui.idle { opacity:0; pointer-events:none; cursor:none; }
+
+  /* Player UI container — everything inside fades together */
+  .player-ui {
+    position:absolute; inset:0;
+    transition:opacity .25s ease;
+    user-select:none;
+    pointer-events:none;
+  }
+  .player-ui > * { pointer-events:auto; }
+  .player-ui.idle {
+    opacity:0;
+    pointer-events:none;
+    cursor:none;
+  }
+  .player-ui.idle > * { pointer-events:none; }
+
   body.drawer-open .player-ui { transition:none !important; }
 
-  /* ────────── Frame nav buttons ────────── */
+  /* Feedback toast is OUTSIDE player-ui so it shows even when UI is idle */
+  .player-feedback {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    padding:14px 22px; border-radius:14px;
+    background:rgba(0,0,0,.7); color:#fff; font-size:20px; font-weight:700;
+    pointer-events:none; opacity:0; transition:opacity .18s; z-index:5;
+    backdrop-filter:blur(8px);
+  }
+  .player-feedback.show { opacity:1; }
+
+  /* ────── Frame nav buttons (prev/next episode) ────── */
   .frame-nav-btn {
     position:absolute;
     top:50%; transform:translateY(-50%);
     width:56px; height:56px; border-radius:50%;
     background:rgba(0,0,0,.55);
-    border:2px solid rgba(255,255,255,.3);
+    border:2px solid rgba(255,255,255,.35);
     color:#fff;
     display:flex; align-items:center; justify-content:center;
     cursor:pointer;
-    opacity:0;
-    transition:opacity .2s, background .15s, transform .1s;
-    z-index:3;
+    transition:background .15s, transform .1s, border-color .15s;
     backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
     -webkit-tap-highlight-color:transparent;
+    z-index:3;
   }
   .frame-nav-btn:hover { background:rgba(0,0,0,.78); border-color:var(--accent); }
   .frame-nav-btn:active { transform:translateY(-50%) scale(.92); }
   .frame-nav-btn svg { width:26px; height:26px; fill:currentColor; }
   .frame-nav-btn .nav-label {
-    position:absolute; bottom:-26px; left:50%; transform:translateX(-50%);
-    font-size:10.5px; font-weight:600; color:#fff; white-space:nowrap;
-    background:rgba(0,0,0,.65); padding:2px 8px; border-radius:6px;
+    position:absolute; bottom:-28px; left:50%; transform:translateX(-50%);
+    font-size:10.5px; font-weight:700; color:#fff; white-space:nowrap;
+    background:rgba(0,0,0,.75); padding:2px 8px; border-radius:6px;
     border:1px solid rgba(255,255,255,.15);
   }
   .frame-nav-btn.prev { left:20px; }
   .frame-nav-btn.next { right:20px; }
   .frame-nav-btn[hidden] { display:none; }
-  .player-stage.show-nav .frame-nav-btn:not([hidden]) { opacity:1; }
-  @media (hover:none) {
-    /* Always show on touch devices during UI visible state */
-    .player-ui:not(.idle) ~ .frame-nav-btn:not([hidden]),
-    .player-stage:not(.idle) .frame-nav-btn:not([hidden]) { opacity:.85; }
-    .frame-nav-btn { width:46px; height:46px; }
-    .frame-nav-btn svg { width:22px; height:22px; }
-    .frame-nav-btn.prev { left:12px; }
-    .frame-nav-btn.next { right:12px; }
-    .frame-nav-btn .nav-label { display:none; }
+
+  /* ────── Center controls cluster ────── */
+  .center-controls {
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    display:flex;
+    align-items:center;
+    gap:20px;
+    z-index:2;
   }
 
+  /* Skip buttons (±10s) */
+  .frame-seek-btn {
+    position:relative;
+    width:56px; height:56px; border-radius:50%;
+    background:rgba(0,0,0,.5);
+    border:2px solid rgba(255,255,255,.5);
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:background .15s, transform .1s, border-color .15s;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .frame-seek-btn:hover { background:rgba(0,0,0,.72); border-color:var(--accent); }
+  .frame-seek-btn:active { transform:scale(.92); }
+  .frame-seek-btn svg { width:22px; height:22px; fill:currentColor; }
+  .frame-seek-btn .seek-label {
+    position:absolute;
+    bottom:7px;
+    left:50%; transform:translateX(-50%);
+    font-size:9px; font-weight:900;
+    color:#fff;
+    text-shadow:0 0 2px rgba(0,0,0,.9);
+    letter-spacing:-0.2px;
+    pointer-events:none;
+    line-height:1;
+  }
+
+  /* Big play/pause */
+  .player-bigplay {
+    width:84px; height:84px; border-radius:50%;
+    background:rgba(0,0,0,.5);
+    border:2px solid rgba(255,255,255,.7);
+    color:#fff; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    backdrop-filter:blur(6px);
+    -webkit-tap-highlight-color:transparent;
+    transition:background .18s, transform .15s, opacity .2s, visibility .2s;
+  }
+  .player-bigplay:hover { background:var(--accent); border-color:var(--accent); transform:scale(1.06); }
+  .player-bigplay:active { transform:scale(.96); }
+  .player-bigplay svg { width:34px; height:34px; fill:#fff; margin-left:3px; }
+  .player-bigplay.hidden {
+    opacity:0;
+    pointer-events:none;
+    visibility:hidden;
+  }
+
+  /* Caption overlay */
   .caption-overlay {
     position:absolute; left:50%; transform:translateX(-50%);
     bottom:8%; max-width:90%; text-align:center;
@@ -76,6 +148,7 @@
   }
   body.drawer-open .caption-overlay { visibility:hidden; }
 
+  /* Top bar */
   .player-top {
     position:absolute; top:0; left:0; right:0;
     display:flex; align-items:center; gap:10px;
@@ -138,19 +211,7 @@
   .menu-list button .check { font-size:11px; opacity:0; flex-shrink:0; }
   .menu-list button.active .check { opacity:1; }
 
-  .player-bigplay {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    width:84px; height:84px; border-radius:50%;
-    background:rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.7);
-    color:#fff; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-    backdrop-filter:blur(6px);
-    -webkit-tap-highlight-color:transparent;
-    z-index:2;
-  }
-  .player-bigplay.hidden { display:none; }
-  .player-bigplay svg { width:34px; height:34px; fill:#fff; margin-left:3px; }
-
+  /* Bottom bar */
   .player-bottom {
     position:absolute; left:0; right:0; bottom:0;
     padding:60px 22px 20px;
@@ -212,15 +273,7 @@
   .av-row .val { font-size:11.5px; color:#8a8a94; min-width:38px; text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
   .av-divider { height:1px; background:#2a2a33; margin:-4px 0; }
 
-  .player-feedback {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    padding:14px 22px; border-radius:14px;
-    background:rgba(0,0,0,.7); color:#fff; font-size:20px; font-weight:700;
-    pointer-events:none; opacity:0; transition:opacity .18s; z-index:5;
-    backdrop-filter:blur(8px);
-  }
-  .player-feedback.show { opacity:1; }
-
+  /* Overlays */
   .player-overlay {
     position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:14px; background:rgba(0,0,0,.82); color:var(--muted);
@@ -255,7 +308,6 @@
     border-radius:50%; animation:spin .8s linear infinite;
   }
   .retry-status.warn { background:rgba(120,53,15,.92); border-color:rgba(245,158,11,.4); }
-  .retry-status.err { background:rgba(127,29,29,.92); border-color:rgba(239,68,68,.4); }
 
   .btn {
     display:inline-flex; align-items:center; gap:8px; background:var(--card-2);
@@ -265,7 +317,6 @@
   .btn:hover { border-color:#4a4a58; background:#26262f; }
   .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   .btn-primary:hover { background:var(--accent-2); border-color:var(--accent-2); }
-
   .error-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; justify-content:center; }
   .error-detail {
     max-width:560px; width:100%;
@@ -274,12 +325,11 @@
     border-radius:8px; padding:12px 14px;
     font-family:ui-monospace,monospace; font-size:11.5px;
     color:#c3c3cd; text-align:left; margin-top:12px;
-    max-height:200px; overflow-y:auto;
-    word-break:break-all;
+    max-height:200px; overflow-y:auto; word-break:break-all;
   }
   .error-detail b { color:#93c5fd; }
 
-  /* ────────── DRAWER ────────── */
+  /* Drawer */
   .drawer-backdrop {
     position:fixed; inset:0; z-index:790;
     background:rgba(0,0,0,.72);
@@ -287,7 +337,6 @@
   }
   .drawer-backdrop[hidden] { display:none; }
   @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-
   .drawer {
     position:fixed; top:0; right:0; bottom:0;
     width:min(380px, 90vw);
@@ -301,68 +350,44 @@
   }
   .drawer[hidden] { display:none; }
   .drawer.closing { animation:slideOutRight .22s ease forwards; }
-  @keyframes slideInRight {
-    from { transform:translate3d(100%,0,0); }
-    to   { transform:translate3d(0,0,0); }
-  }
-  @keyframes slideOutRight {
-    from { transform:translate3d(0,0,0); }
-    to   { transform:translate3d(100%,0,0); }
-  }
-
+  @keyframes slideInRight { from { transform:translate3d(100%,0,0); } to { transform:translate3d(0,0,0); } }
+  @keyframes slideOutRight { from { transform:translate3d(0,0,0); } to { transform:translate3d(100%,0,0); } }
   .drawer-head {
     display:flex; align-items:center; gap:12px;
-    padding:16px 18px 14px;
-    border-bottom:1px solid #2a2a33; flex-shrink:0;
+    padding:16px 18px 14px; border-bottom:1px solid #2a2a33; flex-shrink:0;
   }
   .drawer-head-text { flex:1; min-width:0; }
   .drawer-eyebrow {
     font-size:10.5px; letter-spacing:1.4px; text-transform:uppercase;
     color:#6b7280; font-weight:700; margin-bottom:3px;
   }
-  .drawer-head h3 {
-    font-size:16px; font-weight:700; white-space:nowrap;
-    overflow:hidden; text-overflow:ellipsis;
-  }
+  .drawer-head h3 { font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .drawer-close {
     width:34px; height:34px; border-radius:50%;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
     color:#fff; cursor:pointer; font-size:14px;
-    display:flex; align-items:center; justify-content:center;
-    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
   .drawer-close:hover { background:rgba(255,255,255,.14); }
-
-  .drawer-body {
-    flex:1; overflow-y:auto; padding:16px 18px 24px;
-    -webkit-overflow-scrolling:touch;
-  }
-  .drawer-loading {
-    display:flex; flex-direction:column; align-items:center; gap:12px;
-    padding:70px 20px; color:#8a8a94; font-size:13px;
-  }
+  .drawer-body { flex:1; overflow-y:auto; padding:16px 18px 24px; -webkit-overflow-scrolling:touch; }
+  .drawer-loading { display:flex; flex-direction:column; align-items:center; gap:12px; padding:70px 20px; color:#8a8a94; font-size:13px; }
   .drawer-loading .spinner {
     width:30px; height:30px; border:3px solid rgba(255,255,255,.12);
-    border-top-color:var(--accent); border-radius:50%;
-    animation:spin .8s linear infinite;
+    border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite;
   }
-
   .drawer-section { margin-bottom:22px; }
   .drawer-ep-nav { display:flex; gap:8px; margin-bottom:14px; }
   .drawer-ep-nav-btn {
     flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
     background:#1e1e25; border:1px solid #2a2a33; color:#e5e5ea;
     padding:11px 10px; border-radius:10px;
-    font-size:13px; font-weight:600; font-family:inherit;
-    cursor:pointer;
+    font-size:13px; font-weight:600; font-family:inherit; cursor:pointer;
     white-space:nowrap; min-width:0;
   }
   .drawer-ep-nav-btn:hover:not(:disabled) { background:#26262f; border-color:#4a4a58; }
   .drawer-ep-nav-btn:disabled { opacity:.3; cursor:default; }
   .drawer-ep-nav-btn svg { width:14px; height:14px; fill:currentColor; flex-shrink:0; }
   .drawer-ep-nav-btn span { overflow:hidden; text-overflow:ellipsis; }
-
   .drawer-season-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
   .drawer-season-row label { font-size:12.5px; color:#8a8a94; font-weight:600; flex-shrink:0; }
   .drawer-season-select {
@@ -371,17 +396,12 @@
     padding:10px 12px; font-size:13.5px; font-weight:600;
     font-family:inherit; outline:none; cursor:pointer;
   }
-
-  .drawer-ep-grid {
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(56px, 1fr));
-    gap:8px;
-  }
+  .drawer-ep-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(56px, 1fr)); gap:8px; }
   .drawer-ep-btn {
     background:#1e1e25; border:1px solid #2a2a33; color:#e5e5ea;
     padding:11px 4px; border-radius:9px; cursor:pointer;
     font-size:12.5px; font-weight:600; font-family:inherit;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    position:relative;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; position:relative;
     -webkit-tap-highlight-color:transparent;
   }
   .drawer-ep-btn:hover { background:#26262f; border-color:#4a4a58; }
@@ -389,15 +409,7 @@
     background:var(--accent); border-color:var(--accent); color:#fff;
     box-shadow:0 0 0 3px rgba(229,9,20,.15);
   }
-  .drawer-ep-btn.watched::after {
-    content:"✓"; position:absolute; top:2px; right:4px;
-    font-size:9px; color:#22c55e; font-weight:800;
-  }
-  .drawer-ep-btn.active.watched::after { color:#fff; }
-
-  .drawer-related-grid {
-    display:grid; grid-template-columns:repeat(2, 1fr); gap:14px;
-  }
+  .drawer-related-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; }
   .drawer-related-card {
     background:transparent; border:none; padding:0; cursor:pointer;
     text-align:left; color:inherit; font-family:inherit;
@@ -409,9 +421,7 @@
     border-radius:9px; overflow:hidden; background:#1a1a20;
     border:1px solid #2a2a33;
   }
-  .drawer-related-poster img {
-    width:100%; height:100%; object-fit:cover;
-  }
+  .drawer-related-poster img { width:100%; height:100%; object-fit:cover; }
   .drawer-related-badge {
     position:absolute; top:6px; left:6px;
     background:rgba(0,0,0,.78); border:1px solid rgba(255,255,255,.15);
@@ -424,10 +434,9 @@
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
     overflow:hidden; padding:0 2px;
   }
-
   .drawer-empty { text-align:center; color:#6b7280; font-size:13px; padding:40px 20px; }
 
-  /* ────────── LOG PANEL ────────── */
+  /* Log panel */
   .log-panel { position:fixed; inset:0; z-index:600; background:rgba(13,13,15,.97); display:flex; flex-direction:column; }
   .log-panel[hidden] { display:none; }
   .log-head { display:flex; align-items:center; gap:6px; padding:10px 12px; border-bottom:1px solid var(--line); background:#101014; flex-wrap:wrap; }
@@ -438,15 +447,13 @@
   .log-empty { text-align:center; color:var(--muted); padding:60px 24px; font-size:13px; }
   .log-entry { display:flex; gap:8px; padding:7px 8px; border-radius:6px; margin-bottom:3px; background:rgba(255,255,255,.02); border-left:3px solid #444; font-family:ui-monospace,monospace; font-size:11.5px; }
   .log-entry.LOG { border-left-color:#555; color:#c3c3cd; }
-  .log-entry.INFO { border-left-color:#3b82f6; color:#93c5fd; }
-  .log-entry.NET { border-left-color:#06b6d4; color:#67e8f9; }
   .log-entry.WARN { border-left-color:#eab308; color:#fde047; background:rgba(234,179,8,.06); }
   .log-entry.ERR { border-left-color:var(--accent); color:#fca5a5; background:rgba(229,9,20,.1); font-weight:600; }
   .log-entry .log-time { color:#6b7280; flex-shrink:0; font-size:10.5px; }
   .log-entry .log-lvl { color:#4b5563; flex-shrink:0; font-size:10px; font-weight:700; }
   .log-entry .log-msg { flex:1; word-break:break-all; white-space:pre-wrap; min-width:0; }
 
-  /* ────────── AD GATE ────────── */
+  /* Ad gate */
   .ad-gate {
     position: fixed; inset: 0; z-index: 100;
     background: radial-gradient(circle at top, rgba(229,9,20,.18), transparent 55%),
@@ -459,8 +466,7 @@
     max-width: 440px; width: 100%;
     background: rgba(255,255,255,.03);
     border: 1px solid rgba(255,255,255,.08);
-    border-radius: 22px; padding: 32px 26px;
-    text-align: center;
+    border-radius: 22px; padding: 32px 26px; text-align: center;
   }
   .ad-gate-icon { font-size: 48px; margin-bottom: 12px; }
   .ad-gate-title {
@@ -474,15 +480,15 @@
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     padding: 16px; border: none; border-radius: 14px;
     background: linear-gradient(135deg, #e50914, #f6121d);
-    color: #fff; font-size: 16px; font-weight: 700;
-    cursor: pointer;
+    color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
   }
   .ad-gate-btn:disabled { opacity: .6; cursor: not-allowed; }
   .ad-gate-btn svg { width: 22px; height: 22px; fill: currentColor; }
   .ad-gate-status { font-size: 12.5px; color: #8a8a94; margin-top: 14px; min-height: 18px; font-weight: 600; }
   .ad-gate-status.err { color: #fca5a5; }
 
-  @media (max-width: 640px) {
+  /* Mobile */
+  @media (max-width: 640px), (hover:none) {
     .player-top { padding:12px 14px 40px; gap:6px; }
     .player-bottom { padding:40px 14px 14px; }
     .player-bigplay { width:68px; height:68px; }
@@ -494,6 +500,17 @@
     .player-title { font-size:14px; }
     .player-sub { font-size:11.5px; }
     .retry-status { font-size:11px; top:70px; padding:8px 12px; }
+
+    .center-controls { gap:12px; }
+    .frame-nav-btn { width:44px; height:44px; }
+    .frame-nav-btn svg { width:22px; height:22px; }
+    .frame-nav-btn .nav-label { font-size:9px; bottom:-22px; padding:1px 6px; }
+    .frame-nav-btn.prev { left:10px; }
+    .frame-nav-btn.next { right:10px; }
+    .frame-seek-btn { width:48px; height:48px; }
+    .frame-seek-btn svg { width:20px; height:20px; }
+    .frame-seek-btn .seek-label { font-size:8px; bottom:5px; }
+
     .drawer { width:88vw; }
     .drawer-body { padding:14px 16px 22px; }
   }
@@ -520,15 +537,8 @@
 
     <div class="caption-overlay" id="captionOverlay" hidden></div>
 
-    <!-- Frame nav buttons (prev/next episode) -->
-    <button class="frame-nav-btn prev" id="prevEp" hidden title="Previous episode">
-      <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-      <span class="nav-label" id="prevEpLabel">Previous</span>
-    </button>
-    <button class="frame-nav-btn next" id="nextEp" hidden title="Next episode">
-      <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-      <span class="nav-label" id="nextEpLabel">Next</span>
-    </button>
+    <!-- Feedback is outside player-ui so it shows even when idle -->
+    <div class="player-feedback" id="playerFeedback"></div>
 
     <div class="player-ui" id="playerUI">
       <div class="player-top">
@@ -574,11 +584,32 @@
         <span id="retryStatusText">Loading…</span>
       </div>
 
-      <button class="player-bigplay" id="bigPlay" title="Play / Pause (Space)">
-        <svg id="bigPlayIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      <!-- Prev/Next episode buttons -->
+      <button class="frame-nav-btn prev" id="prevEp" hidden title="Previous episode">
+        <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        <span class="nav-label" id="prevEpLabel">Previous</span>
+      </button>
+      <button class="frame-nav-btn next" id="nextEp" hidden title="Next episode">
+        <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        <span class="nav-label" id="nextEpLabel">Next</span>
       </button>
 
-      <div class="player-feedback" id="playerFeedback"></div>
+      <!-- Center controls cluster -->
+      <div class="center-controls">
+        <button class="frame-seek-btn" id="frameRewind" title="Rewind 10s">
+          <svg viewBox="0 0 24 24"><path d="M12.5 3a9 9 0 1 0 6.36 15.36l-1.42-1.42A7 7 0 1 1 12.5 5c.55 0 1.08.06 1.59.18L11.5 7.77V6.44L8.34 9.6 11.5 12.77v-1.33l3.32-3.32.07-.07A9 9 0 0 0 12.5 3z"/></svg>
+          <span class="seek-label">10</span>
+        </button>
+
+        <button class="player-bigplay" id="bigPlay" title="Play / Pause (Space)">
+          <svg id="bigPlayIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+
+        <button class="frame-seek-btn" id="frameForward" title="Forward 10s">
+          <svg viewBox="0 0 24 24"><path d="M11.5 3a9 9 0 1 1-6.36 15.36l1.42-1.42A7 7 0 1 0 11.5 5c-.55 0-1.08.06-1.59.18l2.59 2.59v-1.33l3.16 3.16-3.16 3.17v-1.33L9.18 8.11l-.07-.07A9 9 0 0 1 11.5 3z"/></svg>
+          <span class="seek-label">10</span>
+        </button>
+      </div>
 
       <div class="player-bottom">
         <div class="seek" id="seek">
@@ -660,7 +691,7 @@
   </div>
 </div>
 
-<!-- DRAWER -->
+<!-- Drawer -->
 <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
 <aside class="drawer" id="drawer" hidden>
   <div class="drawer-head">
@@ -675,7 +706,6 @@
   </div>
 </aside>
 
-<!-- LOG PANEL -->
 <div id="logPanel" class="log-panel" hidden>
   <div class="log-head">
     <h3>Logs</h3>
@@ -710,6 +740,7 @@ const MAX_STREAM_ATTEMPTS = 8;
 const MAX_API_REFRESHES = 2;
 const ATTEMPT_TIMEOUT_MS = 15000;
 const TOTAL_TIMEOUT_MS = 60000;
+const IDLE_MS = 3000;
 
 /* ═══════════ LOGGING ═══════════ */
 const LOG = [];
@@ -746,7 +777,6 @@ function renderLogs() {
   ).join("");
   logBodyEl.scrollTop = logBodyEl.scrollHeight;
 }
-
 document.getElementById("logClose").addEventListener("click", () => { logPanelEl.hidden = true; });
 document.getElementById("logCopyAll").addEventListener("click", () => {
   const txt = LOG.map(e => `[${e.t}] ${e.l} ${e.m}`).join("\n");
@@ -760,6 +790,7 @@ document.getElementById("logClear").addEventListener("click", () => { LOG.length
 /* ═══════════ DOM REFS ═══════════ */
 const playerStage = document.getElementById("playerStage");
 const video = document.getElementById("video");
+const playerUI = document.getElementById("playerUI");
 const playerLoading = document.getElementById("playerLoading");
 const playerError = document.getElementById("playerError");
 const playerErrorMsg = document.getElementById("playerErrorMsg");
@@ -770,7 +801,6 @@ const retryStatus = document.getElementById("retryStatus");
 const retryStatusText = document.getElementById("retryStatusText");
 const playerTitle = document.getElementById("playerTitle");
 const playerSub = document.getElementById("playerSub");
-const playerUI = document.getElementById("playerUI");
 const captionOverlay = document.getElementById("captionOverlay");
 const qualityWrap = document.getElementById("qualityWrap");
 const qualityBtn = document.getElementById("qualityBtn");
@@ -823,7 +853,6 @@ const player = {
   captionIndex: -1,
   captionBlobUrl: null,
   captionTrackEl: null,
-  /* Series data */
   seasons: [],
   detailTitle: P.title,
   detailCover: "",
@@ -979,7 +1008,6 @@ function normalizeSeasons(rawSeasons, isSeries) {
 async function fetchSeriesInfo() {
   if (!P.isSeries || !P.mainDetailPath || player.seriesLoaded || player.seriesLoading) return;
   player.seriesLoading = true;
-
   try {
     const realUrl = absolute(BASE, "/moviesDetail/" + P.mainDetailPath);
     const res = await fetch(proxied(realUrl));
@@ -1002,18 +1030,11 @@ async function fetchSeriesInfo() {
 
     logPush("LOG", "[series] loaded " + player.seasons.length + " seasons, " + player.detailRelated.length + " related");
 
-    /* Show drawer toggle now that we have data */
     drawerToggleBtn.hidden = false;
-
-    /* Update prev/next buttons */
     updatePrevNext();
-
-    /* Pre-populate drawer if open */
-    if (drawerOpen) {
-      renderDrawerContent();
-    }
+    if (drawerOpen) renderDrawerContent();
   } catch (e) {
-    logPush("WARN", "[series] failed to load:", e.message);
+    logPush("WARN", "[series] failed:", e.message);
   } finally {
     player.seriesLoading = false;
   }
@@ -1021,34 +1042,19 @@ async function fetchSeriesInfo() {
 
 function getPrevNextEp() {
   const seasons = player.seasons;
-  const curSe = player.currentSe;
-  const curEp = player.currentEp;
-
-  const si = seasons.findIndex(s => Number(s.se) === Number(curSe));
+  const si = seasons.findIndex(s => Number(s.se) === Number(player.currentSe));
   if (si < 0) return { prev: null, next: null };
-
   const season = seasons[si];
   const eps = season.episodes || [];
-  const ei = eps.findIndex(e => Number(e.ep) === Number(curEp));
+  const ei = eps.findIndex(e => Number(e.ep) === Number(player.currentEp));
   if (ei < 0) return { prev: null, next: null };
 
   let prev = null, next = null;
+  if (ei > 0) prev = { se: season.se, ep: eps[ei - 1].ep };
+  else if (si > 0) { const ps = seasons[si - 1]; const last = ps.episodes[ps.episodes.length - 1]; if (last) prev = { se: ps.se, ep: last.ep }; }
 
-  if (ei > 0) {
-    prev = { se: season.se, ep: eps[ei - 1].ep };
-  } else if (si > 0) {
-    const ps = seasons[si - 1];
-    const last = ps.episodes[ps.episodes.length - 1];
-    if (last) prev = { se: ps.se, ep: last.ep };
-  }
-
-  if (ei < eps.length - 1) {
-    next = { se: season.se, ep: eps[ei + 1].ep };
-  } else if (si < seasons.length - 1) {
-    const ns = seasons[si + 1];
-    const first = ns.episodes[0];
-    if (first) next = { se: ns.se, ep: first.ep };
-  }
+  if (ei < eps.length - 1) next = { se: season.se, ep: eps[ei + 1].ep };
+  else if (si < seasons.length - 1) { const ns = seasons[si + 1]; const first = ns.episodes[0]; if (first) next = { se: ns.se, ep: first.ep }; }
 
   return { prev, next };
 }
@@ -1059,21 +1065,16 @@ function updatePrevNext() {
     nextEpBtn.hidden = true;
     return;
   }
-
   const { prev, next } = getPrevNextEp();
   prevEpBtn.hidden = !prev;
   nextEpBtn.hidden = !next;
-
+  const multiSeason = player.seasons.length > 1;
   if (prev) {
-    const prevSeason = player.seasons.find(s => Number(s.se) === Number(prev.se));
-    const seasonTitle = prevSeason && player.seasons.length > 1 ? "S" + prev.se : "";
-    prevEpLabel.textContent = seasonTitle ? seasonTitle + " E" + String(prev.ep).padStart(2, "0") : "E" + String(prev.ep).padStart(2, "0");
+    prevEpLabel.textContent = (multiSeason ? "S" + prev.se + " " : "") + "E" + String(prev.ep).padStart(2, "0");
     prevEpBtn.title = "Previous: " + prevEpLabel.textContent;
   }
   if (next) {
-    const nextSeason = player.seasons.find(s => Number(s.se) === Number(next.se));
-    const seasonTitle = nextSeason && player.seasons.length > 1 ? "S" + next.se : "";
-    nextEpLabel.textContent = seasonTitle ? seasonTitle + " E" + String(next.ep).padStart(2, "0") : "E" + String(next.ep).padStart(2, "0");
+    nextEpLabel.textContent = (multiSeason ? "S" + next.se + " " : "") + "E" + String(next.ep).padStart(2, "0");
     nextEpBtn.title = "Next: " + nextEpLabel.textContent;
   }
 }
@@ -1081,20 +1082,16 @@ function updatePrevNext() {
 /* ═══════════ EPISODE NAVIGATION ═══════════ */
 function navigateToEpisode(se, ep) {
   if (player.busy) return;
-
   logPush("LOG", "[nav] → S" + se + "E" + ep);
 
-  /* Update state */
   P.se = String(se);
   P.ep = String(ep);
   player.currentSe = Number(se);
   player.currentEp = Number(ep);
 
-  /* Update URL */
   const url = new URL(location.href);
   url.searchParams.set("se", String(se));
   url.searchParams.set("ep", String(ep));
-  /* Update subtitle */
   const season = player.seasons.find(s => Number(s.se) === Number(se));
   const seasonTitle = season?.title || ("Season " + se);
   P.subtitle = seasonTitle + " · Episode " + ep;
@@ -1102,13 +1099,8 @@ function navigateToEpisode(se, ep) {
 
   try { history.pushState({ ep: Date.now() }, "", url.pathname + url.search); } catch (_) {}
 
-  /* Reset player state for new episode */
   resetPlayerForNewEpisode();
-
-  /* Close drawer */
   if (drawerOpen) closeDrawer();
-
-  /* Start playback */
   startPlayback({ isRetry: false });
 }
 
@@ -1145,7 +1137,6 @@ async function fetchStreams(signal) {
   const detailPath = P.detailPath;
   const se = P.isSeries ? Number(P.se) : 0;
   const ep = P.isSeries ? Number(P.ep) : 0;
-
   if (!subjectId || !detailPath) throw new Error("Missing detailPath or subjectId");
 
   const watchParams = new URLSearchParams({ id: subjectId, type: "/movie/detail", lang: "en" });
@@ -1158,7 +1149,6 @@ async function fetchStreams(signal) {
 
   const realPlayUrl = absolute(BASE, "/wefeed-h5api-bff/subject/play?" + playParams);
   const fetchUrl = proxied(realPlayUrl, referer);
-
   logPush("LOG", "[play] fetching:", playParams.toString());
 
   const res = await fetch(fetchUrl, { signal });
@@ -1238,18 +1228,13 @@ async function startPlayback(opts = {}) {
   loadingActions.hidden = true;
   setRetryStatus("");
   loadingText.textContent = "Loading stream...";
-
   clearTimeout(player.totalTimer);
   clearTimeout(player.attemptTimer);
 
   player.totalTimer = setTimeout(() => {
     if (video.readyState === 0 || video.ended) {
       logPush("ERR", "[timeout] total elapsed");
-      failPlayback(
-        "Stream timed out",
-        "The video didn't start within " + (TOTAL_TIMEOUT_MS / 1000) + " seconds.",
-        { reason: "total_timeout" }
-      );
+      failPlayback("Stream timed out", "The video didn't start within " + (TOTAL_TIMEOUT_MS / 1000) + " seconds.", { reason: "total_timeout" });
     }
   }, TOTAL_TIMEOUT_MS);
 
@@ -1257,25 +1242,17 @@ async function startPlayback(opts = {}) {
   if (player.abort) { try { player.abort.abort(); } catch (_) {} }
   player.abort = new AbortController();
 
-  /* Kick off series info fetch in parallel on first boot */
-  if (!player.seriesLoaded && !player.seriesLoading) {
-    fetchSeriesInfo();
-  }
+  if (!player.seriesLoaded && !player.seriesLoading) fetchSeriesInfo();
 
   try {
     if (P.streamUrl) {
       setRetryStatus("Attaching direct stream…");
-      const stream = {
-        url: P.streamUrl,
-        quality: "Auto",
-        format: /\.m3u8([?#&]|$)/i.test(P.streamUrl) ? "HLS" : "MP4",
-      };
+      const stream = { url: P.streamUrl, quality: "Auto", format: /\.m3u8([?#&]|$)/i.test(P.streamUrl) ? "HLS" : "MP4" };
       player.streams = [stream];
       player.currentIdx = 0;
       await tryStream(stream, 0);
       return;
     }
-
     if (!isRetry || player.streams.length === 0) {
       setRetryStatus("Fetching stream list…");
       loadingText.textContent = "Fetching stream list...";
@@ -1287,10 +1264,8 @@ async function startPlayback(opts = {}) {
       buildQualityMenu();
       loadCaptionsForCurrentStream();
     }
-
     setRetryStatus("");
     await tryStream(player.streams[player.currentIdx], player.currentIdx);
-
   } catch (err) {
     if (err.name === "AbortError") return;
     logPush("ERR", "[play] start failed:", err.message);
@@ -1305,14 +1280,10 @@ async function tryStream(stream, idx) {
   const label = stream.quality && stream.quality !== "Auto" ? stream.quality : "Auto";
 
   player.attemptCount++;
-  logPush("LOG", "[stream] attempt " + player.attemptCount + "/" + MAX_STREAM_ATTEMPTS +
-                  " → " + label + " (" + idx + "/" + total + ")");
+  logPush("LOG", "[stream] attempt " + player.attemptCount + "/" + MAX_STREAM_ATTEMPTS + " → " + label + " (" + idx + "/" + total + ")");
 
   if (player.attemptCount > MAX_STREAM_ATTEMPTS) {
-    return failPlayback(
-      "Too many failed attempts",
-      "Tried " + MAX_STREAM_ATTEMPTS + " streams without success."
-    );
+    return failPlayback("Too many failed attempts", "Tried " + MAX_STREAM_ATTEMPTS + " streams without success.");
   }
 
   setRetryStatus("Trying stream " + (idx + 1) + "/" + total + " · " + label);
@@ -1335,11 +1306,8 @@ async function tryStream(stream, idx) {
   const isHls = /\.m3u8([?#&]|$)/i.test(url) || /mpegurl/i.test(stream.format);
 
   try {
-    if (isHls && !video.canPlayType("application/vnd.apple.mpegurl")) {
-      await attachHls(url);
-    } else {
-      await attachNative(url);
-    }
+    if (isHls && !video.canPlayType("application/vnd.apple.mpegurl")) await attachHls(url);
+    else await attachNative(url);
   } catch (err) {
     logPush("ERR", "[stream] attach failed:", err.message);
     advanceToNextStream(err.message || "Attach failed");
@@ -1364,8 +1332,7 @@ function attachNative(url) {
       video.removeEventListener("canplay", onReady);
       video.removeEventListener("error", onErr);
       const code = video.error?.code;
-      const errText = code === 4 ? "source not supported" : "video error " + code;
-      reject(new Error(errText));
+      reject(new Error(code === 4 ? "source not supported" : "video error " + code));
     };
     video.addEventListener("canplay", onReady);
     video.addEventListener("error", onErr);
@@ -1377,7 +1344,6 @@ function attachNative(url) {
 async function attachHls(url) {
   const Hls = await loadHlsLib();
   if (!Hls.isSupported()) return attachNative(url);
-
   return new Promise((resolve, reject) => {
     const hls = new Hls({
       enableWorker: true,
@@ -1387,7 +1353,6 @@ async function attachHls(url) {
       levelLoadingTimeOut: 12000,
       fragLoadingTimeOut: 20000,
     });
-
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       clearTimeout(player.attemptTimer);
       playerLoading.hidden = true;
@@ -1397,7 +1362,6 @@ async function attachHls(url) {
       logPush("LOG", "[hls] manifest parsed, playing");
       resolve();
     });
-
     hls.on(Hls.Events.ERROR, (evt, data) => {
       if (!data.fatal) return;
       logPush("ERR", "[hls] fatal:", data.type, data.details);
@@ -1406,7 +1370,6 @@ async function attachHls(url) {
       player.hls = null;
       reject(new Error("HLS " + (data.details || data.type)));
     });
-
     hls.loadSource(url);
     hls.attachMedia(video);
     player.hls = hls;
@@ -1428,10 +1391,8 @@ async function advanceToNextStream(reason) {
   if (player.busy) return;
   player.busy = true;
   clearTimeout(player.attemptTimer);
-
   try {
     logPush("LOG", "[stream] advancing (reason: " + (reason || "unknown") + ")");
-
     const total = player.streams.length;
     for (let i = 0; i < total; i++) {
       const nextIdx = (player.currentIdx + 1 + i) % total;
@@ -1441,17 +1402,14 @@ async function advanceToNextStream(reason) {
       await tryStream(next, nextIdx);
       return;
     }
-
     if (player.apiRefreshes < MAX_API_REFRESHES) {
       player.apiRefreshes++;
-      logPush("LOG", "[stream] all tried — refreshing play API (" + player.apiRefreshes + "/" + MAX_API_REFRESHES + ")");
+      logPush("LOG", "[stream] refreshing play API (" + player.apiRefreshes + "/" + MAX_API_REFRESHES + ")");
       setRetryStatus("Refreshing play API (" + player.apiRefreshes + "/" + MAX_API_REFRESHES + ")…", "warn");
       loadingText.textContent = "Refreshing stream tokens...";
       player.triedUrls.clear();
       player.streams = [];
-
       await new Promise((r) => setTimeout(r, 1000));
-
       try {
         const { streams, signCookie } = await fetchStreams(player.abort.signal);
         if (!streams.length) throw new Error("API returned 0 streams on refresh");
@@ -1461,21 +1419,11 @@ async function advanceToNextStream(reason) {
         logPush("LOG", "[stream] API refresh returned " + streams.length + " fresh streams");
         await tryStream(streams[0], 0);
         return;
-      } catch (e) {
-        logPush("ERR", "[stream] API refresh failed:", e.message);
-      }
+      } catch (e) { logPush("ERR", "[stream] API refresh failed:", e.message); }
     }
-
     logPush("ERR", "[stream] giving up");
-    failPlayback(
-      "All streams failed",
-      "Tried " + player.attemptCount + " attempts across " + player.streams.length +
-      " streams" + (player.apiRefreshes ? " (" + player.apiRefreshes + " API refreshes)" : "") +
-      "."
-    );
-  } finally {
-    player.busy = false;
-  }
+    failPlayback("All streams failed", "Tried " + player.attemptCount + " attempts across " + player.streams.length + " streams" + (player.apiRefreshes ? " (" + player.apiRefreshes + " API refreshes)" : "") + ".");
+  } finally { player.busy = false; }
 }
 
 function failPlayback(title, message, extra) {
@@ -1485,12 +1433,9 @@ function failPlayback(title, message, extra) {
   setRetryStatus("");
   playerLoading.hidden = true;
   loadingActions.hidden = true;
-
   logPush("ERR", "[fail] " + title + " — " + message);
-
   playerError.hidden = false;
   playerErrorMsg.innerHTML = escapeHtml(message);
-
   if (extra || player.triedUrls.size) {
     playerErrorDetail.hidden = false;
     const details = [];
@@ -1500,9 +1445,7 @@ function failPlayback(title, message, extra) {
     if (player.streams.length) details.push("<b>Total streams:</b> " + player.streams.length);
     if (extra?.reason) details.push("<b>Reason:</b> " + extra.reason);
     playerErrorDetail.innerHTML = details.join("<br>");
-  } else {
-    playerErrorDetail.hidden = true;
-  }
+  } else { playerErrorDetail.hidden = true; }
 }
 
 /* ═══════════ VIDEO EVENTS ═══════════ */
@@ -1517,6 +1460,7 @@ video.addEventListener("playing", () => {
   setRetryStatus("");
   loadingActions.hidden = true;
   logPush("LOG", "[video] playing");
+  showControls();
 });
 
 video.addEventListener("waiting", () => {
@@ -1532,42 +1476,75 @@ video.addEventListener("error", () => {
   }
 });
 
+video.addEventListener("ended", () => {
+  if (P.isSeries && player.seasons.length) {
+    const { next } = getPrevNextEp();
+    if (next) {
+      logPush("LOG", "[ended] auto-advance to S" + next.se + "E" + next.ep);
+      navigateToEpisode(next.se, next.ep);
+    }
+  }
+});
+
 /* ═══════════ CONTROLS ═══════════ */
 function setPlayIcon(playing) {
   btnPlayIcon.querySelector("path").setAttribute("d", playing ? ICON_PAUSE : ICON_PLAY);
   bigPlayIcon.querySelector("path").setAttribute("d", playing ? ICON_PAUSE : ICON_PLAY);
   bigPlay.classList.toggle("hidden", playing);
 }
-video.addEventListener("play", () => setPlayIcon(true));
-video.addEventListener("pause", () => setPlayIcon(false));
+video.addEventListener("play", () => { setPlayIcon(true); resetIdleTimer(); });
+video.addEventListener("pause", () => { setPlayIcon(false); showControls(); });
 
 function togglePlay() {
   if (video.paused) video.play().catch(() => {});
   else video.pause();
 }
 
-/* Stage click handler - play/pause when clicking video frame */
-let stageWasIdleOnPointerDown = false;
+btnPlay.addEventListener("click", (e) => { e.stopPropagation(); togglePlay(); resetIdleTimer(); });
+bigPlay.addEventListener("click", (e) => { e.stopPropagation(); togglePlay(); resetIdleTimer(); });
+
+/* ─────── Idle timer (hide controls) ─────── */
+let idleTimer = null;
+
+function showControls() {
+  playerUI.classList.remove("idle");
+  resetIdleTimer();
+}
+function hideControls() {
+  if (!video.paused) playerUI.classList.add("idle");
+}
+function resetIdleTimer() {
+  playerUI.classList.remove("idle");
+  clearTimeout(idleTimer);
+  if (!video.paused) {
+    idleTimer = setTimeout(() => {
+      if (!qualityList.hidden || !capList.hidden) return;
+      if (!document.getElementById("avPanel").hidden) return;
+      if (drawerOpen) return;
+      playerUI.classList.add("idle");
+    }, IDLE_MS);
+  }
+}
+
+/* Track idle state on pointerdown to distinguish "show controls" from "toggle play" */
+let wasIdleOnPointerDown = false;
+const IGNORE_SELECTORS = ".player-top, .player-bottom, .player-overlay, .menu-wrap, .av-wrap, .drawer, .frame-nav-btn, .frame-seek-btn, .player-bigplay, .center-controls, .retry-status, .caption-overlay";
+
 document.addEventListener("pointerdown", (e) => {
-  const onControl = e.target.closest(
-    ".player-top, .player-bottom, .player-bigplay, .player-overlay, " +
-    ".menu-wrap, .av-wrap, .drawer, .frame-nav-btn, .retry-status"
-  );
+  const onControl = e.target.closest(IGNORE_SELECTORS);
   if (onControl || !playerStage.contains(e.target)) {
-    stageWasIdleOnPointerDown = false;
+    wasIdleOnPointerDown = false;
     return;
   }
-  stageWasIdleOnPointerDown = playerUI.classList.contains("idle");
+  wasIdleOnPointerDown = playerUI.classList.contains("idle");
 }, true);
 
+/* Stage click — show controls or toggle play/pause */
 playerStage.addEventListener("click", (e) => {
-  if (e.target.closest(
-    ".player-top, .player-bottom, .player-bigplay, .player-overlay, " +
-    ".menu-wrap, .av-wrap, .drawer, .frame-nav-btn, .retry-status"
-  )) return;
+  if (e.target.closest(IGNORE_SELECTORS)) return;
 
-  if (stageWasIdleOnPointerDown) {
-    stageWasIdleOnPointerDown = false;
+  if (wasIdleOnPointerDown) {
+    wasIdleOnPointerDown = false;
     showControls();
     return;
   }
@@ -1576,46 +1553,26 @@ playerStage.addEventListener("click", (e) => {
   resetIdleTimer();
 });
 
-btnPlay.addEventListener("click", () => { togglePlay(); resetIdleTimer(); });
-bigPlay.addEventListener("click", () => { togglePlay(); resetIdleTimer(); });
+/* Any mousemove / pointerdown anywhere on the page shows controls */
+document.addEventListener("mousemove", showControls);
+document.addEventListener("pointerdown", showControls);
 
-/* ─────── Idle timer (hide controls) ─────── */
-let idleTimer = null;
-function resetIdleTimer() {
-  playerUI.classList.remove("idle");
-  playerStage.classList.remove("show-nav");
-  clearTimeout(idleTimer);
-  if (!video.paused) {
-    idleTimer = setTimeout(() => {
-      if (!qualityList.hidden || !capList.hidden) return;
-      if (!document.getElementById("avPanel").hidden) return;
-      if (drawerOpen) return;
-      playerUI.classList.add("idle");
-      playerStage.classList.remove("show-nav");
-    }, 3000);
-  } else {
-    playerStage.classList.add("show-nav");
-  }
-}
-function showControls() {
-  playerUI.classList.remove("idle");
-  playerStage.classList.add("show-nav");
-  resetIdleTimer();
-}
-document.addEventListener("mousemove", () => {
-  playerStage.classList.add("show-nav");
-  resetIdleTimer();
+/* ═══════════ FRAME BUTTONS ═══════════ */
+document.getElementById("frameRewind").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (!video.duration) return;
+  video.currentTime = Math.max(0, video.currentTime - 10);
+  showFeedback("-10s");
+  showControls();
 });
-document.addEventListener("pointerdown", () => {
-  playerStage.classList.add("show-nav");
-  resetIdleTimer();
-});
-/* Show nav on hover for desktop */
-playerStage.addEventListener("mouseenter", () => {
-  playerStage.classList.add("show-nav");
+document.getElementById("frameForward").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (!video.duration) return;
+  video.currentTime = Math.min(video.duration, video.currentTime + 10);
+  showFeedback("+10s");
+  showControls();
 });
 
-/* ─────── Prev/Next frame buttons ─────── */
 prevEpBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   if (!player.seasons.length) return;
@@ -1642,9 +1599,7 @@ video.addEventListener("progress", () => {
   const end = video.buffered.end(video.buffered.length - 1);
   seekBuffer.style.width = (end / video.duration) * 100 + "%";
 });
-video.addEventListener("loadedmetadata", () => {
-  timeDur.textContent = formatTime(video.duration);
-});
+video.addEventListener("loadedmetadata", () => { timeDur.textContent = formatTime(video.duration); });
 
 let scrubbing = false;
 seekEl.addEventListener("pointerdown", (e) => {
@@ -1692,6 +1647,7 @@ const avWrap = document.getElementById("avWrap");
 document.getElementById("btnAv").addEventListener("click", (e) => {
   e.stopPropagation();
   avPanel.hidden = !avPanel.hidden;
+  resetIdleTimer();
 });
 document.addEventListener("click", (e) => {
   if (!avWrap.contains(e.target)) avPanel.hidden = true;
@@ -1735,6 +1691,7 @@ qualityBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   qualityList.hidden = !qualityList.hidden;
   qualityBtn.classList.toggle("open", !qualityList.hidden);
+  resetIdleTimer();
 });
 document.addEventListener("click", (e) => {
   if (!qualityWrap.contains(e.target)) {
@@ -1839,6 +1796,7 @@ capBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   capList.hidden = !capList.hidden;
   capBtn.classList.toggle("open", !capList.hidden);
+  resetIdleTimer();
 });
 document.addEventListener("click", (e) => {
   if (!capWrap.contains(e.target)) {
@@ -1857,7 +1815,6 @@ function openDrawer() {
   drawerEl.hidden = false;
   drawerBackdrop.hidden = false;
   playerUI.classList.remove("idle");
-  playerStage.classList.remove("show-nav");
   renderDrawerContent();
 }
 function closeDrawer() {
@@ -1881,7 +1838,6 @@ function renderDrawerContent() {
     drawerBody.innerHTML = '<div class="drawer-loading"><div class="spinner"></div>Loading…</div>';
     return;
   }
-
   if (P.isSeries && player.seasons.length) {
     drawerEyebrow.textContent = "Browse";
     drawerTitle.textContent = "Episodes";
@@ -1898,7 +1854,6 @@ function renderDrawerContent() {
 }
 
 function renderDrawerEpisodes() {
-  /* Find currently selected season */
   let si = player.seasons.findIndex(s => Number(s.se) === Number(player.currentSe));
   if (si < 0) si = 0;
   const season = player.seasons[si];
@@ -1907,9 +1862,7 @@ function renderDrawerEpisodes() {
     ? `<div class="drawer-season-row">
         <label>Season</label>
         <select class="drawer-season-select" id="drawerSeasonSelect">
-          ${player.seasons.map((s, i) =>
-            `<option value="${i}"${i === si ? " selected" : ""}>${escapeHtml(s.title)}</option>`
-          ).join("")}
+          ${player.seasons.map((s, i) => `<option value="${i}"${i === si ? " selected" : ""}>${escapeHtml(s.title)}</option>`).join("")}
         </select>
       </div>`
     : "";
@@ -1928,9 +1881,7 @@ function renderDrawerEpisodes() {
 
   const epBtns = season.episodes.map(e => {
     const isCurrent = Number(season.se) === Number(player.currentSe) && Number(e.ep) === Number(player.currentEp);
-    return `<button class="drawer-ep-btn${isCurrent ? " active" : ""}" data-se="${season.se}" data-ep="${e.ep}">
-      E${String(e.ep).padStart(2, "0")}
-    </button>`;
+    return `<button class="drawer-ep-btn${isCurrent ? " active" : ""}" data-se="${season.se}" data-ep="${e.ep}">E${String(e.ep).padStart(2, "0")}</button>`;
   }).join("");
 
   drawerBody.innerHTML = `<div class="drawer-section">${navHtml}${seasonSelect}<div class="drawer-ep-grid">${epBtns}</div></div>`;
@@ -1943,31 +1894,24 @@ function renderDrawerEpisodes() {
   const sel = document.getElementById("drawerSeasonSelect");
   if (sel) sel.addEventListener("change", (ev) => {
     const newSi = Number(ev.target.value);
-    const newSeason = player.seasons[newSi];
-    renderDrawerSeasonEpisodes(newSeason);
+    renderDrawerSeasonEpisodes(player.seasons[newSi]);
   });
 
   drawerBody.querySelectorAll(".drawer-ep-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      navigateToEpisode(Number(btn.dataset.se), Number(btn.dataset.ep));
-    });
+    btn.addEventListener("click", () => navigateToEpisode(Number(btn.dataset.se), Number(btn.dataset.ep)));
   });
 }
 
 function renderDrawerSeasonEpisodes(season) {
   const epBtns = season.episodes.map(e => {
     const isCurrent = Number(season.se) === Number(player.currentSe) && Number(e.ep) === Number(player.currentEp);
-    return `<button class="drawer-ep-btn${isCurrent ? " active" : ""}" data-se="${season.se}" data-ep="${e.ep}">
-      E${String(e.ep).padStart(2, "0")}
-    </button>`;
+    return `<button class="drawer-ep-btn${isCurrent ? " active" : ""}" data-se="${season.se}" data-ep="${e.ep}">E${String(e.ep).padStart(2, "0")}</button>`;
   }).join("");
   const grid = drawerBody.querySelector(".drawer-ep-grid");
   if (grid) {
     grid.innerHTML = epBtns;
     grid.querySelectorAll(".drawer-ep-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        navigateToEpisode(Number(btn.dataset.se), Number(btn.dataset.ep));
-      });
+      btn.addEventListener("click", () => navigateToEpisode(Number(btn.dataset.se), Number(btn.dataset.ep)));
     });
   }
 }
@@ -1992,15 +1936,9 @@ function renderDrawerRelated() {
       const sid = btn.dataset.subject;
       if (!dp) return;
       const params = new URLSearchParams({
-        detailPath: dp,
-        mainDetailPath: dp,
-        subjectId: sid,
-        isSeries: "1",
-        title: "",
-        subtitle: "",
-        lang: "Original Audio",
-        se: "1",
-        ep: "1",
+        detailPath: dp, mainDetailPath: dp, subjectId: sid,
+        isSeries: "1", title: "", subtitle: "", lang: "Original Audio",
+        se: "1", ep: "1",
       });
       location.href = "player.html?" + params.toString();
     });
@@ -2058,20 +1996,8 @@ document.addEventListener("keydown", (e) => {
     case "l": case "L": e.preventDefault(); logPanelEl.hidden = !logPanelEl.hidden; if (!logPanelEl.hidden) renderLogs(); break;
     case "c": case "C": e.preventDefault(); if (!capWrap.hidden) { capList.hidden = !capList.hidden; capBtn.classList.toggle("open", !capList.hidden); } break;
     case "q": case "Q": e.preventDefault(); if (!qualityWrap.hidden) { qualityList.hidden = !qualityList.hidden; qualityBtn.classList.toggle("open", !qualityList.hidden); } break;
-    case "[": {
-      e.preventDefault();
-      const v = Number(brightSlider.value);
-      brightSlider.value = Math.max(0.2, v - 0.1);
-      brightSlider.dispatchEvent(new Event("input"));
-      break;
-    }
-    case "]": {
-      e.preventDefault();
-      const v = Number(brightSlider.value);
-      brightSlider.value = Math.min(2, v + 0.1);
-      brightSlider.dispatchEvent(new Event("input"));
-      break;
-    }
+    case "[": e.preventDefault(); brightSlider.value = Math.max(0.2, Number(brightSlider.value) - 0.1); brightSlider.dispatchEvent(new Event("input")); break;
+    case "]": e.preventDefault(); brightSlider.value = Math.min(2, Number(brightSlider.value) + 0.1); brightSlider.dispatchEvent(new Event("input")); break;
   }
 });
 
@@ -2089,9 +2015,11 @@ document.getElementById("btnPip").addEventListener("click", async () => {
 });
 document.getElementById("btnRewind").addEventListener("click", () => {
   if (video.duration) video.currentTime = Math.max(0, video.currentTime - 10);
+  showFeedback("-10s");
 });
 document.getElementById("btnForward").addEventListener("click", () => {
   if (video.duration) video.currentTime = Math.min(video.duration, video.currentTime + 10);
+  showFeedback("+10s");
 });
 
 /* ═══════════ NAVIGATION ═══════════ */
@@ -2103,7 +2031,6 @@ document.getElementById("playerHome").addEventListener("click", () => {
   location.href = "index.html";
 });
 
-/* Handle browser back/forward */
 window.addEventListener("popstate", () => {
   const url = new URL(location.href);
   const q = url.searchParams;
@@ -2152,11 +2079,7 @@ playerTitle.textContent = P.title;
 playerSub.textContent = P.subtitle;
 player.currentSe = Number(P.se) || 0;
 player.currentEp = Number(P.ep) || 1;
-
-/* For series, show the drawer toggle immediately (loading state) */
-if (P.isSeries) {
-  drawerToggleBtn.hidden = false;
-}
+if (P.isSeries) drawerToggleBtn.hidden = false;
 
 if (!P.streamUrl && (!P.detailPath || !P.subjectId)) {
   failPlayback("Missing URL parameters", "Open this page from the catalog.");
