@@ -58,19 +58,32 @@
 
   html,body{background:var(--bg);color:var(--text);min-height:100%}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:96px}
+  body.nav-open { overflow: hidden; }
   img{display:block}
   button{font-family:inherit;color:inherit;cursor:pointer}
 
   /* ═══ TOP BAR ═══ */
   .topbar{
     position:sticky;top:0;z-index:100;
-    display:flex;align-items:center;gap:16px;
+    display:flex;align-items:center;gap:12px;
     padding:14px 22px;
     background:linear-gradient(180deg,rgba(0,0,0,.96) 65%,rgba(0,0,0,.65));
     backdrop-filter:blur(14px) saturate(1.2);
     -webkit-backdrop-filter:blur(14px) saturate(1.2);
     border-bottom:1px solid rgba(255,255,255,.05);
   }
+  .hamburger-btn{
+    width:42px;height:42px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:10px;color:#fff;
+    transition:.15s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .hamburger-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22)}
+  .hamburger-btn:active{transform:scale(.94)}
+  .hamburger-btn svg{width:20px;height:20px;fill:currentColor}
   .brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;letter-spacing:-.3px;color:#fff;white-space:nowrap;flex-shrink:0}
   .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
 
@@ -167,7 +180,6 @@
   .row-scroll-btn.left{left:6px}
   .row-scroll-btn.right{right:6px}
 
-  /* Hide on touch devices */
   @media (hover: none) and (pointer: coarse) {
     .row-scroll-btn{display:none !important}
   }
@@ -269,24 +281,103 @@
   .credits-section h3{font-size:16px;font-weight:800;letter-spacing:-.2px;margin-bottom:16px;display:flex;align-items:baseline;gap:10px}
   .credits-section h3 .count{font-size:12px;color:var(--muted);font-weight:600}
 
-  /* ═══ ROW FULL / INFINITE ═══ */
-  .row-full-controls{
-    display:flex;align-items:center;gap:12px;
-    margin-bottom:20px;flex-wrap:wrap;
-  }
-  .row-full-controls .filter-pill{padding:7px 14px;font-size:12.5px}
+  /* ═══ ACTIVE FILTERS BAR ═══ */
+  .active-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:20px}
+  .active-filters[hidden]{display:none}
+  .filter-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 5px 5px 12px;background:rgba(229,9,20,.12);border:1px solid rgba(229,9,20,.3);border-radius:999px;color:#ff7a84;font-size:12.5px;font-weight:700}
+  .filter-tag button{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.08);border:none;color:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:.12s}
+  .filter-tag button:hover{background:rgba(255,255,255,.2)}
+  .clear-filters-btn{padding:6px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#8a8a94;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;transition:.12s}
+  .clear-filters-btn:hover{color:#fff;border-color:rgba(255,255,255,.2)}
 
-  .infinite-loader{
-    grid-column:1/-1;
-    display:flex;align-items:center;justify-content:center;
-    gap:12px;padding:32px;
-    color:var(--muted);font-size:12.5px;
+  /* ═══ NAV DRAWER ═══ */
+  .nav-backdrop{
+    position:fixed;inset:0;z-index:850;
+    background:rgba(0,0,0,.72);
+    animation:navFade .2s ease;
   }
-  .infinite-loader[hidden]{display:none}
-  .infinite-loader .spinner{width:18px;height:18px;border-width:2px}
+  .nav-backdrop[hidden]{display:none}
+  @keyframes navFade{from{opacity:0}to{opacity:1}}
+
+  .nav-drawer{
+    position:fixed;top:0;left:0;bottom:0;
+    width:min(340px,88vw);
+    background:#131318;
+    border-right:1px solid var(--line);
+    z-index:851;
+    display:flex;flex-direction:column;
+    animation:navSlideIn .26s cubic-bezier(.2,.9,.3,1);
+    box-shadow:16px 0 40px rgba(0,0,0,.6);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .nav-drawer[hidden]{display:none}
+  .nav-drawer.closing{animation:navSlideOut .22s ease forwards}
+  @keyframes navSlideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+  @keyframes navSlideOut{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+
+  .nav-drawer-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 20px;border-bottom:1px solid var(--line);
+    flex-shrink:0;
+  }
+  .nav-drawer-title{font-size:17px;font-weight:800;letter-spacing:-.2px}
+  .nav-drawer-close{
+    width:34px;height:34px;border-radius:50%;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+    color:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;transition:.15s;
+  }
+  .nav-drawer-close:hover{background:rgba(255,255,255,.14)}
+
+  .nav-drawer-body{flex:1;overflow-y:auto;padding:8px 0}
+
+  .nav-section{border-bottom:1px solid rgba(255,255,255,.04)}
+  .nav-section:last-child{border-bottom:none}
+
+  .nav-section-toggle{
+    display:flex;align-items:center;gap:12px;
+    width:100%;padding:14px 20px;
+    background:transparent;border:none;
+    color:#e5e5ea;cursor:pointer;text-align:left;
+    font-family:inherit;font-size:15px;font-weight:700;
+    transition:.15s;
+  }
+  .nav-section-toggle:hover{background:rgba(255,255,255,.04);color:#fff}
+  .nav-section-icon{font-size:18px;line-height:1;flex-shrink:0}
+  .nav-section-label{flex:1;min-width:0}
+  .nav-section-chev{width:16px;height:16px;fill:currentColor;opacity:.5;transition:transform .18s;flex-shrink:0}
+  .nav-section-toggle.open .nav-section-chev{transform:rotate(180deg)}
+  .nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:10.5px;font-weight:800;flex-shrink:0;margin-right:6px}
+  .nav-badge[hidden]{display:none}
+
+  .nav-section-list{padding:0 12px 10px}
+  .nav-section-list[hidden]{display:none}
+
+  .nav-item{
+    display:block;width:100%;padding:10px 16px;
+    background:transparent;border:none;border-radius:8px;
+    color:#d0d0d8;cursor:pointer;text-align:left;
+    font-family:inherit;font-size:13.5px;font-weight:500;
+    transition:.12s;margin-bottom:1px;
+  }
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-item.active{background:rgba(229,9,20,.15);color:#ff5a5f;font-weight:700}
+
+  .nav-chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px}
+  .nav-chip{
+    padding:6px 12px;border-radius:999px;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+    color:#d0d0d8;cursor:pointer;font-family:inherit;
+    font-size:12px;font-weight:600;transition:.12s;
+  }
+  .nav-chip:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);color:#fff}
+  .nav-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
 
   @media (max-width:640px){
-    .topbar{padding:12px 14px;gap:10px}
+    .topbar{padding:12px 14px;gap:8px}
+    .hamburger-btn{width:36px;height:36px}
+    .hamburger-btn svg{width:18px;height:18px}
     .brand{font-size:15px}
     .brand .dot{width:8px;height:8px}
     #searchInput{height:40px;font-size:13.5px;padding:0 36px 0 40px}
@@ -309,12 +400,16 @@
     .show-all-btn{padding:5px 11px;font-size:11.5px}
     .section-actions .hint{display:none}
     .row-scroll-btn{display:none}
+    .nav-drawer{width:88vw}
   }
 </style>
 </head>
 <body>
 
 <header class="topbar">
+  <button class="hamburger-btn" id="navToggle" title="Browse categories" aria-label="Open menu">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+  </button>
   <div class="brand"><span class="dot"></span>Browse</div>
   <div class="search-wrap" id="searchWrap">
     <div class="search-input-wrap">
@@ -371,21 +466,106 @@
         <span class="hint" id="rowFullCount"></span>
       </div>
     </div>
-    <div class="row-full-controls" id="rowFullControls" hidden>
-      <button class="filter-pill active" data-rowfull-type="all">All</button>
-      <button class="filter-pill" data-rowfull-type="movie">Movies</button>
-      <button class="filter-pill" data-rowfull-type="tv">TV Shows</button>
-    </div>
     <div class="grid" id="rowFullGrid"></div>
     <div id="rowFullSentinel" class="sentinel" aria-hidden="true"></div>
-    <div id="rowFullLoading" class="infinite-loader" hidden>
-      <div class="spinner"></div>
+    <div id="rowFullLoading" class="search-loading" hidden>
+      <div class="spinner" style="width:18px;height:18px;border-width:2px"></div>
       <span>Loading more titles…</span>
     </div>
     <div id="rowFullEndMsg" class="end-msg" hidden>— End of list —</div>
   </section>
 
+  <section class="view" id="categoryView" hidden>
+    <button class="back-btn" id="categoryBackBtn">← Back</button>
+    <div class="search-header">
+      <h2 id="categoryTitle">Popular Movies</h2>
+      <span class="result-count" id="categoryCount"></span>
+    </div>
+    <div class="active-filters" id="activeFilters" hidden></div>
+    <div class="grid" id="categoryGrid"></div>
+    <div id="categorySentinel" class="sentinel" aria-hidden="true"></div>
+    <div id="categoryLoading" class="search-loading" hidden>
+      <div class="spinner" style="width:18px;height:18px;border-width:2px"></div>
+      <span>Loading more titles…</span>
+    </div>
+    <div id="categoryEndMsg" class="end-msg" hidden>— End of results —</div>
+  </section>
+
 </main>
+
+<!-- NAV DRAWER -->
+<div class="nav-backdrop" id="navBackdrop" hidden></div>
+<aside class="nav-drawer" id="navDrawer" hidden>
+  <div class="nav-drawer-head">
+    <div class="nav-drawer-title">Browse</div>
+    <button class="nav-drawer-close" id="navClose" aria-label="Close">✕</button>
+  </div>
+  <div class="nav-drawer-body">
+
+    <div class="nav-section">
+      <button class="nav-section-toggle" data-toggle="movies">
+        <span class="nav-section-icon">🎬</span>
+        <span class="nav-section-label">Movies</span>
+        <svg class="nav-section-chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="nav-section-list" id="navListMovies" hidden>
+        <button class="nav-item" data-type="movie" data-key="popular">Popular</button>
+        <button class="nav-item" data-type="movie" data-key="in_theatres">In Theatres</button>
+        <button class="nav-item" data-type="movie" data-key="coming_soon">Coming Soon</button>
+        <button class="nav-item" data-type="movie" data-key="new_streaming">New on Streaming</button>
+        <button class="nav-item" data-type="movie" data-key="netflix">New on Netflix</button>
+        <button class="nav-item" data-type="movie" data-key="prime">New on Prime</button>
+        <button class="nav-item" data-type="movie" data-key="free">Free to Watch</button>
+        <button class="nav-item" data-type="movie" data-key="top_rated">Top Rated</button>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <button class="nav-section-toggle" data-toggle="tv">
+        <span class="nav-section-icon">📺</span>
+        <span class="nav-section-label">TV Shows</span>
+        <svg class="nav-section-chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="nav-section-list" id="navListTv" hidden>
+        <button class="nav-item" data-type="tv" data-key="popular">Popular</button>
+        <button class="nav-item" data-type="tv" data-key="airing_tonight">Airing Tonight</button>
+        <button class="nav-item" data-type="tv" data-key="new_series">New Series</button>
+        <button class="nav-item" data-type="tv" data-key="returning">Returning This Week</button>
+        <button class="nav-item" data-type="tv" data-key="currently_airing">Currently Airing</button>
+        <button class="nav-item" data-type="tv" data-key="new_streaming">New on Streaming</button>
+        <button class="nav-item" data-type="tv" data-key="netflix">New on Netflix</button>
+        <button class="nav-item" data-type="tv" data-key="prime">New on Prime</button>
+        <button class="nav-item" data-type="tv" data-key="free">Free to Watch</button>
+        <button class="nav-item" data-type="tv" data-key="top_rated">Top Rated</button>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <button class="nav-section-toggle" data-toggle="genre">
+        <span class="nav-section-icon">🏷️</span>
+        <span class="nav-section-label">Genre</span>
+        <span class="nav-badge" id="genreBadge" hidden>1</span>
+        <svg class="nav-section-chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="nav-section-list" id="navListGenre" hidden>
+        <div class="nav-chips" id="genreChips"></div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <button class="nav-section-toggle" data-toggle="language">
+        <span class="nav-section-icon">🌐</span>
+        <span class="nav-section-label">Language</span>
+        <span class="nav-badge" id="langBadge" hidden>1</span>
+        <svg class="nav-section-chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="nav-section-list" id="navListLanguage" hidden>
+        <div class="nav-chips" id="langChips"></div>
+      </div>
+    </div>
+
+  </div>
+</aside>
 
 <div id="pageBar" class="page-bar" hidden>
   <button class="page-btn" id="pagePrev" title="Previous page">‹</button>
@@ -423,12 +603,167 @@ const SUGGEST_LIMIT_PEOPLE = 3;
 const SUGGEST_DEBOUNCE_MS = 280;
 const SEARCH_DEBOUNCE_MS = 400;
 
+/* ═══ HELPERS ═══ */
+function dateStr(offsetDays) {
+  const d = new Date();
+  d.setDate(d.getDate() + (offsetDays || 0));
+  return d.toISOString().slice(0, 10);
+}
+
+/* ═══ CATEGORIES ═══ */
+const CATEGORIES = {
+  movie: {
+    popular: {
+      label: "Popular",
+      sortBy: "popularity.desc",
+    },
+    in_theatres: {
+      label: "In Theatres",
+      sortBy: "popularity.desc",
+      discoverParams: { "primary_release_date.gte": dateStr(-30), "primary_release_date.lte": dateStr(30) },
+    },
+    coming_soon: {
+      label: "Coming Soon",
+      sortBy: "primary_release_date.asc",
+      discoverParams: { "primary_release_date.gte": dateStr(1), "primary_release_date.lte": dateStr(180) },
+    },
+    new_streaming: {
+      label: "New on Streaming",
+      sortBy: "popularity.desc",
+      discoverParams: { with_watch_monetization_types: "flatrate" },
+    },
+    netflix: {
+      label: "New on Netflix",
+      sortBy: "popularity.desc",
+      discoverParams: { with_watch_providers: "8", watch_region: "US" },
+    },
+    prime: {
+      label: "New on Prime",
+      sortBy: "popularity.desc",
+      discoverParams: { with_watch_providers: "9", watch_region: "US" },
+    },
+    free: {
+      label: "Free to Watch",
+      sortBy: "popularity.desc",
+      discoverParams: { with_watch_monetization_types: "free" },
+    },
+    top_rated: {
+      label: "Top Rated",
+      sortBy: "vote_average.desc",
+      discoverParams: { "vote_count.gte": "1000" },
+    },
+  },
+  tv: {
+    popular: {
+      label: "Popular",
+      sortBy: "popularity.desc",
+    },
+    airing_tonight: {
+      label: "Airing Tonight",
+      sortBy: "popularity.desc",
+      discoverParams: { "air_date.gte": dateStr(0), "air_date.lte": dateStr(0) },
+    },
+    new_series: {
+      label: "New Series",
+      sortBy: "first_air_date.desc",
+      discoverParams: { "first_air_date.gte": dateStr(-90), "first_air_date.lte": dateStr(0) },
+    },
+    returning: {
+      label: "Returning This Week",
+      sortBy: "popularity.desc",
+      discoverParams: { with_status: "0", "air_date.gte": dateStr(-7), "air_date.lte": dateStr(0) },
+    },
+    currently_airing: {
+      label: "Currently Airing",
+      sortBy: "popularity.desc",
+      discoverParams: { with_status: "0" },
+    },
+    new_streaming: {
+      label: "New on Streaming",
+      sortBy: "popularity.desc",
+      discoverParams: { with_watch_monetization_types: "flatrate" },
+    },
+    netflix: {
+      label: "New on Netflix",
+      sortBy: "popularity.desc",
+      discoverParams: { with_watch_providers: "8", watch_region: "US" },
+    },
+    prime: {
+      label: "New on Prime",
+      sortBy: "popularity.desc",
+      discoverParams: { with_watch_providers: "9", watch_region: "US" },
+    },
+    free: {
+      label: "Free to Watch",
+      sortBy: "popularity.desc",
+      discoverParams: { with_watch_monetization_types: "free" },
+    },
+    top_rated: {
+      label: "Top Rated",
+      sortBy: "vote_average.desc",
+      discoverParams: { "vote_count.gte": "500" },
+    },
+  },
+};
+
+/* ═══ GENRES ═══ */
+const GENRES = {
+  movie: [
+    { id: 28, name: "Action" }, { id: 12, name: "Adventure" }, { id: 16, name: "Animation" },
+    { id: 35, name: "Comedy" }, { id: 80, name: "Crime" }, { id: 99, name: "Documentary" },
+    { id: 18, name: "Drama" }, { id: 10751, name: "Family" }, { id: 14, name: "Fantasy" },
+    { id: 36, name: "History" }, { id: 27, name: "Horror" }, { id: 10402, name: "Music" },
+    { id: 9648, name: "Mystery" }, { id: 10749, name: "Romance" }, { id: 878, name: "Sci-Fi" },
+    { id: 53, name: "Thriller" }, { id: 10752, name: "War" }, { id: 37, name: "Western" },
+  ],
+  tv: [
+    { id: 10759, name: "Action & Adventure" }, { id: 16, name: "Animation" },
+    { id: 35, name: "Comedy" }, { id: 80, name: "Crime" }, { id: 99, name: "Documentary" },
+    { id: 18, name: "Drama" }, { id: 10751, name: "Family" }, { id: 10762, name: "Kids" },
+    { id: 9648, name: "Mystery" }, { id: 10763, name: "News" }, { id: 10764, name: "Reality" },
+    { id: 10765, name: "Sci-Fi & Fantasy" }, { id: 10766, name: "Soap" }, { id: 10767, name: "Talk" },
+    { id: 10768, name: "War & Politics" }, { id: 37, name: "Western" },
+  ],
+};
+
+/* ═══ LANGUAGES ═══ */
+const LANGUAGES = [
+  { code: "en", name: "English" }, { code: "es", name: "Spanish" },
+  { code: "fr", name: "French" }, { code: "de", name: "German" },
+  { code: "it", name: "Italian" }, { code: "ja", name: "Japanese" },
+  { code: "ko", name: "Korean" }, { code: "zh", name: "Chinese" },
+  { code: "hi", name: "Hindi" }, { code: "ru", name: "Russian" },
+  { code: "pt", name: "Portuguese" }, { code: "tr", name: "Turkish" },
+  { code: "th", name: "Thai" }, { code: "ar", name: "Arabic" },
+  { code: "ta", name: "Tamil" }, { code: "te", name: "Telugu" },
+  { code: "ml", name: "Malayalam" }, { code: "kn", name: "Kannada" },
+  { code: "bn", name: "Bengali" }, { code: "id", name: "Indonesian" },
+];
+
 /* ═══════════════════════════════════════════════════════════════
    STATE
    ═══════════════════════════════════════════════════════════════ */
 const S = {
   view: "browse",
   prevView: "browse",
+
+  filter: {
+    type: "movie",       // active type context for genre/language
+    categoryKey: null,
+    category: null,      // resolved category object
+    genre: null,         // numeric id
+    language: null,      // ISO code
+  },
+
+  category: {
+    page: 0,
+    hasMore: true,
+    loading: false,
+    totalPages: 0,
+    items: [],
+    seenIds: new Set(),
+    abort: null,
+  },
 
   search: {
     query: "",
@@ -446,27 +781,20 @@ const S = {
     currentPage: 1,
     lastMs: 0,
     abort: null,
+    returnView: "browse",
   },
 
   person: { id: null, data: null, credits: [], loading: false, abort: null },
 
   rowFull: {
-    key: null,
-    title: "",
-    endpoint: "",
-    mediaType: "",
-    activeType: "all",
-    page: 0,
-    hasMore: true,
-    loading: false,
-    totalPages: 0,
-    items: [],
-    seenIds: new Set(),
-    abort: null,
-    initialized: false,
+    key: null, title: "", endpoint: "", mediaType: "",
+    page: 0, hasMore: true, loading: false,
+    items: [], seenIds: new Set(), abort: null, initialized: false,
   },
 
   suggest: { items: [], activeIdx: -1, abort: null, timer: null, active: false },
+
+  nav: { open: false },
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -547,6 +875,7 @@ function switchView(name) {
   document.getElementById("searchView").hidden = name !== "search";
   document.getElementById("personView").hidden = name !== "person";
   document.getElementById("rowFullView").hidden = name !== "rowFull";
+  document.getElementById("categoryView").hidden = name !== "category";
   if (name !== "search") hidePageBar();
   window.scrollTo({ top: 0, behavior: "auto" });
 }
@@ -573,7 +902,6 @@ function titleCardHtml(item, sub) {
     ${sub ? `<div class="card-sub">${escapeHtml(sub)}</div>` : ""}
   </button>`;
 }
-
 function personCardHtml(p) {
   const initial = (p.name || "?").charAt(0).toUpperCase();
   const avatar = p.profile
@@ -586,7 +914,6 @@ function personCardHtml(p) {
     ${p.dept ? `<div class="person-sub">${escapeHtml(p.dept)}</div>` : ""}
   </button>`;
 }
-
 function bindTitleCards(root) {
   root.querySelectorAll(".card").forEach(el => {
     el.addEventListener("click", () => {
@@ -620,22 +947,15 @@ function attachRowScrollButtons(rowWrap, row) {
       right.classList.remove("visible");
       return;
     }
-    if (row.scrollLeft < 10) {
-      left.classList.remove("visible");
-    } else {
-      left.classList.add("visible");
-    }
-    if (row.scrollLeft > max - 10) {
-      right.classList.remove("visible");
-    } else {
-      right.classList.add("visible");
-    }
+    if (row.scrollLeft < 10) left.classList.remove("visible");
+    else left.classList.add("visible");
+    if (row.scrollLeft > max - 10) right.classList.remove("visible");
+    else right.classList.add("visible");
   }
 
   row.addEventListener("scroll", update, { passive: true });
   window.addEventListener("resize", update);
 
-  // Update button visibility when row content changes (images load, etc.)
   if (typeof ResizeObserver !== "undefined") {
     const ro = new ResizeObserver(update);
     ro.observe(row);
@@ -644,29 +964,19 @@ function attachRowScrollButtons(rowWrap, row) {
 
   const scrollAmount = () => Math.max(280, Math.round(row.clientWidth * 0.75));
 
-  left.addEventListener("click", (e) => {
-    e.stopPropagation();
-    row.scrollBy({ left: -scrollAmount(), behavior: "smooth" });
-  });
-  right.addEventListener("click", (e) => {
-    e.stopPropagation();
-    row.scrollBy({ left: scrollAmount(), behavior: "smooth" });
-  });
+  left.addEventListener("click", (e) => { e.stopPropagation(); row.scrollBy({ left: -scrollAmount(), behavior: "smooth" }); });
+  right.addEventListener("click", (e) => { e.stopPropagation(); row.scrollBy({ left: scrollAmount(), behavior: "smooth" }); });
 
-  // Initial check (after layout settles)
   requestAnimationFrame(update);
   setTimeout(update, 100);
   setTimeout(update, 500);
   setTimeout(update, 1500);
-
   return update;
 }
 
 /* ═══════════════════════════════════════════════════════════════
    BROWSE ROWS
    ═══════════════════════════════════════════════════════════════ */
-const rowUpdaters = [];
-
 async function loadBrowseRows() {
   const rowsWrap = document.getElementById("browseRows");
   rowsWrap.innerHTML = BROWSE_ROWS.map((row, i) => `
@@ -691,10 +1001,7 @@ async function loadBrowseRows() {
   `).join("");
 
   rowsWrap.querySelectorAll(".show-all-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.row);
-      openRowFull(idx);
-    });
+    btn.addEventListener("click", () => openRowFull(Number(btn.dataset.row)));
   });
 
   await Promise.all(BROWSE_ROWS.map(async (row, i) => {
@@ -715,9 +1022,7 @@ async function loadBrowseRows() {
       hint.textContent = items.length + " titles";
       container.innerHTML = items.map(it => titleCardHtml(it)).join("");
       bindTitleCards(container);
-
-      const update = attachRowScrollButtons(rowWrap, container);
-      if (update) rowUpdaters.push(update);
+      attachRowScrollButtons(rowWrap, container);
     } catch (e) {
       console.error("[browse row]", row.key, e);
       container.innerHTML = '<div class="empty">Failed to load.</div>';
@@ -727,7 +1032,7 @@ async function loadBrowseRows() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ROW FULL VIEW — INFINITE SCROLL
+   ROW FULL VIEW
    ═══════════════════════════════════════════════════════════════ */
 async function openRowFull(rowIdx) {
   const row = BROWSE_ROWS[rowIdx];
@@ -736,47 +1041,25 @@ async function openRowFull(rowIdx) {
   if (S.rowFull.abort) { try { S.rowFull.abort.abort(); } catch (_) {} }
   S.rowFull.abort = new AbortController();
 
-  // Reset state
   S.rowFull.key = row.key;
   S.rowFull.title = row.title;
   S.rowFull.endpoint = row.endpoint;
   S.rowFull.mediaType = row.mediaType;
-  S.rowFull.activeType = "all";
   S.rowFull.page = 0;
   S.rowFull.hasMore = true;
   S.rowFull.loading = false;
-  S.rowFull.totalPages = 0;
   S.rowFull.items = [];
   S.rowFull.seenIds = new Set();
   S.rowFull.initialized = false;
 
   document.getElementById("rowFullTitle").textContent = row.title;
   document.getElementById("rowFullCount").textContent = "";
-  document.getElementById("rowFullControls").hidden = true;
   document.getElementById("rowFullGrid").innerHTML =
     '<div class="spinner-wrap" style="grid-column:1/-1"><div class="spinner"></div>Loading…</div>';
   document.getElementById("rowFullLoading").hidden = true;
   document.getElementById("rowFullEndMsg").hidden = true;
 
-  // Bind type filter pills
-  document.querySelectorAll("[data-rowfull-type]").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.rowfullType === "all");
-    // Remove old listeners by cloning
-    const clone = btn.cloneNode(true);
-    btn.parentNode.replaceChild(clone, btn);
-    clone.addEventListener("click", () => {
-      const newType = clone.dataset.rowfullType;
-      if (S.rowFull.activeType === newType) return;
-      S.rowFull.activeType = newType;
-      document.querySelectorAll("[data-rowfull-type]").forEach(b =>
-        b.classList.toggle("active", b.dataset.rowfullType === newType));
-      rerenderRowFull();
-    });
-  });
-
   switchView("rowFull");
-
-  // Load first page
   await loadRowFullPage(1);
 }
 
@@ -811,10 +1094,8 @@ async function loadRowFullPage(n) {
       newItems.push(it);
     }
 
-    // Show controls after page 1
     if (n === 1) {
       document.getElementById("rowFullGrid").innerHTML = "";
-      document.getElementById("rowFullControls").hidden = false;
       S.rowFull.initialized = true;
     }
 
@@ -823,10 +1104,13 @@ async function loadRowFullPage(n) {
         '<div class="empty" style="grid-column:1/-1">Nothing to show.</div>';
       S.rowFull.hasMore = false;
     } else {
-      appendRowFullItems(newItems);
+      const grid = document.getElementById("rowFullGrid");
+      for (const it of newItems) grid.insertAdjacentHTML("beforeend", titleCardHtml(it));
+      bindTitleCards(grid);
     }
 
-    updateRowFullHeader();
+    document.getElementById("rowFullCount").textContent =
+      S.rowFull.items.length + " titles";
     document.getElementById("rowFullLoading").hidden = true;
     document.getElementById("rowFullEndMsg").hidden = S.rowFull.hasMore || !S.rowFull.items.length;
 
@@ -843,77 +1127,8 @@ async function loadRowFullPage(n) {
   }
 }
 
-function appendRowFullItems(newItems) {
-  const grid = document.getElementById("rowFullGrid");
+document.getElementById("rowFullBackBtn").addEventListener("click", () => switchView("browse"));
 
-  const filtered = S.rowFull.activeType === "all"
-    ? newItems
-    : newItems.filter(it => S.rowFull.activeType === "tv" ? it.isTV : !it.isTV);
-
-  for (const it of filtered) {
-    grid.insertAdjacentHTML("beforeend", titleCardHtml(it));
-  }
-
-  bindTitleCards(grid);
-}
-
-function rerenderRowFull() {
-  const grid = document.getElementById("rowFullGrid");
-  grid.innerHTML = "";
-
-  const items = S.rowFull.activeType === "all"
-    ? S.rowFull.items
-    : S.rowFull.items.filter(it => S.rowFull.activeType === "tv" ? it.isTV : !it.isTV);
-
-  if (!items.length) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Nothing in this filter.</div>';
-    return;
-  }
-
-  grid.innerHTML = items.map(it => titleCardHtml(it)).join("");
-  bindTitleCards(grid);
-  updateRowFullHeader();
-}
-
-function updateRowFullHeader() {
-  const count = document.getElementById("rowFullCount");
-  const total = S.rowFull.items.length;
-  const movieCount = S.rowFull.items.filter(t => !t.isTV).length;
-  const tvCount = S.rowFull.items.filter(t => t.isTV).length;
-
-  if (S.rowFull.activeType === "all") {
-    count.textContent = total + " titles · " + movieCount + " movies · " + tvCount + " TV";
-  } else if (S.rowFull.activeType === "movie") {
-    count.textContent = movieCount + " movies";
-  } else {
-    count.textContent = tvCount + " TV shows";
-  }
-
-  // Update pill counts
-  document.querySelectorAll("[data-rowfull-type]").forEach(btn => {
-    const t = btn.dataset.rowfullType;
-    if (t === "all" && !btn.querySelector(".count")) {
-      btn.insertAdjacentHTML("beforeend", ` <span class="count">${total}</span>`);
-    } else if (t === "movie" && !btn.querySelector(".count")) {
-      btn.insertAdjacentHTML("beforeend", ` <span class="count">${movieCount}</span>`);
-    } else if (t === "tv" && !btn.querySelector(".count")) {
-      btn.insertAdjacentHTML("beforeend", ` <span class="count">${tvCount}</span>`);
-    } else {
-      const countEl = btn.querySelector(".count");
-      if (countEl) {
-        if (t === "all") countEl.textContent = total;
-        else if (t === "movie") countEl.textContent = movieCount;
-        else countEl.textContent = tvCount;
-      }
-    }
-  });
-}
-
-document.getElementById("rowFullBackBtn").addEventListener("click", () => {
-  switchView("browse");
-});
-
-/* Infinite scroll for rowFull */
 const rowFullSentinel = document.getElementById("rowFullSentinel");
 const rowFullObserver = new IntersectionObserver((entries) => {
   for (const entry of entries) {
@@ -927,7 +1142,6 @@ const rowFullObserver = new IntersectionObserver((entries) => {
 }, { rootMargin: "1200px 0px" });
 rowFullObserver.observe(rowFullSentinel);
 
-/* Scroll fallback for rowFull */
 let rowFullScrollTimer = null;
 window.addEventListener("scroll", () => {
   if (S.view !== "rowFull") return;
@@ -939,6 +1153,384 @@ window.addEventListener("scroll", () => {
     const bottom = window.scrollY + window.innerHeight;
     const docHeight = document.documentElement.scrollHeight;
     if (docHeight - bottom < 1000) loadRowFullPage(S.rowFull.page + 1);
+  }, 200);
+}, { passive: true });
+
+/* ═══════════════════════════════════════════════════════════════
+   NAV DRAWER
+   ═══════════════════════════════════════════════════════════════ */
+const navDrawer = document.getElementById("navDrawer");
+const navBackdrop = document.getElementById("navBackdrop");
+
+function openNavDrawer() {
+  if (S.nav.open) return;
+  S.nav.open = true;
+  document.body.classList.add("nav-open");
+  navDrawer.hidden = false;
+  navBackdrop.hidden = false;
+  document.getElementById("navToggle").setAttribute("aria-expanded", "true");
+
+  // Auto-expand the section that matches current filter type
+  const currentSection = S.filter.type === "movie" ? "movies" : "tv";
+  toggleNavSection(currentSection, true);
+
+  // Highlight active category item
+  updateNavActiveStates();
+  renderGenreChips();
+  renderLanguageChips();
+}
+
+function closeNavDrawer() {
+  if (!S.nav.open) return;
+  S.nav.open = false;
+  navDrawer.classList.add("closing");
+  document.body.classList.remove("nav-open");
+  document.getElementById("navToggle").setAttribute("aria-expanded", "false");
+  setTimeout(() => {
+    navDrawer.classList.remove("closing");
+    navDrawer.hidden = true;
+    navBackdrop.hidden = true;
+  }, 220);
+}
+
+document.getElementById("navToggle").addEventListener("click", () => {
+  if (S.nav.open) closeNavDrawer();
+  else openNavDrawer();
+});
+document.getElementById("navClose").addEventListener("click", closeNavDrawer);
+navBackdrop.addEventListener("click", closeNavDrawer);
+
+/* ═══ SECTION TOGGLES ═══ */
+const SECTION_IDS = { movies: "navListMovies", tv: "navListTv", genre: "navListGenre", language: "navListLanguage" };
+
+function toggleNavSection(id, forceOpen) {
+  const list = document.getElementById(SECTION_IDS[id]);
+  if (!list) return;
+  const toggle = document.querySelector('[data-toggle="' + id + '"]');
+  if (!toggle) return;
+
+  const isOpen = forceOpen === true ? true : list.hidden;
+
+  // Exclusive: opening Movies closes TV, and vice versa
+  if (id === "movies" || id === "tv") {
+    const otherId = id === "movies" ? "tv" : "movies";
+    const otherList = document.getElementById(SECTION_IDS[otherId]);
+    const otherToggle = document.querySelector('[data-toggle="' + otherId + '"]');
+    if (otherList && !otherList.hidden) {
+      otherList.hidden = true;
+      otherToggle?.classList.remove("open");
+    }
+  }
+
+  if (isOpen) {
+    list.hidden = false;
+    toggle.classList.add("open");
+  } else {
+    list.hidden = true;
+    toggle.classList.remove("open");
+  }
+}
+
+document.querySelectorAll("[data-toggle]").forEach(btn => {
+  btn.addEventListener("click", () => toggleNavSection(btn.dataset.toggle));
+});
+
+/* ═══ GENRE CHIPS ═══ */
+function renderGenreChips() {
+  const wrap = document.getElementById("genreChips");
+  const genres = GENRES[S.filter.type] || GENRES.movie;
+  wrap.innerHTML = genres.map(g =>
+    `<button class="nav-chip${S.filter.genre === g.id ? " active" : ""}" data-genre="${g.id}">${escapeHtml(g.name)}</button>`
+  ).join("");
+  wrap.querySelectorAll("[data-genre]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.genre);
+      setGenre(S.filter.genre === id ? null : id);
+    });
+  });
+
+  const badge = document.getElementById("genreBadge");
+  if (S.filter.genre) {
+    badge.hidden = false;
+    badge.textContent = "1";
+  } else {
+    badge.hidden = true;
+  }
+}
+
+/* ═══ LANGUAGE CHIPS ═══ */
+function renderLanguageChips() {
+  const wrap = document.getElementById("langChips");
+  wrap.innerHTML = LANGUAGES.map(l =>
+    `<button class="nav-chip${S.filter.language === l.code ? " active" : ""}" data-lang="${l.code}">${escapeHtml(l.name)}</button>`
+  ).join("");
+  wrap.querySelectorAll("[data-lang]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const code = btn.dataset.lang;
+      setLanguage(S.filter.language === code ? null : code);
+    });
+  });
+
+  const badge = document.getElementById("langBadge");
+  if (S.filter.language) {
+    badge.hidden = false;
+    badge.textContent = "1";
+  } else {
+    badge.hidden = true;
+  }
+}
+
+function updateNavActiveStates() {
+  document.querySelectorAll(".nav-item").forEach(item => {
+    const t = item.dataset.type;
+    const k = item.dataset.key;
+    const isActive = S.filter.categoryKey === k && S.filter.type === t;
+    item.classList.toggle("active", isActive);
+  });
+}
+
+/* ═══ CATEGORY CLICK ═══ */
+document.querySelectorAll(".nav-item").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const type = btn.dataset.type;
+    const key = btn.dataset.key;
+    selectCategory(type, key);
+  });
+});
+
+function selectCategory(type, key) {
+  const cat = CATEGORIES[type]?.[key];
+  if (!cat) return;
+
+  S.filter.type = type;
+  S.filter.categoryKey = key;
+  S.filter.category = cat;
+
+  closeNavDrawer();
+  loadCategory(1);
+}
+
+function setGenre(genreId) {
+  S.filter.genre = genreId;
+  renderGenreChips();
+  updateActiveFilters();
+
+  // If a category is already active, reload
+  if (S.filter.categoryKey && S.view === "category") {
+    loadCategory(1);
+    return;
+  }
+
+  // Otherwise default to Popular category
+  if (!S.filter.categoryKey) {
+    S.filter.categoryKey = "popular";
+    S.filter.category = CATEGORIES[S.filter.type].popular;
+    closeNavDrawer();
+    loadCategory(1);
+  }
+}
+
+function setLanguage(code) {
+  S.filter.language = code;
+  renderLanguageChips();
+  updateActiveFilters();
+
+  if (S.filter.categoryKey && S.view === "category") {
+    loadCategory(1);
+    return;
+  }
+
+  if (!S.filter.categoryKey) {
+    S.filter.categoryKey = "popular";
+    S.filter.category = CATEGORIES[S.filter.type].popular;
+    closeNavDrawer();
+    loadCategory(1);
+  }
+}
+
+function clearFilters() {
+  S.filter.genre = null;
+  S.filter.language = null;
+  renderGenreChips();
+  renderLanguageChips();
+  updateActiveFilters();
+  if (S.filter.categoryKey && S.view === "category") {
+    loadCategory(1);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CATEGORY VIEW
+   ═══════════════════════════════════════════════════════════════ */
+function buildCategoryRequest(page) {
+  const cat = S.filter.category;
+  const type = S.filter.type;
+  const params = {
+    page: String(page || 1),
+    sort_by: cat.sortBy || "popularity.desc",
+    include_adult: "false",
+  };
+
+  if (cat.discoverParams) Object.assign(params, cat.discoverParams);
+  if (S.filter.genre) params.with_genres = String(S.filter.genre);
+  if (S.filter.language) params.with_original_language = S.filter.language;
+
+  // Vote threshold to avoid junk (except when filtered — let user filters drive)
+  if (!params["vote_count.gte"]) {
+    params["vote_count.gte"] = (S.filter.genre || S.filter.language) ? "0" : "20";
+  }
+
+  return { path: `/discover/${type}`, params };
+}
+
+async function loadCategory(page) {
+  const cat = S.filter.category;
+  if (!cat) return;
+
+  if (page === 1) {
+    if (S.category.abort) { try { S.category.abort.abort(); } catch (_) {} }
+    S.category.abort = new AbortController();
+    S.category.page = 0;
+    S.category.hasMore = true;
+    S.category.items = [];
+    S.category.seenIds = new Set();
+
+    const typeLabel = S.filter.type === "movie" ? "Movies" : "TV Shows";
+    document.getElementById("categoryTitle").textContent = cat.label + " " + typeLabel;
+    document.getElementById("categoryCount").textContent = "Loading…";
+    document.getElementById("categoryGrid").innerHTML =
+      '<div class="spinner-wrap" style="grid-column:1/-1"><div class="spinner"></div>Loading…</div>';
+    document.getElementById("categoryEndMsg").hidden = true;
+    document.getElementById("categoryLoading").hidden = true;
+    updateActiveFilters();
+    switchView("category");
+  }
+
+  if (S.category.loading) return;
+  if (page > 1 && !S.category.hasMore) return;
+
+  S.category.loading = true;
+  if (page > 1) document.getElementById("categoryLoading").hidden = false;
+
+  const signal = S.category.abort.signal;
+  const req = buildCategoryRequest(page);
+
+  try {
+    const data = await tmdbFetch(req.path, req.params, signal);
+    if (signal.aborted) return;
+
+    S.category.page = page;
+    S.category.totalPages = data.total_pages || 0;
+    S.category.hasMore = page < Math.min(S.category.totalPages, 500);
+
+    const results = (data.results || [])
+      .filter(r => r && r.poster_path)
+      .map(mapTmdbTitle)
+      .filter(it => it.title);
+
+    const newItems = [];
+    for (const it of results) {
+      if (S.category.seenIds.has(it.tmdbId)) continue;
+      S.category.seenIds.add(it.tmdbId);
+      S.category.items.push(it);
+      newItems.push(it);
+    }
+
+    const grid = document.getElementById("categoryGrid");
+    if (page === 1) grid.innerHTML = "";
+
+    if (!S.category.items.length) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Nothing to show for this filter.</div>';
+      S.category.hasMore = false;
+    } else {
+      for (const it of newItems) grid.insertAdjacentHTML("beforeend", titleCardHtml(it));
+      bindTitleCards(grid);
+    }
+
+    document.getElementById("categoryCount").textContent =
+      S.category.items.length + " titles" + (S.category.hasMore ? " · more available" : "");
+    document.getElementById("categoryLoading").hidden = true;
+    document.getElementById("categoryEndMsg").hidden = S.category.hasMore || !S.category.items.length;
+
+    S.category.loading = false;
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    console.error("[category]", e);
+    S.category.loading = false;
+    document.getElementById("categoryLoading").hidden = true;
+    if (page === 1) {
+      document.getElementById("categoryGrid").innerHTML =
+        '<div class="empty" style="grid-column:1/-1">Failed to load.</div>';
+      document.getElementById("categoryCount").textContent = "";
+    }
+  }
+}
+
+function updateActiveFilters() {
+  const bar = document.getElementById("activeFilters");
+  const parts = [];
+
+  if (S.filter.genre) {
+    const genreObj = (GENRES[S.filter.type] || []).find(g => g.id === S.filter.genre);
+    if (genreObj) parts.push({ type: "genre", label: genreObj.name });
+  }
+  if (S.filter.language) {
+    const langObj = LANGUAGES.find(l => l.code === S.filter.language);
+    if (langObj) parts.push({ type: "language", label: langObj.name });
+  }
+
+  if (!parts.length) {
+    bar.hidden = true;
+    bar.innerHTML = "";
+    return;
+  }
+
+  bar.hidden = false;
+  bar.innerHTML =
+    parts.map(p =>
+      `<span class="filter-tag">${escapeHtml(p.label)}<button data-clear="${p.type}" title="Remove">✕</button></span>`
+    ).join("") +
+    `<button class="clear-filters-btn" id="clearAllFilters">Clear all</button>`;
+
+  bar.querySelectorAll("[data-clear]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.clear === "genre") { S.filter.genre = null; renderGenreChips(); }
+      else if (btn.dataset.clear === "language") { S.filter.language = null; renderLanguageChips(); }
+      updateActiveFilters();
+      loadCategory(1);
+    });
+  });
+  const clearAllBtn = document.getElementById("clearAllFilters");
+  if (clearAllBtn) clearAllBtn.addEventListener("click", clearFilters);
+}
+
+document.getElementById("categoryBackBtn").addEventListener("click", () => {
+  switchView(S.filter.categoryKey ? "browse" : "browse");
+});
+
+/* ═══ CATEGORY INFINITE SCROLL ═══ */
+const categorySentinel = document.getElementById("categorySentinel");
+const categoryObserver = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    if (S.view !== "category") continue;
+    if (S.category.loading) continue;
+    if (!S.category.hasMore) continue;
+    loadCategory(S.category.page + 1);
+  }
+}, { rootMargin: "1000px 0px" });
+categoryObserver.observe(categorySentinel);
+
+let categoryScrollTimer = null;
+window.addEventListener("scroll", () => {
+  if (S.view !== "category") return;
+  if (S.category.loading || !S.category.hasMore) return;
+  if (categoryScrollTimer) return;
+  categoryScrollTimer = setTimeout(() => {
+    categoryScrollTimer = null;
+    const bottom = window.scrollY + window.innerHeight;
+    const docHeight = document.documentElement.scrollHeight;
+    if (docHeight - bottom < 1000) loadCategory(S.category.page + 1);
   }, 200);
 }, { passive: true });
 
@@ -985,7 +1577,6 @@ function renderSuggestions(titles, people) {
       </div>`;
     }).join("");
   }
-
   if (titles.length) {
     html += '<div class="sug-section-head">Movies &amp; TV</div>';
     html += titles.slice(0, SUGGEST_LIMIT_TITLES).map((t, i) => {
@@ -1022,7 +1613,6 @@ function renderSuggestions(titles, people) {
 function handleSuggestionClick(el) {
   hideSuggestions();
   searchInput.blur();
-
   const type = el.dataset.type;
   if (type === "person") {
     const pid = el.dataset.id;
@@ -1036,7 +1626,6 @@ function handleSuggestionClick(el) {
 
 async function fetchSuggestions(q) {
   if (!q || q.length < 2) { hideSuggestions(); return; }
-
   if (S.suggest.abort) { try { S.suggest.abort.abort(); } catch (_) {} }
   S.suggest.abort = new AbortController();
 
@@ -1055,7 +1644,6 @@ async function fetchSuggestions(q) {
       else if (r.poster_path) titles.push(mapTmdbTitle(r));
     }
     people.sort((a, b) => b.popularity - a.popularity);
-
     renderSuggestions(titles, people);
   } catch (e) {
     if (e.name === "AbortError") return;
@@ -1090,14 +1678,12 @@ let searchDebounceTimer = null;
 searchInput.addEventListener("input", (e) => {
   const v = e.target.value;
   searchClear.hidden = v.length === 0;
-
   clearTimeout(S.suggest.timer);
   if (v.length >= 2) {
     S.suggest.timer = setTimeout(() => fetchSuggestions(v), SUGGEST_DEBOUNCE_MS);
   } else {
     hideSuggestions();
   }
-
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(() => {
     if (!S.suggest.active) performSearch(v.trim());
@@ -1164,7 +1750,11 @@ async function performSearch(q) {
   q = (q || "").trim();
 
   if (q.length < 2) {
-    switchView("browse");
+    const returnView = S.search.returnView && S.search.returnView !== "search"
+      ? S.search.returnView
+      : "browse";
+    S.search.returnView = "browse";
+    switchView(returnView);
     resetSearchState("");
     document.getElementById("searchQueryLabel").textContent = "";
     document.getElementById("searchResultCount").textContent = "";
@@ -1175,6 +1765,7 @@ async function performSearch(q) {
     return;
   }
 
+  if (S.view !== "search") S.search.returnView = S.view;
   switchView("search");
 
   document.getElementById("searchQueryLabel").textContent = '"' + q + '"';
@@ -1658,6 +2249,15 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 /* ═══════════════════════════════════════════════════════════════
+   ESCAPE KEY
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && S.nav.open) {
+    closeNavDrawer();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
    NAVIGATION
    ═══════════════════════════════════════════════════════════════ */
 function navigateToDetail(tmdbId, mediaType, title) {
@@ -1674,6 +2274,13 @@ function navigateToDetail(tmdbId, mediaType, title) {
 /* ═══════════════════════════════════════════════════════════════
    BOOT
    ═══════════════════════════════════════════════════════════════ */
+// Initialize genre/language chips on first load
+renderGenreChips();
+renderLanguageChips();
+// Start with "Popular Movies" as the section expanded
+toggleNavSection("movies", true);
+updateActiveFilters();
+
 loadBrowseRows();
 </script>
 </body>
