@@ -38,7 +38,7 @@
 
   body.drawer-open .player-ui { transition:none !important; }
 
-  /* Feedback toast is OUTSIDE player-ui so it shows even when UI is idle */
+  /* Feedback toast */
   .player-feedback {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     padding:14px 22px; border-radius:14px;
@@ -48,7 +48,7 @@
   }
   .player-feedback.show { opacity:1; }
 
-  /* ────── Frame nav buttons (prev/next episode) ────── */
+  /* Frame nav buttons (prev/next episode) */
   .frame-nav-btn {
     position:absolute;
     top:50%; transform:translateY(-50%);
@@ -76,7 +76,7 @@
   .frame-nav-btn.next { right:20px; }
   .frame-nav-btn[hidden] { display:none; }
 
-  /* ────── Center controls cluster ────── */
+  /* Center controls cluster */
   .center-controls {
     position:absolute;
     top:50%; left:50%;
@@ -115,7 +115,7 @@
     line-height:1;
   }
 
-  /* Big play/pause */
+  /* Big play/pause button */
   .player-bigplay {
     width:84px; height:84px; border-radius:50%;
     background:rgba(0,0,0,.5);
@@ -124,16 +124,13 @@
     display:flex; align-items:center; justify-content:center;
     backdrop-filter:blur(6px);
     -webkit-tap-highlight-color:transparent;
-    transition:background .18s, transform .15s, opacity .2s, visibility .2s;
+    transition:background .18s, transform .15s;
   }
   .player-bigplay:hover { background:var(--accent); border-color:var(--accent); transform:scale(1.06); }
   .player-bigplay:active { transform:scale(.96); }
-  .player-bigplay svg { width:34px; height:34px; fill:#fff; margin-left:3px; }
-  .player-bigplay.hidden {
-    opacity:0;
-    pointer-events:none;
-    visibility:hidden;
-  }
+  .player-bigplay svg { width:34px; height:34px; fill:#fff; }
+  /* Only the play triangle needs optical centering */
+  .player-bigplay.is-play svg { margin-left: 3px; }
 
   /* Caption overlay */
   .caption-overlay {
@@ -273,7 +270,6 @@
   .av-row .val { font-size:11.5px; color:#8a8a94; min-width:38px; text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
   .av-divider { height:1px; background:#2a2a33; margin:-4px 0; }
 
-  /* Overlays */
   .player-overlay {
     position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:14px; background:rgba(0,0,0,.82); color:var(--muted);
@@ -487,7 +483,6 @@
   .ad-gate-status { font-size: 12.5px; color: #8a8a94; margin-top: 14px; min-height: 18px; font-weight: 600; }
   .ad-gate-status.err { color: #fca5a5; }
 
-  /* Mobile */
   @media (max-width: 640px), (hover:none) {
     .player-top { padding:12px 14px 40px; gap:6px; }
     .player-bottom { padding:40px 14px 14px; }
@@ -537,7 +532,6 @@
 
     <div class="caption-overlay" id="captionOverlay" hidden></div>
 
-    <!-- Feedback is outside player-ui so it shows even when idle -->
     <div class="player-feedback" id="playerFeedback"></div>
 
     <div class="player-ui" id="playerUI">
@@ -584,7 +578,6 @@
         <span id="retryStatusText">Loading…</span>
       </div>
 
-      <!-- Prev/Next episode buttons -->
       <button class="frame-nav-btn prev" id="prevEp" hidden title="Previous episode">
         <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
         <span class="nav-label" id="prevEpLabel">Previous</span>
@@ -594,14 +587,13 @@
         <span class="nav-label" id="nextEpLabel">Next</span>
       </button>
 
-      <!-- Center controls cluster -->
       <div class="center-controls">
         <button class="frame-seek-btn" id="frameRewind" title="Rewind 10s">
           <svg viewBox="0 0 24 24"><path d="M12.5 3a9 9 0 1 0 6.36 15.36l-1.42-1.42A7 7 0 1 1 12.5 5c.55 0 1.08.06 1.59.18L11.5 7.77V6.44L8.34 9.6 11.5 12.77v-1.33l3.32-3.32.07-.07A9 9 0 0 0 12.5 3z"/></svg>
           <span class="seek-label">10</span>
         </button>
 
-        <button class="player-bigplay" id="bigPlay" title="Play / Pause (Space)">
+        <button class="player-bigplay is-play" id="bigPlay" title="Play / Pause (Space)">
           <svg id="bigPlayIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         </button>
 
@@ -691,7 +683,6 @@
   </div>
 </div>
 
-<!-- Drawer -->
 <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
 <aside class="drawer" id="drawer" hidden>
   <div class="drawer-head">
@@ -1486,12 +1477,17 @@ video.addEventListener("ended", () => {
   }
 });
 
-/* ═══════════ CONTROLS ═══════════ */
+/* ═══════════ PLAY ICON (FIXED) ═══════════ */
+/* Changes:
+   - No more `.hidden` toggle; the pause icon stays visible during playback
+   - `.is-play` class toggles optical centering only for the play triangle
+   - All 5 frame buttons live inside `.player-ui` and fade with it via `.idle` */
 function setPlayIcon(playing) {
   btnPlayIcon.querySelector("path").setAttribute("d", playing ? ICON_PAUSE : ICON_PLAY);
   bigPlayIcon.querySelector("path").setAttribute("d", playing ? ICON_PAUSE : ICON_PLAY);
-  bigPlay.classList.toggle("hidden", playing);
+  bigPlay.classList.toggle("is-play", !playing);
 }
+
 video.addEventListener("play", () => { setPlayIcon(true); resetIdleTimer(); });
 video.addEventListener("pause", () => { setPlayIcon(false); showControls(); });
 
@@ -1503,15 +1499,12 @@ function togglePlay() {
 btnPlay.addEventListener("click", (e) => { e.stopPropagation(); togglePlay(); resetIdleTimer(); });
 bigPlay.addEventListener("click", (e) => { e.stopPropagation(); togglePlay(); resetIdleTimer(); });
 
-/* ─────── Idle timer (hide controls) ─────── */
+/* ═══════════ IDLE TIMER ═══════════ */
 let idleTimer = null;
 
 function showControls() {
   playerUI.classList.remove("idle");
   resetIdleTimer();
-}
-function hideControls() {
-  if (!video.paused) playerUI.classList.add("idle");
 }
 function resetIdleTimer() {
   playerUI.classList.remove("idle");
@@ -1526,7 +1519,6 @@ function resetIdleTimer() {
   }
 }
 
-/* Track idle state on pointerdown to distinguish "show controls" from "toggle play" */
 let wasIdleOnPointerDown = false;
 const IGNORE_SELECTORS = ".player-top, .player-bottom, .player-overlay, .menu-wrap, .av-wrap, .drawer, .frame-nav-btn, .frame-seek-btn, .player-bigplay, .center-controls, .retry-status, .caption-overlay";
 
@@ -1539,21 +1531,17 @@ document.addEventListener("pointerdown", (e) => {
   wasIdleOnPointerDown = playerUI.classList.contains("idle");
 }, true);
 
-/* Stage click — show controls or toggle play/pause */
 playerStage.addEventListener("click", (e) => {
   if (e.target.closest(IGNORE_SELECTORS)) return;
-
   if (wasIdleOnPointerDown) {
     wasIdleOnPointerDown = false;
     showControls();
     return;
   }
-
   togglePlay();
   resetIdleTimer();
 });
 
-/* Any mousemove / pointerdown anywhere on the page shows controls */
 document.addEventListener("mousemove", showControls);
 document.addEventListener("pointerdown", showControls);
 
