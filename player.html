@@ -21,7 +21,6 @@
   .player-stage { position:absolute; inset:0; overflow:hidden; background:#000; }
   .player video { width:100%; height:100%; object-fit:contain; background:#000; display:block; }
 
-  /* Player UI container — everything inside fades together */
   .player-ui {
     position:absolute; inset:0;
     transition:opacity .25s ease;
@@ -29,16 +28,11 @@
     pointer-events:none;
   }
   .player-ui > * { pointer-events:auto; }
-  .player-ui.idle {
-    opacity:0;
-    pointer-events:none;
-    cursor:none;
-  }
+  .player-ui.idle { opacity:0; pointer-events:none; cursor:none; }
   .player-ui.idle > * { pointer-events:none; }
 
   body.drawer-open .player-ui { transition:none !important; }
 
-  /* Feedback toast */
   .player-feedback {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     padding:14px 22px; border-radius:14px;
@@ -48,7 +42,6 @@
   }
   .player-feedback.show { opacity:1; }
 
-  /* Frame nav buttons (prev/next episode) */
   .frame-nav-btn {
     position:absolute;
     top:50%; transform:translateY(-50%);
@@ -76,7 +69,6 @@
   .frame-nav-btn.next { right:20px; }
   .frame-nav-btn[hidden] { display:none; }
 
-  /* Center controls cluster */
   .center-controls {
     position:absolute;
     top:50%; left:50%;
@@ -87,7 +79,6 @@
     z-index:2;
   }
 
-  /* Skip buttons (±10s) */
   .frame-seek-btn {
     position:relative;
     width:56px; height:56px; border-radius:50%;
@@ -115,7 +106,6 @@
     line-height:1;
   }
 
-  /* Big play/pause button */
   .player-bigplay {
     width:84px; height:84px; border-radius:50%;
     background:rgba(0,0,0,.5);
@@ -129,23 +119,33 @@
   .player-bigplay:hover { background:var(--accent); border-color:var(--accent); transform:scale(1.06); }
   .player-bigplay:active { transform:scale(.96); }
   .player-bigplay svg { width:34px; height:34px; fill:#fff; }
-  /* Only the play triangle needs optical centering */
   .player-bigplay.is-play svg { margin-left: 3px; }
 
-  /* Caption overlay */
+  /* Caption overlay — uses CSS variables so styles are live-editable */
   .caption-overlay {
     position:absolute; left:50%; transform:translateX(-50%);
     bottom:8%; max-width:90%; text-align:center;
     pointer-events:none; z-index:3; transition:bottom .18s ease;
+    font-size:16px;
   }
   .caption-overlay[hidden] { display:none; }
-  .caption-overlay .cap-line {
-    display:inline-block; padding:3px 10px; border-radius:4px;
-    white-space:pre-wrap; line-height:1.35; text-align:center;
+  .cap-line {
+    display:table;
+    margin:0 auto 2px;
+    padding:3px 10px;
+    border-radius:4px;
+    white-space:pre-wrap;
+    line-height:1.35;
+    text-align:center;
+    font-family: var(--cap-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+    font-size: var(--cap-font-size, 1.2em);
+    font-weight: var(--cap-font-weight, 400);
+    color: var(--cap-text-color, #ffffff);
+    background: var(--cap-bg-color, rgba(0,0,0,0.5));
+    text-shadow: var(--cap-text-shadow, 0 1px 3px rgba(0,0,0,0.9));
   }
   body.drawer-open .caption-overlay { visibility:hidden; }
 
-  /* Top bar */
   .player-top {
     position:absolute; top:0; left:0; right:0;
     display:flex; align-items:center; gap:10px;
@@ -208,7 +208,6 @@
   .menu-list button .check { font-size:11px; opacity:0; flex-shrink:0; }
   .menu-list button.active .check { opacity:1; }
 
-  /* Bottom bar */
   .player-bottom {
     position:absolute; left:0; right:0; bottom:0;
     padding:60px 22px 20px;
@@ -448,6 +447,130 @@
   .log-entry .log-time { color:#6b7280; flex-shrink:0; font-size:10.5px; }
   .log-entry .log-lvl { color:#4b5563; flex-shrink:0; font-size:10px; font-weight:700; }
   .log-entry .log-msg { flex:1; word-break:break-all; white-space:pre-wrap; min-width:0; }
+
+  /* Caption settings panel */
+  .cap-settings-backdrop {
+    position:fixed; inset:0; z-index:800;
+    background:rgba(0,0,0,.72);
+    animation:fadeIn .18s ease;
+  }
+  .cap-settings-backdrop[hidden] { display:none; }
+
+  .cap-settings-panel {
+    position:fixed; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    width:min(440px, 92vw);
+    max-height:88vh;
+    background:#17171c;
+    border:1px solid #2a2a33;
+    border-radius:16px;
+    z-index:801;
+    display:flex; flex-direction:column;
+    box-shadow:0 24px 60px rgba(0,0,0,.85);
+  }
+  .cap-settings-panel[hidden] { display:none; }
+
+  .cap-settings-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px;
+    border-bottom:1px solid #2a2a33;
+    flex-shrink:0;
+  }
+  .cap-settings-header h3 { font-size:16px; font-weight:700; }
+  .cap-settings-close {
+    width:32px; height:32px; border-radius:50%;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+    color:#fff; cursor:pointer; font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .cap-settings-close:hover { background:rgba(255,255,255,.14); }
+
+  .cap-settings-body {
+    padding:16px 20px 20px;
+    overflow-y:auto;
+  }
+
+  /* Preview box */
+  .cap-settings-preview {
+    position:relative;
+    height:90px;
+    margin-bottom:16px;
+    background:linear-gradient(135deg, #1a1a20 0%, #0a0a0d 100%);
+    border:1px solid #2a2a33;
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .cap-settings-preview .cap-line {
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    max-width:90%;
+  }
+
+  .cap-settings-row {
+    display:flex; align-items:center; gap:10px;
+    margin-bottom:14px;
+    font-size:13px;
+    color:#c3c3cd;
+  }
+  .cap-settings-row > label:first-child {
+    min-width:90px;
+    font-weight:600;
+    color:#e5e5ea;
+    flex-shrink:0;
+  }
+  .cap-settings-row input[type="color"] {
+    width:36px; height:30px; padding:0; border:none;
+    border-radius:6px; cursor:pointer; background:transparent; flex-shrink:0;
+  }
+  .cap-settings-row input[type="range"] {
+    flex:1; -webkit-appearance:none; appearance:none;
+    height:4px; border-radius:4px; background:rgba(255,255,255,.18);
+    outline:none; cursor:pointer; min-width:0;
+  }
+  .cap-settings-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+    background:#fff; border:2px solid var(--accent);
+    box-shadow:0 1px 4px rgba(0,0,0,.5);
+  }
+  .cap-settings-row input[type="range"]::-moz-range-thumb {
+    width:14px; height:14px; border-radius:50%;
+    background:#fff; border:2px solid var(--accent);
+  }
+  .cap-settings-row select {
+    flex:1; padding:8px 10px;
+    background:#1e1e25; color:#fff;
+    border:1px solid #2a2a33; border-radius:8px;
+    font-size:13px; font-family:inherit; outline:none; cursor:pointer;
+  }
+  .cap-settings-row .cap-val {
+    min-width:46px; text-align:right;
+    font-size:12px; color:#8a8a94; font-weight:600;
+    font-variant-numeric:tabular-nums; flex-shrink:0;
+  }
+  .cap-settings-checkboxes { gap:20px; }
+  .cap-settings-checkboxes label {
+    display:flex; align-items:center; gap:6px;
+    min-width:0 !important; font-weight:normal !important;
+    cursor:pointer; color:#c3c3cd;
+  }
+  .cap-settings-checkboxes input[type="checkbox"] {
+    width:16px; height:16px; accent-color:var(--accent); cursor:pointer;
+  }
+  .cap-settings-actions {
+    justify-content:flex-end;
+    margin-top:6px;
+    padding-top:14px;
+    border-top:1px solid #2a2a33;
+  }
+  .cap-settings-actions button {
+    padding:10px 18px; border-radius:10px;
+    font-size:13px; font-weight:600; cursor:pointer;
+    border:1px solid #2a2a33; background:#26262f; color:#fff;
+  }
+  .cap-settings-actions button.btn-primary {
+    background:var(--accent); border-color:var(--accent);
+  }
 
   /* Ad gate */
   .ad-gate {
@@ -707,6 +830,65 @@
   <div class="log-body" id="logBody"><div class="log-empty">No logs yet.</div></div>
 </div>
 
+<!-- ═══════════ CAPTION SETTINGS PANEL ═══════════ -->
+<div class="cap-settings-backdrop" id="capSettingsBackdrop" hidden></div>
+<div class="cap-settings-panel" id="capSettingsPanel" hidden>
+  <div class="cap-settings-header">
+    <h3>Caption Style</h3>
+    <button class="cap-settings-close" id="capSettingsClose" title="Close">✕</button>
+  </div>
+  <div class="cap-settings-body">
+    <div class="cap-settings-preview" id="capSettingsPreview">
+      <div class="cap-line">Sample caption text</div>
+    </div>
+
+    <div class="cap-settings-row">
+      <label for="capFontFamily">Font</label>
+      <select id="capFontFamily">
+        <option value="sans">Sans-serif</option>
+        <option value="serif">Serif</option>
+        <option value="mono">Monospace</option>
+      </select>
+    </div>
+
+    <div class="cap-settings-row">
+      <label for="capFontSize">Size</label>
+      <input type="range" id="capFontSize" min="50" max="200" step="5" value="100">
+      <span class="cap-val" id="capFontSizeVal">100%</span>
+    </div>
+
+    <div class="cap-settings-row">
+      <label for="capTextColor">Text color</label>
+      <input type="color" id="capTextColor" value="#ffffff">
+      <input type="range" id="capTextOpacity" min="0" max="100" step="5" value="100">
+      <span class="cap-val" id="capTextOpacityVal">100%</span>
+    </div>
+
+    <div class="cap-settings-row">
+      <label for="capBgColor">Background</label>
+      <input type="color" id="capBgColor" value="#000000">
+      <input type="range" id="capBgOpacity" min="0" max="100" step="5" value="50">
+      <span class="cap-val" id="capBgOpacityVal">50%</span>
+    </div>
+
+    <div class="cap-settings-row">
+      <label for="capPosition">Position</label>
+      <input type="range" id="capPosition" min="2" max="60" step="1" value="8">
+      <span class="cap-val" id="capPositionVal">8%</span>
+    </div>
+
+    <div class="cap-settings-row cap-settings-checkboxes">
+      <label><input type="checkbox" id="capBold"> Bold</label>
+      <label><input type="checkbox" id="capShadow" checked> Shadow</label>
+    </div>
+
+    <div class="cap-settings-row cap-settings-actions">
+      <button id="capSettingsReset">Reset</button>
+      <button id="capSettingsDone" class="btn-primary">Done</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ═══════════ CONFIG ═══════════ */
 const QS = new URLSearchParams(location.search);
@@ -824,6 +1006,11 @@ const drawerBody = document.getElementById("drawerBody");
 const drawerTitle = document.getElementById("drawerTitle");
 const drawerEyebrow = document.getElementById("drawerEyebrow");
 
+/* Caption settings DOM refs */
+const capSettingsPanel = document.getElementById("capSettingsPanel");
+const capSettingsBackdrop = document.getElementById("capSettingsBackdrop");
+const capSettingsPreview = document.getElementById("capSettingsPreview");
+
 const ICON_PLAY = "M8 5v14l11-7z";
 const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z";
 
@@ -831,6 +1018,7 @@ const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z";
 const player = {
   streams: [],
   currentIdx: 0,
+  preferredQuality: null,   // null = "auto" (720→480→highest); number = locked tier (e.g. 1080)
   hls: null,
   signCookie: "",
   triedUrls: new Set(),
@@ -887,6 +1075,39 @@ function setRetryStatus(text, cls) {
   retryStatus.hidden = false;
   retryStatus.className = "retry-status" + (cls ? " " + cls : "");
   retryStatusText.textContent = text;
+}
+
+/* ═══════════ QUALITY DEFAULT PICKER ═══════════
+   - preferredQuality === null → prefer 720p, fall back to 480p, else highest
+   - preferredQuality === number → exact match, else highest <= preferred, else highest */
+function pickStreamIndex(streams, preferredQuality) {
+  if (!streams.length) return 0;
+
+  if (preferredQuality != null) {
+    // Exact match first
+    const exact = streams.findIndex(s => parseInt(s.quality, 10) === preferredQuality);
+    if (exact >= 0) return exact;
+
+    // Highest available at-or-below preferred
+    let bestIdx = -1, bestQ = -1;
+    for (let i = 0; i < streams.length; i++) {
+      const q = parseInt(streams[i].quality, 10);
+      if (!isNaN(q) && q <= preferredQuality && q > bestQ) {
+        bestQ = q; bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0) return bestIdx;
+
+    // Fallback to highest
+    return 0;
+  }
+
+  // Auto mode: 720 → 480 → highest
+  for (const target of [720, 480]) {
+    const idx = streams.findIndex(s => parseInt(s.quality, 10) === target);
+    if (idx >= 0) return idx;
+  }
+  return 0;
 }
 
 /* ═══════════ NUXT DECODER ═══════════ */
@@ -1090,6 +1311,7 @@ function navigateToEpisode(se, ep) {
 
   try { history.pushState({ ep: Date.now() }, "", url.pathname + url.search); } catch (_) {}
 
+  closeCapSettings();
   resetPlayerForNewEpisode();
   if (drawerOpen) closeDrawer();
   startPlayback({ isRetry: false });
@@ -1251,7 +1473,14 @@ async function startPlayback(opts = {}) {
       if (!streams.length) throw new Error("API returned 0 streams");
       player.streams = streams;
       player.signCookie = signCookie || "";
-      player.currentIdx = 0;
+
+      // Default quality: prefer 720p → 480p → highest (or user's saved choice)
+      player.currentIdx = pickStreamIndex(streams, player.preferredQuality);
+      const chosen = streams[player.currentIdx];
+      logPush("LOG", "[quality] preferred=" +
+        (player.preferredQuality == null ? "auto (720→480→highest)" : player.preferredQuality + "p") +
+        " → chose " + chosen.quality + "p (idx " + player.currentIdx + ")");
+
       buildQualityMenu();
       loadCaptionsForCurrentStream();
     }
@@ -1299,6 +1528,8 @@ async function tryStream(stream, idx) {
   try {
     if (isHls && !video.canPlayType("application/vnd.apple.mpegurl")) await attachHls(url);
     else await attachNative(url);
+    // Keep menu/label in sync (in case we landed on a fallback stream)
+    buildQualityMenu();
   } catch (err) {
     logPush("ERR", "[stream] attach failed:", err.message);
     advanceToNextStream(err.message || "Attach failed");
@@ -1406,9 +1637,12 @@ async function advanceToNextStream(reason) {
         if (!streams.length) throw new Error("API returned 0 streams on refresh");
         player.streams = streams;
         if (signCookie) player.signCookie = signCookie;
+
+        // Re-pick based on preferred quality
+        player.currentIdx = pickStreamIndex(streams, player.preferredQuality);
         buildQualityMenu();
         logPush("LOG", "[stream] API refresh returned " + streams.length + " fresh streams");
-        await tryStream(streams[0], 0);
+        await tryStream(streams[player.currentIdx], player.currentIdx);
         return;
       } catch (e) { logPush("ERR", "[stream] API refresh failed:", e.message); }
     }
@@ -1477,13 +1711,7 @@ video.addEventListener("ended", () => {
   }
 });
 
-/* ═══════════ MOBILE LANDSCAPE FULLSCREEN ═══════════
-   Auto-opens fullscreen when the device enters landscape on mobile.
-   Closes when the device returns to portrait.
-   Some browsers require a fresh user gesture to enter fullscreen after
-   an orientation change — this handles that via a pending-intent flag
-   that fires on the next tap. */
-
+/* ═══════════ MOBILE LANDSCAPE FULLSCREEN ═══════════ */
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
   (window.matchMedia("(hover: none) and (pointer: coarse)").matches);
 
@@ -1631,13 +1859,14 @@ function resetIdleTimer() {
       if (!qualityList.hidden || !capList.hidden) return;
       if (!document.getElementById("avPanel").hidden) return;
       if (drawerOpen) return;
+      if (!capSettingsPanel.hidden) return;
       playerUI.classList.add("idle");
     }, IDLE_MS);
   }
 }
 
 let wasIdleOnPointerDown = false;
-const IGNORE_SELECTORS = ".player-top, .player-bottom, .player-overlay, .menu-wrap, .av-wrap, .drawer, .frame-nav-btn, .frame-seek-btn, .player-bigplay, .center-controls, .retry-status, .caption-overlay";
+const IGNORE_SELECTORS = ".player-top, .player-bottom, .player-overlay, .menu-wrap, .av-wrap, .drawer, .frame-nav-btn, .frame-seek-btn, .player-bigplay, .center-controls, .retry-status, .caption-overlay, .cap-settings-panel, .cap-settings-backdrop";
 
 document.addEventListener("pointerdown", (e) => {
   const onControl = e.target.closest(IGNORE_SELECTORS);
@@ -1774,23 +2003,30 @@ function buildQualityMenu() {
   if (!player.streams.length) { qualityWrap.hidden = true; return; }
   qualityWrap.hidden = false;
   qualityList.innerHTML = player.streams.map((s, i) =>
-    `<button type="button" data-q="${i}"><span>${escapeHtml(s.quality)}</span><span class="check">✓</span></button>`
+    `<button type="button" data-q="${i}"${i === player.currentIdx ? ' class="active"' : ''}><span>${escapeHtml(s.quality)}</span><span class="check">✓</span></button>`
   ).join("");
   qualityList.querySelectorAll("button").forEach(btn => {
     btn.addEventListener("click", () => {
       const idx = Number(btn.dataset.q);
       qualityList.hidden = true;
       qualityBtn.classList.remove("open");
+
+      // Remember user's explicit choice
+      const q = parseInt(player.streams[idx].quality, 10);
+      player.preferredQuality = isNaN(q) ? null : q;
+
       player.currentIdx = idx;
       player.triedUrls.clear();
       player.apiRefreshes = 0;
       player.attemptCount = 0;
       playerLoading.hidden = false;
       playerError.hidden = true;
+      logPush("LOG", "[quality] user selected " + (isNaN(q) ? "Auto" : q + "p"));
       startPlayback({ isRetry: true });
     });
   });
-  qualityLabel.textContent = player.streams[0].quality;
+  const cur = player.streams[player.currentIdx];
+  qualityLabel.textContent = cur?.quality || "Auto";
 }
 qualityBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -1831,12 +2067,22 @@ async function loadCaptionsForCurrentStream() {
   } catch (_) { capWrap.hidden = true; }
 }
 function buildCaptionMenu() {
-  capList.innerHTML = '<button data-c="-1"><span>Off</span><span class="check">✓</span></button>' +
+  capList.innerHTML =
+    '<button data-c="-1"' + (player.captionIndex === -1 ? ' class="active"' : '') + '><span>Off</span><span class="check">✓</span></button>' +
     player.captions.map((c, i) =>
-      `<button data-c="${i}"><span>${escapeHtml(c.name)}</span><span class="check">✓</span></button>`
-    ).join("");
+      `<button data-c="${i}"${i === player.captionIndex ? ' class="active"' : ''}><span>${escapeHtml(c.name)}</span><span class="check">✓</span></button>`
+    ).join("") +
+    '<div style="height:1px;background:#2a2a33;margin:4px 0;"></div>' +
+    '<button data-action="settings"><span>⚙ Caption Style</span><span class="check"></span></button>';
+
   capList.querySelectorAll("button").forEach(btn => {
     btn.addEventListener("click", () => {
+      if (btn.dataset.action === "settings") {
+        capList.hidden = true;
+        capBtn.classList.remove("open");
+        openCapSettings();
+        return;
+      }
       const i = Number(btn.dataset.c);
       capList.hidden = true;
       capBtn.classList.remove("open");
@@ -1845,7 +2091,12 @@ function buildCaptionMenu() {
     });
   });
 }
-function deselectCaption() { player.captionIndex = -1; removeCaptionTrack(); }
+function deselectCaption() {
+  player.captionIndex = -1;
+  removeCaptionTrack();
+  buildCaptionMenu();
+  capLabel.textContent = "CC";
+}
 async function selectCaption(idx) {
   const cap = player.captions[idx];
   if (!cap) return;
@@ -1859,6 +2110,8 @@ async function selectCaption(idx) {
     }
     applyCaptionTrack(text, cap.name);
     player.captionIndex = idx;
+    capLabel.textContent = (cap.name || "CC").toUpperCase().slice(0, 8);
+    buildCaptionMenu();
   } catch (e) { logPush("ERR", "[cap] failed:", e.message); }
 }
 function removeCaptionTrack() {
@@ -1888,13 +2141,21 @@ function renderCues(e) {
   if (player.captionIndex === -1) { captionOverlay.hidden = true; return; }
   const cues = tt.activeCues;
   if (!cues || !cues.length) { captionOverlay.hidden = true; return; }
-  const parts = [];
+
+  // Render one .cap-line per logical line — gives per-line background boxes
+  const lines = [];
   for (let i = 0; i < cues.length; i++) {
-    const txt = (cues[i].text || "").replace(/<[^>]+>/g, "").trim();
-    if (txt) parts.push(escapeHtml(txt));
+    const raw = (cues[i].text || "").replace(/<[^>]+>/g, "").trim();
+    if (!raw) continue;
+    raw.split(/\r?\n/).forEach(l => {
+      const t = l.trim();
+      if (t) lines.push(t);
+    });
   }
-  if (!parts.length) { captionOverlay.hidden = true; return; }
-  captionOverlay.innerHTML = '<div class="cap-line">' + parts.join("<br>") + "</div>";
+  if (!lines.length) { captionOverlay.hidden = true; return; }
+  captionOverlay.innerHTML = lines
+    .map(l => '<div class="cap-line">' + escapeHtml(l) + "</div>")
+    .join("");
   captionOverlay.hidden = false;
 }
 capBtn.addEventListener("click", (e) => {
@@ -1909,6 +2170,147 @@ document.addEventListener("click", (e) => {
     capBtn.classList.remove("open");
   }
 });
+
+/* ═══════════ CAPTION STYLE SETTINGS ═══════════ */
+const CAP_STYLE_KEY = "playerCaptionStyle";
+const DEFAULT_CAP_STYLE = {
+  font: "sans",       // sans | serif | mono
+  size: 100,          // 50..200 (%)
+  textColor: "#ffffff",
+  textOpacity: 100,   // 0..100 (%)
+  bgColor: "#000000",
+  bgOpacity: 50,      // 0..100 (%)
+  position: 8,        // 2..60 (% from bottom)
+  bold: false,
+  shadow: true,
+};
+
+function loadCapStyle() {
+  try {
+    const raw = localStorage.getItem(CAP_STYLE_KEY);
+    if (!raw) return { ...DEFAULT_CAP_STYLE };
+    return { ...DEFAULT_CAP_STYLE, ...JSON.parse(raw) };
+  } catch (_) { return { ...DEFAULT_CAP_STYLE }; }
+}
+let capStyle = loadCapStyle();
+
+function saveCapStyle() {
+  try { localStorage.setItem(CAP_STYLE_KEY, JSON.stringify(capStyle)); } catch (_) {}
+}
+
+function hexToRgba(hex, alpha) {
+  const h = String(hex || "#000000").replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16) || 0;
+  const g = parseInt(h.substring(2, 4), 16) || 0;
+  const b = parseInt(h.substring(4, 6), 16) || 0;
+  return "rgba(" + r + "," + g + "," + b + "," + Math.max(0, Math.min(1, alpha)) + ")";
+}
+
+function buildCapCssVars() {
+  const fontMap = {
+    sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    serif: 'Georgia, "Times New Roman", serif',
+    mono: 'ui-monospace, "Courier New", Consolas, monospace',
+  };
+  // 100% == 1.2em (≈ 19px on 16px base)
+  const sizeEm = (capStyle.size / 100) * 1.2;
+  return {
+    "--cap-font-family": fontMap[capStyle.font] || fontMap.sans,
+    "--cap-font-size": sizeEm + "em",
+    "--cap-font-weight": capStyle.bold ? "700" : "400",
+    "--cap-text-color": hexToRgba(capStyle.textColor, capStyle.textOpacity / 100),
+    "--cap-bg-color": hexToRgba(capStyle.bgColor, capStyle.bgOpacity / 100),
+    "--cap-text-shadow": capStyle.shadow ? "0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9)" : "none",
+  };
+}
+
+function applyCapStyle() {
+  const vars = buildCapCssVars();
+  for (const el of [captionOverlay, capSettingsPreview]) {
+    for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
+  }
+  captionOverlay.style.bottom = capStyle.position + "%";
+
+  // Preview line positioned within its box
+  const previewLine = capSettingsPreview.querySelector(".cap-line");
+  if (previewLine) previewLine.style.bottom = capStyle.position + "%";
+}
+
+function updateCapUI() {
+  document.getElementById("capFontFamily").value = capStyle.font;
+  document.getElementById("capFontSize").value = capStyle.size;
+  document.getElementById("capFontSizeVal").textContent = capStyle.size + "%";
+  document.getElementById("capTextColor").value = capStyle.textColor;
+  document.getElementById("capTextOpacity").value = capStyle.textOpacity;
+  document.getElementById("capTextOpacityVal").textContent = capStyle.textOpacity + "%";
+  document.getElementById("capBgColor").value = capStyle.bgColor;
+  document.getElementById("capBgOpacity").value = capStyle.bgOpacity;
+  document.getElementById("capBgOpacityVal").textContent = capStyle.bgOpacity + "%";
+  document.getElementById("capPosition").value = capStyle.position;
+  document.getElementById("capPositionVal").textContent = capStyle.position + "%";
+  document.getElementById("capBold").checked = capStyle.bold;
+  document.getElementById("capShadow").checked = capStyle.shadow;
+}
+
+function openCapSettings() {
+  updateCapUI();
+  applyCapStyle();
+  capSettingsPanel.hidden = false;
+  capSettingsBackdrop.hidden = false;
+  playerUI.classList.remove("idle");
+  clearTimeout(idleTimer);
+}
+function closeCapSettings() {
+  capSettingsPanel.hidden = true;
+  capSettingsBackdrop.hidden = true;
+  resetIdleTimer();
+}
+
+/* Wire up settings inputs */
+document.getElementById("capFontFamily").addEventListener("change", (e) => {
+  capStyle.font = e.target.value; saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capFontSize").addEventListener("input", (e) => {
+  capStyle.size = Number(e.target.value);
+  document.getElementById("capFontSizeVal").textContent = capStyle.size + "%";
+  saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capTextColor").addEventListener("input", (e) => {
+  capStyle.textColor = e.target.value; saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capTextOpacity").addEventListener("input", (e) => {
+  capStyle.textOpacity = Number(e.target.value);
+  document.getElementById("capTextOpacityVal").textContent = capStyle.textOpacity + "%";
+  saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capBgColor").addEventListener("input", (e) => {
+  capStyle.bgColor = e.target.value; saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capBgOpacity").addEventListener("input", (e) => {
+  capStyle.bgOpacity = Number(e.target.value);
+  document.getElementById("capBgOpacityVal").textContent = capStyle.bgOpacity + "%";
+  saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capPosition").addEventListener("input", (e) => {
+  capStyle.position = Number(e.target.value);
+  document.getElementById("capPositionVal").textContent = capStyle.position + "%";
+  saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capBold").addEventListener("change", (e) => {
+  capStyle.bold = e.target.checked; saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capShadow").addEventListener("change", (e) => {
+  capStyle.shadow = e.target.checked; saveCapStyle(); applyCapStyle();
+});
+document.getElementById("capSettingsReset").addEventListener("click", () => {
+  capStyle = { ...DEFAULT_CAP_STYLE };
+  saveCapStyle();
+  updateCapUI();
+  applyCapStyle();
+});
+document.getElementById("capSettingsDone").addEventListener("click", closeCapSettings);
+document.getElementById("capSettingsClose").addEventListener("click", closeCapSettings);
+capSettingsBackdrop.addEventListener("click", closeCapSettings);
 
 /* ═══════════ DRAWER ═══════════ */
 let drawerOpen = false;
@@ -2083,6 +2485,7 @@ document.getElementById("btnNetInspector").addEventListener("click", () => {
 document.addEventListener("keydown", (e) => {
   if (e.target.matches("input, select, textarea")) return;
   if (e.key === "Escape") {
+    if (!capSettingsPanel.hidden) { closeCapSettings(); return; }
     if (!logPanelEl.hidden) { logPanelEl.hidden = true; return; }
     if (drawerOpen) { closeDrawer(); return; }
     if (history.length > 1) history.back();
@@ -2133,7 +2536,6 @@ async function toggleFullscreen() {
     return;
   }
 
-  // On mobile, try to lock orientation to landscape once fullscreen is active
   if (IS_MOBILE) {
     try {
       if (screen.orientation && screen.orientation.lock) {
@@ -2194,9 +2596,6 @@ async function startWithAd() {
   const status = document.getElementById("adGateStatus");
   if (!btn || btn.disabled) return;
 
-  // Request fullscreen NOW — still inside the user gesture context.
-  // If we wait until playback starts (after ad/stream fetch), browsers
-  // will reject the fullscreen request.
   if (IS_MOBILE && isLandscapeNow() && !isCurrentlyFullscreen()) {
     requestMobileFullscreen();
   }
@@ -2224,6 +2623,10 @@ playerSub.textContent = P.subtitle;
 player.currentSe = Number(P.se) || 0;
 player.currentEp = Number(P.ep) || 1;
 if (P.isSeries) drawerToggleBtn.hidden = false;
+
+// Apply persisted caption style right away
+applyCapStyle();
+updateCapUI();
 
 if (!P.streamUrl && (!P.detailPath || !P.subjectId)) {
   failPlayback("Missing URL parameters", "Open this page from the catalog.");
