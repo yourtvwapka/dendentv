@@ -2,28 +2,11 @@
 """
 Combined MovieBox proxy + provider aggregator + HTML server.
 
-  GET /                                    -> index.html
-  GET /health                              -> {"status":"ok"}
-  GET /providers                           -> list all providers
-  GET /providers/<id>                      -> one provider (+ has_plugin)
-  GET /providers/<id>/search?q=...         -> plugin.search(q)
-  GET /providers/<id>/streams?url=...      -> plugin.get_streams(url)
-  GET /<any>.html                          -> that file
-  GET /?url=<url>&referer=<url>[&provider=][&cookie=] -> proxied fetch
-  OPTIONS *                                -> CORS preflight
-
-Proxy config matches the known-working single-project server:
-  - impersonate="chrome120"  (chrome131 trips Tengine WAF → 426)
-  - Origin: https://officialmoviebox.com forwarded on CDN requests
-  - Accept-Language forwarded
-  - Caller-supplied Referer forwarded to CDN
-  - Caller-supplied Range forwarded verbatim
-  - ?cookie= forwarded as Cookie: header (browsers can't set it directly)
-
-M3U8 manifests are rewritten so every nested URI routes back through this
-proxy with the correct referer + cookie + provider.
-
-Railway-ready: threading HTTP/1.1 server, $PORT, keepalive, SIGTERM.
+Key fix: forces HTTP/2 for upstream requests. MovieBox gates higher-quality
+video streams (720p/1080p/4K) behind HTTP/2 — HTTP/1.1 clients receive a
+downgraded 480p ladder with playConfig.maxResolution=480. With HTTP/2, the
+same API returns the full quality ladder and playConfig.maxResolution
+reflects the real cap (1080 or higher).
 """
 
 import importlib
@@ -54,7 +37,7 @@ def _keepalive_loop():
         i += 1
         try:
             r = creq.get(target, impersonate="chrome120", verify=False,
-                         timeout=20, allow_redirects=True)
+                         timeout=20, allow_redirects=True, http_version="v2")
             print(f"[keepalive] {time.strftime('%H:%M:%S')} {target} -> {r.status_code}", flush=True)
         except Exception as e:
             print(f"[keepalive] {target} failed: {e}", flush=True)
@@ -91,28 +74,13 @@ ALLOWED_HOSTS = (
     "hubdrive.pics", ".hubdrive.pics",
     "hubstream.xyz", ".hubstream.xyz",
     "pixeldrain.com", ".pixeldrain.com",
-    "pixeldrain.dev", ".pixeldrain.dev",
     "workers.dev", ".workers.dev",
-    # NEW: generator + mirror hosts
-    "gamerxyt.com", ".gamerxyt.com",
-    "pixel.hubcloud.cx",
-    "video-downloads.googleusercontent.com",
-    "gigabytes.icu", ".gigabytes.icu",
-    "airbender.buzz", ".airbender.buzz",
-    "bzzhr.co", ".bzzhr.co",
-    "ddflix.xyz", ".ddflix.xyz",
-    "gdflix.dev", ".gdflix.dev", ".gdflix.pro", ".gdflix.dad",
-    "driveleech.com", ".driveleech.com",
-    "filepress.live", ".filepress.live",
-    "gdtot.pro", ".gdtot.pro",
-    "kolop.xyz", ".kolop.xyz",
     # MoviesDrive / Google Drive
     ".moviesdrive.beer", ".moviesdrive.net",
     "drive.google.com", "drive.usercontent.google.com",
     "docs.google.com", "gdrive.com",
-    "mega.nz", ".mega.nz",
-    "dropbox.com", ".dropbox.com",
 )
+
 CHUNK_SIZE = 262144
 
 CONTENT_TYPE_OVERRIDES = {
@@ -162,11 +130,8 @@ def _rewrite_m3u8(content, base_url, referer, cookie=None, provider_id=None):
             out.append(line); continue
         if s.startswith("#"):
             if 'URI="' in s:
-                s = re.sub(
-                    r'URI="([^"]*)"',
-                    lambda m: 'URI="' + make_proxy(urljoin(base_url, m.group(1))) + '"',
-                    s,
-                )
+                s = re.sub(r'URI="([^"]*)"',
+                           lambda m: 'URI="' + make_proxy(urljoin(base_url, m.group(1))) + '"', s)
                 out.append(s)
             else:
                 out.append(line)
@@ -193,10 +158,7 @@ def _load_providers():
         try: host = (urlparse(url).hostname or "").lower() if url else ""
         except Exception: host = ""
         out[pid] = {
-            "id": pid,
-            "name": info.get("name") or pid,
-            "url": url,
-            "host": host,
+            "id": pid, "name": info.get("name") or pid, "url": url, "host": host,
             "cdn_hosts": [h.lower() for h in (info.get("cdn_hosts") or []) if h],
         }
     print(f"[providers] loaded {len(out)} providers", flush=True)
@@ -210,17 +172,14 @@ _PLUGINS = {}
 
 def _load_plugins():
     if not os.path.isdir(PLUGIN_DIR):
-        print(f"[plugins] {PLUGIN_DIR} not found — no scrapers loaded", flush=True)
-        return
+        print(f"[plugins] {PLUGIN_DIR} not found", flush=True); return
     init_py = os.path.join(PLUGIN_DIR, "__init__.py")
     if not os.path.exists(init_py):
         with open(init_py, "w", encoding="utf-8") as f:
             f.write('"""Provider plugins."""\n')
-    if BASE_DIR not in sys.path:
-        sys.path.insert(0, BASE_DIR)
+    if BASE_DIR not in sys.path: sys.path.insert(0, BASE_DIR)
     for entry in sorted(os.listdir(PLUGIN_DIR)):
-        if not entry.endswith(".py") or entry.startswith("_"):
-            continue
+        if not entry.endswith(".py") or entry.startswith("_"): continue
         modname = entry[:-3]
         try:
             mod = importlib.import_module(f"providers.{modname}")
@@ -282,6 +241,9 @@ class Handler(BaseHTTPRequestHandler):
                 if host == h[1:] or host.endswith(h): return True
             else:
                 if host == h or host.endswith("." + h): return True
+        for prov in PROVIDERS.values():
+            for h in [prov["host"]] + prov.get("cdn_hosts", []):
+                if h and (host == h or host.endswith("." + h)): return True
         return False
 
     def _serve_html(self, filename, head_only=False):
@@ -383,7 +345,6 @@ class Handler(BaseHTTPRequestHandler):
                                                     "host": host, "provider": provider_id}),
                                    "application/json", head_only)
 
-        # ── upstream headers (match the working single-project server) ──
         is_api = "officialmoviebox.com" in host
         if is_api:
             hdrs = {
@@ -400,49 +361,60 @@ class Handler(BaseHTTPRequestHandler):
                 v = self.headers.get(h)
                 if v: hdrs[h] = v
         else:
-            # CDN / asset host — same config as the working server
             hdrs = {
                 "Accept": "*/*",
                 "Accept-Language": "en-US,en;q=0.9",
                 "Referer": referer,
                 "Origin": "https://officialmoviebox.com",
             }
-            if cookie_param:
-                hdrs["Cookie"] = cookie_param
+            if cookie_param: hdrs["Cookie"] = cookie_param
 
         rng = self.headers.get("Range")
         if rng: hdrs["Range"] = rng
 
-        # ── upstream fetch (chrome120, not chrome131) ──
+        # ── upstream fetch: HTTP/2 forced to unlock higher quality tiers ──
         try:
             r = creq.get(target, headers=hdrs, impersonate="chrome120",
-                         verify=False, timeout=120, allow_redirects=True, stream=True)
+                         verify=False, timeout=(15, 120), allow_redirects=True,
+                         stream=True, http_version="v2")
         except Exception as e:
-            print(f"[proxy] FAIL {target} -> {e}", flush=True)
-            return self._send_body(502, json.dumps({"error": str(e), "target": target}),
-                                   "application/json", head_only)
+            print(f"[proxy] UPSTREAM FAIL target={target} error={e}", flush=True)
+            # Fallback to HTTP/1.1 in case v2 is unavailable on this network
+            try:
+                print(f"[proxy] retrying with HTTP/1.1...", flush=True)
+                r = creq.get(target, headers=hdrs, impersonate="chrome120",
+                             verify=False, timeout=(15, 120), allow_redirects=True,
+                             stream=True, http_version="v1.1")
+            except Exception as e2:
+                return self._send_body(502, json.dumps({"error": str(e2), "target": target}),
+                                       "application/json", head_only)
 
-        # ── media guard: reject HTML/JSON error pages for .mp4/.mkv/etc ──
+        # ── detect non-video responses for media requests ──
         media_ct = _guess_content_type_from_path(target)
         if media_ct:
             upstream_ct = (r.headers.get("Content-Type") or "").lower()
-            bad = (
-                upstream_ct.startswith(("text/html", "application/json",
-                                        "text/plain", "application/xml", "text/xml"))
-                or r.status_code >= 400
+            bad_content = (
+                upstream_ct.startswith("text/html")
+                or upstream_ct.startswith("application/json")
+                or upstream_ct.startswith("text/plain")
+                or upstream_ct.startswith("application/xml")
+                or upstream_ct.startswith("text/xml")
             )
-            print(
-                f"[media] {'BAD' if bad else 'OK '} "
-                f"status={r.status_code} ct={upstream_ct[:25] or '?'} "
-                f"len={r.headers.get('Content-Length') or '?'} "
-                f"host={host} range={rng or '-'}",
-                flush=True,
-            )
-            if bad:
-                try: err_text = r.content[:2048].decode("utf-8", "replace")
-                except Exception as e: err_text = f"(unreadable: {e})"
+            if bad_content or r.status_code >= 400:
+                try:
+                    err_bytes = r.content[:2048]
+                    err_text = err_bytes.decode("utf-8", "replace")
+                except Exception as e:
+                    err_text = f"(unreadable: {e})"
                 try: r.close()
                 except Exception: pass
+
+                print(f"[proxy] NON-VIDEO target={target}\n"
+                      f"        upstream_status={r.status_code}\n"
+                      f"        upstream_ct={upstream_ct}\n"
+                      f"        referer_sent={referer}\n"
+                      f"        body_preview={err_text[:400]!r}", flush=True)
+
                 return self._send_body(502, json.dumps({
                     "error": "upstream returned non-video",
                     "upstream_status": r.status_code,
@@ -542,7 +514,7 @@ if __name__ == "__main__":
     on_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_PROJECT_ID"))
 
     banner = f"""
-✓ MovieBox proxy + provider aggregator
+✓ MovieBox proxy + provider aggregator (HTTP/2 upstream)
   PORT={port}
   Providers loaded: {len(PROVIDERS)}
   Plugins loaded:   {len(_PLUGINS)} ({', '.join(sorted(_PLUGINS)) or 'none'})
