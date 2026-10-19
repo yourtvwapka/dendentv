@@ -1,15 +1,9 @@
 """Shared HubCloud / Gamerxyt / GadgetsWeb / HubDrive / GDflix resolver.
 
-Confirmed flow (from two working open-source implementations):
-
-  hubcloud.<tld>/drive/<id>
-      → <a id="download"> href = gamerxyt.com/hubcloud.php?host=hubcloud&id=...&token=...
-      → gamerxyt page exposes mirrors:
-           <a id="s3">          FSLv2   (append _1{minute})
-           <a id="fsl">         FSL     (append 1{minute})
-           var pxl / id=pxl-1   Pixel   (pixeldrain page → /api/file/<id>?download)
-           bzzhr.co anchor      Buzz
-           pixel.hubcloud.cx    10Gbps  → redirects to video-downloads.googleusercontent.com
+Confirmed flow:
+  hubcloud.<tld>/drive/<id>  → gamerxyt generator → FSLv2 / FSL / Pixel / 10Gbps
+  gadgetsweb.xyz/?id=...     → decrypt token → hubcloud drive URL
+  hubdrive.<tld>/file/<id>   → POST /ajax.php?ajax=download {id} → JSON file URL
 """
 
 import base64
@@ -44,7 +38,6 @@ DIRECT_HOST_PATTERNS = [
 
 
 def find_cloud_links(text):
-    """Extract every cloud-host URL from arbitrary HTML or JS text."""
     urls = set()
     if not text:
         return urls
@@ -56,7 +49,6 @@ def find_cloud_links(text):
 
 
 def resolve_cloud_url(session, url, referer=None):
-    """Resolve one cloud URL into a list of {url, quality, format, label}."""
     host = urlparse(url).netloc.lower()
 
     if "hubdrive" in host:
@@ -65,13 +57,11 @@ def resolve_cloud_url(session, url, referer=None):
         return _resolve_hubcloud(session, url, referer)
     if "gadgetsweb" in host:
         return _resolve_gadgetsweb(session, url, referer)
-    # gdflix, driveleech, filepress → one-hop follow
     return _follow_shortener(session, url, referer)
 
 
 # ----------------------------------------------------------------- hubcloud
 def _resolve_hubcloud(session, landing_url, referer=None):
-    """hubcloud.*/drive/<id> → gamerxyt generator page → mirror links."""
     hdrs = {"Referer": referer} if referer else {}
     try:
         r = session.get(landing_url, headers=hdrs, timeout=45, allow_redirects=True)
@@ -107,19 +97,16 @@ def _resolve_hubcloud(session, landing_url, referer=None):
     out = []
     minute = datetime.datetime.now().minute
 
-    # FSLv2 (<a id="s3">) — timing suffix _1{minute}
     a = soup2.find("a", id="s3")
     if a and a.get("href"):
         out.append({"url": a["href"] + f"_1{minute}",
                     "quality": "Auto", "format": "MKV", "label": "FSLv2"})
 
-    # FSL (<a id="fsl">) — timing suffix 1{minute}
     a = soup2.find("a", id="fsl")
     if a and a.get("href"):
         out.append({"url": a["href"] + f"1{minute}",
                     "quality": "Auto", "format": "MKV", "label": "FSL"})
 
-    # PixelServer
     m = re.search(r'var pxl = "([^"]+)"', r2.text)
     pxl = m.group(1) if m else None
     if not pxl:
@@ -132,13 +119,11 @@ def _resolve_hubcloud(session, landing_url, referer=None):
             pxl = f"https://pixeldrain.com/api/file/{pm.group(1)}?download"
         out.append({"url": pxl, "quality": "Auto", "format": "", "label": "Pixel"})
 
-    # Buzz
     a = soup2.find("a", href=re.compile(r"bzzhr\.co"))
     if a and a.get("href"):
         out.append({"url": a["href"], "quality": "Auto",
                     "format": "", "label": "Buzz"})
 
-    # 10Gbps (pixel.hubcloud.cx → gamerxyt/dl.php → Google CDN)
     a = soup2.find("a", href=re.compile(r"pixel\.hubcloud\.cx"))
     if a and a.get("href"):
         try:
@@ -161,12 +146,10 @@ def _resolve_hubcloud(session, landing_url, referer=None):
 
 # --------------------------------------------------------------- gadgetsweb
 def _resolve_gadgetsweb(session, url, referer=None):
-    """gadgetsweb.xyz/?id=... → decrypt token → hubcloud drive URL."""
     try:
         session.get(url, timeout=30)
     except Exception:
         pass
-    # /homelander/ sets the session cookie
     try:
         session.get("https://gadgetsweb.xyz/homelander/", timeout=30)
     except Exception:
@@ -202,58 +185,112 @@ def _resolve_gadgetsweb(session, url, referer=None):
 
 # ----------------------------------------------------------------- hubdrive
 def _resolve_hubdrive(session, file_url):
-    """hubdrive.pics/file/<id> → POST /ajax.php?ajax=download {id}."""
+    """hubdrive.<tld>/file/<id> → POST /ajax.php?ajax=download {id}.
+
+    Reads raw bytes with Accept-Encoding: identity to bypass the curl_cffi
+    decompression bug that returns 0 bytes despite Content-Length > 0.
+    """
     m = re.search(r"/file/([^/?#]+)", file_url)
     if not m:
         return []
     fid = m.group(1)
     origin = f"{urlparse(file_url).scheme}://{urlparse(file_url).netloc}"
 
-    try:
-        session.get(file_url, timeout=30)
-    except Exception:
-        pass
-
+    # Prime cookies + scrape down-id (some deploys use a different id)
     ids = [fid]
     try:
         page = session.get(file_url, timeout=30)
         dm = re.search(r'id=["\']down-id["\'][^>]*>([^<]+)<', page.text)
         if dm and dm.group(1).strip():
-            ids.insert(0, dm.group(1).strip())
+            alt = dm.group(1).strip()
+            if alt and alt != fid:
+                ids.insert(0, alt)
     except Exception:
         pass
 
     for cid in ids:
-        try:
-            resp = session.post(
-                origin + "/ajax.php?ajax=download",
-                data={"id": cid},
-                headers={
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Referer": file_url,
-                    "Origin": origin,
-                    "Accept": "application/json, text/javascript, */*; q=0.01",
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                },
-                timeout=30, allow_redirects=False,
-            )
-            txt = (resp.text or "").strip()
-            if txt:
-                j = json.loads(txt)
-                if str(j.get("code")) == "200":
-                    u = j.get("file") or j.get("url") or j.get("link")
-                    if u:
-                        return [{"url": u, "quality": "Auto",
-                                 "format": "MP4", "label": "HubDrive"}]
-            loc = resp.headers.get("Location")
-            if loc and loc.startswith("http"):
-                return [{"url": loc, "quality": "Auto",
-                         "format": "MP4", "label": "HubDrive"}]
-        except Exception:
-            continue
+        result = _hubdrive_ajax_attempt(session, origin, file_url, cid)
+        if result:
+            return result
 
     print(f"[hubdrive] ajax exhausted for {fid}", flush=True)
     return []
+
+
+def _hubdrive_ajax_attempt(session, origin, file_url, cid):
+    """Try every reasonable combination; return the first working stream."""
+    base_headers = {
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": file_url,
+        "Origin": origin,
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Encoding": "identity",   # ← key: skip compression
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    }
+
+    bodies = [
+        {"id": cid},
+        {"ajax": "download", "id": cid},
+        f"id={cid}",
+    ]
+    urls = [origin + "/ajax.php?ajax=download", origin + "/ajax.php"]
+
+    for body in bodies:
+        for url in urls:
+            try:
+                resp = session.post(url, data=body, headers=base_headers,
+                                    timeout=30, allow_redirects=False)
+            except Exception as e:
+                print(f"[hubdrive] POST err {url[-30:]}: {e}", flush=True)
+                continue
+
+            raw = _read_body(resp)
+            clen = resp.headers.get("Content-Length") or "?"
+            label = list(body)[0] if isinstance(body, dict) else "str"
+            print(
+                f"[hubdrive] {url.split('//')[-1]} body={label} "
+                f"→ {resp.status_code} clen={clen} got={len(raw)}b",
+                flush=True,
+            )
+
+            # 302 → file
+            loc = resp.headers.get("Location")
+            if loc and loc.startswith("http") and any(x in loc for x in (".mkv", ".mp4", "googleusercontent")):
+                return [{"url": loc, "quality": "Auto",
+                         "format": "MP4", "label": "HubDrive"}]
+
+            # JSON response
+            if raw:
+                txt = raw.decode("utf-8", "replace").strip()
+                print(f"[hubdrive]   body: {txt[:120]!r}", flush=True)
+                if txt.startswith("{"):
+                    try:
+                        j = json.loads(txt)
+                        if str(j.get("code")) == "200":
+                            u = j.get("file") or j.get("url") or j.get("link")
+                            if u:
+                                return [{"url": u, "quality": "Auto",
+                                         "format": "MP4", "label": "HubDrive"}]
+                    except Exception:
+                        pass
+
+    return None
+
+
+def _read_body(resp):
+    """Read response bytes with multiple fallbacks for curl_cffi edge cases."""
+    for getter in (
+        lambda: resp.content,
+        lambda: resp.raw.read(),
+        lambda: (resp.text or "").encode("utf-8"),
+    ):
+        try:
+            data = getter()
+            if data:
+                return data
+        except Exception:
+            continue
+    return b""
 
 
 # ------------------------------------------------------------------ generic
