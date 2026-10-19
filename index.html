@@ -16,7 +16,7 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);min-height:100%}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:96px}
   img{display:block}
   button{font-family:inherit;color:inherit;cursor:pointer}
 
@@ -40,7 +40,7 @@
   #searchClear:hover{background:rgba(255,255,255,.08);color:#fff}
   #searchClear[hidden]{display:none}
 
-  main{padding:24px 22px 80px;max-width:1600px;margin:0 auto}
+  main{padding:24px 22px 120px;max-width:1600px;margin:0 auto}
   section[hidden]{display:none!important}
 
   .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:26px 0 14px}
@@ -77,58 +77,46 @@
   .empty{text-align:center;padding:70px 24px;color:var(--muted);font-size:14px}
   .empty strong{color:#fff;font-weight:700}
 
-  /* ────── SEARCH FILTER PILLS ────── */
-  .filter-bar{
-    display:flex;flex-wrap:wrap;gap:8px;
-    padding:4px 2px 16px;
-    margin-bottom:14px;
-  }
-  .filter-pill{
-    display:inline-flex;align-items:center;gap:8px;
-    padding:9px 16px;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.10);
-    color:#e5e5ea;border-radius:999px;
-    font-size:13px;font-weight:700;
-    transition:.15s;
-    -webkit-tap-highlight-color:transparent;
-    cursor:pointer;
-  }
+  .filter-bar{display:flex;flex-wrap:wrap;gap:8px;padding:4px 2px 16px;margin-bottom:14px}
+  .filter-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#e5e5ea;border-radius:999px;font-size:13px;font-weight:700;transition:.15s;-webkit-tap-highlight-color:transparent}
   .filter-pill:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.20)}
-  .filter-pill.active{
-    background:var(--accent);border-color:var(--accent);color:#fff;
-    box-shadow:0 4px 14px rgba(229,9,20,.35);
-  }
-  .filter-pill .count{
-    display:inline-flex;align-items:center;justify-content:center;
-    min-width:22px;height:20px;padding:0 7px;
-    background:rgba(255,255,255,.15);
-    color:inherit;border-radius:999px;
-    font-size:11px;font-weight:800;
-    letter-spacing:.3px;
-  }
+  .filter-pill.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(229,9,20,.35)}
+  .filter-pill .count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 7px;background:rgba(255,255,255,.15);border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.3px}
   .filter-pill.active .count{background:rgba(0,0,0,.25)}
-  .filter-pill .provider-dot{
-    width:8px;height:8px;border-radius:50%;
-    flex-shrink:0;
-  }
+  .filter-pill .provider-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   .filter-pill[data-provider="__moviebox"] .provider-dot{background:#e50914}
   .filter-pill[data-provider="hdhub"] .provider-dot{background:#22c55e}
   .filter-pill[data-provider="drive"] .provider-dot{background:#3b82f6}
   .filter-pill.active .provider-dot{background:#fff}
 
-  .provider-count-badge{
-    display:inline-flex;align-items:center;gap:6px;
-    font-size:11.5px;font-weight:700;
-    color:var(--muted);
-    padding:2px 8px;border-radius:6px;
-    background:rgba(255,255,255,.04);
-    border:1px solid rgba(255,255,255,.06);
-    margin-left:8px;
-  }
-  .provider-count-badge .dot{width:6px;height:6px;border-radius:50%}
+  /* sentinel + end message */
+  .sentinel{grid-column:1/-1;height:1px;pointer-events:none;opacity:0}
+  .end-msg{grid-column:1/-1;text-align:center;padding:36px 20px 20px;color:var(--muted);font-size:11.5px;letter-spacing:1.4px;text-transform:uppercase;user-select:none}
+  .end-msg[hidden]{display:none}
+  .search-loading{grid-column:1/-1;display:flex;align-items:center;justify-content:center;padding:30px;gap:12px;color:var(--muted);font-size:12.5px}
+  .search-loading[hidden]{display:none}
 
-  .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);padding:11px 18px;border-radius:10px;background:rgba(20,20,24,.96);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:13.5px;font-weight:600;box-shadow:0 12px 40px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;max-width:90vw;text-align:center}
+  /* page bar (search only) */
+  .page-bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(23,23,28,.92);border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03) inset;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:150;transition:opacity .18s,transform .18s}
+  .page-bar[hidden]{display:none}
+  .page-bar.fade{opacity:.35}
+  .page-bar.fade:hover{opacity:1}
+  .page-btn{width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:#e5e5ea;font-size:20px;line-height:1;font-weight:600;border-radius:999px;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent}
+  .page-btn:hover:not(:disabled){background:rgba(255,255,255,.10);color:#fff}
+  .page-btn:active:not(:disabled){transform:scale(.92)}
+  .page-btn:disabled{opacity:.28;cursor:default}
+  .page-label{font-size:12.5px;font-weight:700;color:#e5e5ea;font-variant-numeric:tabular-nums;min-width:70px;text-align:center;padding:0 6px;user-select:none}
+  .page-label .page-cur{color:#fff}
+  .page-label .page-sep{color:#6b7280;margin:0 3px}
+  .page-label .page-total{color:var(--muted)}
+  .page-bar .jump-input{width:52px;height:34px;flex:none;background:#101014;border:1px solid var(--line);color:#e5e5ea;font-size:13px;font-weight:600;border-radius:999px;text-align:center;outline:none;font-variant-numeric:tabular-nums;padding:0 4px;-moz-appearance:textfield}
+  .page-bar .jump-input:focus{border-color:var(--accent)}
+  .page-bar .jump-input::-webkit-outer-spin-button,
+  .page-bar .jump-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .page-bar .jump-btn{height:34px;padding:0 12px;flex:none;background:var(--card-2);border:1px solid var(--line);color:#e5e5ea;font-size:12px;font-weight:700;border-radius:999px;cursor:pointer;transition:.15s;letter-spacing:.3px}
+  .page-bar .jump-btn:hover{background:#26262f;border-color:#4a4a58;color:#fff}
+
+  .toast{position:fixed;left:50%;bottom:80px;transform:translate(-50%,20px);padding:11px 18px;border-radius:10px;background:rgba(20,20,24,.96);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:13.5px;font-weight:600;box-shadow:0 12px 40px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;max-width:90vw;text-align:center}
   .toast.show{opacity:1;transform:translate(-50%,0)}
 
   @media (max-width:640px){
@@ -136,13 +124,18 @@
     .brand{font-size:15px}
     .brand .dot{width:8px;height:8px}
     #searchInput{height:40px;font-size:13.5px;padding:0 36px 0 40px}
-    main{padding:16px 14px 70px}
+    main{padding:16px 14px 110px}
     .section-head h2{font-size:17px}
     .grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px 10px}
     .row .card{width:132px}
     .row{gap:10px}
     .filter-pill{padding:8px 12px;font-size:12px}
     .filter-pill .count{min-width:18px;height:18px;padding:0 5px;font-size:10px}
+    .page-bar{bottom:14px;padding:5px 6px;gap:4px}
+    .page-btn{width:32px;height:32px;font-size:19px}
+    .page-label{min-width:58px;font-size:12px;padding:0 4px}
+    .page-bar .jump-input{width:44px;height:32px;font-size:12px}
+    .page-bar .jump-btn{height:32px;padding:0 10px;font-size:11px}
   }
 </style>
 </head>
@@ -191,8 +184,26 @@
     <div class="filter-bar" id="filterBar"></div>
 
     <div class="grid" id="searchGrid"></div>
+    <div id="searchSentinel" class="sentinel" aria-hidden="true"></div>
+    <div id="searchLoading" class="search-loading" hidden>
+      <div class="spinner" style="width:18px;height:18px;border-width:2px"></div>
+      <span>Loading more…</span>
+    </div>
+    <div id="searchEndMsg" class="end-msg" hidden>— End of results —</div>
   </section>
 </main>
+
+<div id="pageBar" class="page-bar" hidden>
+  <button class="page-btn" id="pagePrev" title="Previous page">‹</button>
+  <span class="page-label">
+    <span class="page-cur" id="pageCur">1</span>
+    <span class="page-sep">/</span>
+    <span class="page-total" id="pageTotal">1</span>
+  </span>
+  <button class="page-btn" id="pageNext" title="Next page">›</button>
+  <input type="number" class="jump-input" id="pageJump" min="1" placeholder="Go" />
+  <button class="jump-btn" id="pageJumpBtn">GO</button>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -208,17 +219,30 @@ const MOVIEBOX_VIRTUAL = {
   isVirtual: true,
 };
 
+const PAGE_SIZE = 40;
+const PREFETCH_AHEAD = 1;
+
 let PROVIDERS = [];
-let searchAbort = null;
 let currentSearchQuery = "";
 
-/* ─────── search state ─────── */
-const searchState = {
-  groups: {},         // providerId -> [items]
-  totalCounts: {},    // providerId -> count
+/* ─────── search pagination state ─────── */
+const S = {
+  active: false,
+  query: "",
+  page: 0,
+  hasMore: true,
+  loading: false,
   activeFilter: "all",
+  groups: {},             // pid -> accumulated items
+  totalCounts: {},        // pid -> count
+  seenKeys: new Set(),
+  itemMap: new Map(),     // itemKey -> item (for click lookup)
+  providerExhausted: {},  // pid -> true when no more pages
+  pageAnchors: [],        // DOM elements marking each loaded page start
+  currentPage: 1,
   lastMs: 0,
-  lastError: null,
+  abort: null,
+  pageItemCounts: [],     // how many items each page contributed (for anchor math)
 };
 
 /* ─────── helpers ─────── */
@@ -249,8 +273,11 @@ function providerDisplayName(pid) {
   const p = PROVIDERS.find(x => x.id === pid);
   return p?.name || pid;
 }
+function itemKey(item) {
+  return (item.detailPath || item.pageUrl || item.title || "") + "|" + item.providerId;
+}
 
-/* ─────── Nuxt3 devalue decoder ─────── */
+/* ─────── Nuxt3 decoder ─────── */
 const DEVALUE_WRAPPERS = {
   ShallowReactive: v => v, Reactive: v => v, Ref: v => v,
   ShallowRef: v => v, EmptyRef: () => undefined, EmptyShallowRef: () => undefined,
@@ -304,16 +331,12 @@ function findSubjects(root) {
     if (depth > 40 || !node || typeof node !== "object" || visited.has(node)) return;
     visited.add(node);
     if (Array.isArray(node)) { for (const item of node) walk(item, depth + 1); return; }
-    if (
-      typeof node.detailPath === "string" && node.detailPath.length > 0 &&
-      typeof node.title === "string" && node.title.length > 0 &&
-      node.subjectId !== undefined
-    ) {
+    if (typeof node.detailPath === "string" && node.detailPath.length > 0 &&
+        typeof node.title === "string" && node.title.length > 0 && node.subjectId !== undefined) {
       if (!seen.has(node.detailPath)) {
         seen.add(node.detailPath);
         out.push({
-          title: node.title,
-          detailPath: node.detailPath,
+          title: node.title, detailPath: node.detailPath,
           subjectId: String(node.subjectId || ""),
           image: imgUrl(node.cover),
           isTV: Number(node.subjectType) === 2,
@@ -333,20 +356,20 @@ async function loadProviders() {
     const res = await fetch(PROXY_URL + "/providers");
     if (!res.ok) throw new Error("HTTP " + res.status);
     const list = await res.json();
-    PROVIDERS = (list || []).filter((p) => p && p.has_plugin);
+    PROVIDERS = (list || []).filter(p => p && p.has_plugin);
   } catch (e) {
     console.warn("[providers] fetch failed:", e);
     PROVIDERS = [];
   }
   const hasMovieBoxProvider = PROVIDERS.some(
-    (p) => /moviebox/i.test(p.name) || /moviebox/i.test(p.url || "")
+    p => /moviebox/i.test(p.name) || /moviebox/i.test(p.url || "")
   );
   if (!hasMovieBoxProvider) PROVIDERS = [MOVIEBOX_VIRTUAL, ...PROVIDERS];
 
   document.getElementById("providerHint").textContent =
     PROVIDERS.length + " source" + (PROVIDERS.length === 1 ? "" : "s");
   document.getElementById("providerList").innerHTML =
-    PROVIDERS.map((p) =>
+    PROVIDERS.map(p =>
       `<span style="display:inline-block;margin:4px 6px 4px 0;padding:6px 12px;` +
       `background:#1e1e25;border:1px solid #2a2a33;border-radius:999px;font-size:12.5px;` +
       `font-weight:600;color:#e5e5ea">${escapeHtml(p.name)}</span>`
@@ -355,7 +378,7 @@ async function loadProviders() {
     'Type in the search bar above to search all providers at once.</div>';
 }
 
-/* ─────── MovieBox trending ─────── */
+/* ─────── trending ─────── */
 async function fetchMovieBoxTrending(tabId, page, signal) {
   const params = new URLSearchParams({ page: String(page || 1), perPage: "36" });
   if (tabId) params.set("tabId", tabId);
@@ -404,7 +427,7 @@ async function loadTrending() {
   }
 }
 
-/* ─────── renderers ─────── */
+/* ─────── card rendering ─────── */
 function cardHtml(item) {
   const badge = item.isSeries ? "TV" : "Movie";
   const img = item.image
@@ -415,7 +438,7 @@ function cardHtml(item) {
     ${escapeHtml((item.title || "?").charAt(0).toUpperCase())}
   </div>`;
   const providerClass = item.providerId === MOVIEBOX_VIRTUAL.id ? "" : "neutral";
-  return `<button class="card" data-pid="${escapeHtml(item.providerId)}" data-key="${escapeHtml(itemKey(item))}">
+  return `<button class="card" data-key="${escapeHtml(itemKey(item))}">
     <div class="poster">${img}${fallback}
       <span class="badge">${badge}</span>
       <span class="provider-tag ${providerClass}">${escapeHtml(item.providerName)}</span>
@@ -423,77 +446,69 @@ function cardHtml(item) {
     <div class="card-title">${escapeHtml(item.title)}</div>
   </button>`;
 }
-function itemKey(item) {
-  return (item.detailPath || item.pageUrl || item.title || "") + "|" + item.providerId;
-}
-function bindCardClicks(root, items) {
-  const byKey = new Map();
-  for (const it of items) byKey.set(itemKey(it), it);
-  root.querySelectorAll(".card").forEach((el) => {
-    el.addEventListener("click", () => {
-      const it = byKey.get(el.dataset.key);
-      if (it) handleCardClick(it);
-    });
-  });
-}
 function renderRow(container, items) {
   if (!items || !items.length) { container.innerHTML = '<div class="empty">Nothing here.</div>'; return; }
   container.innerHTML = items.map(cardHtml).join("");
-  bindCardClicks(container, items);
+  container.querySelectorAll(".card").forEach(el => {
+    el.addEventListener("click", () => {
+      const key = el.dataset.key;
+      const item = S.itemMap.get(key) || items.find(it => itemKey(it) === key);
+      if (item) handleCardClick(item);
+    });
+  });
+  for (const it of items) S.itemMap.set(itemKey(it), it);
 }
 
-/* ─────── search ─────── */
-async function searchProvider(p, q, signal) {
-  try {
-    if (p.id === MOVIEBOX_VIRTUAL.id) {
-      // Try official API first (multiple param names)
-      for (const param of ["keyword", "q", "query"]) {
-        try {
-          const apiUrl = BASE + "/wefeed-h5api-bff/subject/search?" +
-            new URLSearchParams({ [param]: q, page: "1", perPage: "40" });
-          const r = await fetch(proxyFor(apiUrl, BASE + "/"), { signal });
-          if (r.ok) {
-            const json = await r.json();
-            const list = json.data?.subjectList || json.data?.items || json.data?.list || [];
-            if (list.length) return list.map(normalizeMovieBoxItem);
-          }
-        } catch (_) {}
+/* ─────── search: per-provider page fetch ─────── */
+async function searchMovieBoxPage(q, page, signal) {
+  for (const param of ["keyword", "q", "query"]) {
+    try {
+      const apiUrl = BASE + "/wefeed-h5api-bff/subject/search?" +
+        new URLSearchParams({ [param]: q, page: String(page), perPage: String(PAGE_SIZE) });
+      const r = await fetch(proxyFor(apiUrl, BASE + "/"), { signal });
+      if (r.ok) {
+        const json = await r.json();
+        const list = json.data?.subjectList || json.data?.items || json.data?.list || [];
+        if (list.length) return list.map(normalizeMovieBoxItem);
       }
-      // Fallback: Nuxt payload scrape
-      try {
-        const searchUrl = BASE + "/search?q=" + encodeURIComponent(q);
-        const r = await fetch(proxyFor(searchUrl, BASE + "/"), { signal });
-        if (!r.ok) return [];
-        const html = await r.text();
-        const resolved = extractNuxt3Payload(html);
-        if (!resolved) return [];
-        const subjects = findSubjects(resolved);
-        return subjects.map(s => ({
-          providerId: MOVIEBOX_VIRTUAL.id,
-          providerName: MOVIEBOX_VIRTUAL.name,
-          title: s.title,
-          image: s.image,
-          detailPath: s.detailPath,
-          subjectId: s.subjectId,
-          pageUrl: "",
-          isSeries: s.isTV,
-          isMovieBox: true,
-        }));
-      } catch (_) { return []; }
-    }
+    } catch (_) {}
+  }
+  // Nuxt fallback for page 1 only
+  if (page === 1) {
+    try {
+      const searchUrl = BASE + "/search?q=" + encodeURIComponent(q);
+      const r = await fetch(proxyFor(searchUrl, BASE + "/"), { signal });
+      if (!r.ok) return [];
+      const resolved = extractNuxt3Payload(await r.text());
+      if (!resolved) return [];
+      return findSubjects(resolved).map(s => ({
+        providerId: MOVIEBOX_VIRTUAL.id,
+        providerName: MOVIEBOX_VIRTUAL.name,
+        title: s.title, image: s.image,
+        detailPath: s.detailPath, subjectId: s.subjectId,
+        pageUrl: "", isSeries: s.isTV, isMovieBox: true,
+      }));
+    } catch (_) { return []; }
+  }
+  return [];
+}
+
+async function searchProviderPage(p, q, page, signal) {
+  if (page > 1) return [];  // plugins don't paginate; only page 1 is valid
+  try {
     const url = PROXY_URL + "/providers/" + encodeURIComponent(p.id) +
                 "/search?q=" + encodeURIComponent(q);
     const r = await fetch(url, { signal });
     if (!r.ok) return [];
     const json = await r.json();
     const list = json.results || json.data || json.items || json.list || [];
-    return list.map((item) => normalizeGenericItem(item, p));
+    return list.map(item => normalizeGenericItem(item, p));
   } catch (e) {
     if (e.name === "AbortError") throw e;
-    console.warn("[search " + p.id + "]", e);
     return [];
   }
 }
+
 function normalizeGenericItem(item, p) {
   const isMovieBoxShape = !!(item.detailPath && item.subjectId);
   if (isMovieBoxShape) return normalizeMovieBoxItem(item);
@@ -510,104 +525,256 @@ function normalizeGenericItem(item, p) {
   };
 }
 
+/* ─────── search: state + paginated loading ─────── */
+function resetSearchState(q) {
+  S.active = true;
+  S.query = q;
+  S.page = 0;
+  S.hasMore = true;
+  S.loading = false;
+  S.activeFilter = "all";
+  S.groups = {};
+  S.totalCounts = {};
+  S.seenKeys = new Set();
+  S.itemMap = new Map();
+  S.providerExhausted = {};
+  S.pageAnchors = [];
+  S.pageItemCounts = [];
+  S.currentPage = 1;
+  S.lastMs = 0;
+}
+
 async function doSearch(q) {
   q = (q || "").trim();
   currentSearchQuery = q;
   const browse = document.getElementById("browseSection");
   const search = document.getElementById("searchSection");
   const grid = document.getElementById("searchGrid");
+  const filterBar = document.getElementById("filterBar");
   const status = document.getElementById("searchStatus");
   const qLabel = document.getElementById("searchQuery");
-  const filterBar = document.getElementById("filterBar");
+  const loadingEl = document.getElementById("searchLoading");
+  const endMsg = document.getElementById("searchEndMsg");
 
   if (q.length < 2) {
     search.hidden = true;
     browse.hidden = false;
+    S.active = false;
+    hidePageBar();
     return;
   }
+
+  // Reset UI
   browse.hidden = true;
   search.hidden = false;
   qLabel.textContent = q;
   status.textContent = "Searching " + PROVIDERS.length + " source(s)…";
-  filterBar.innerHTML = "";
   grid.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div>Searching…</div>';
+  filterBar.innerHTML = "";
+  loadingEl.hidden = true;
+  endMsg.hidden = true;
+  hidePageBar();
+
+  // Abort previous search
+  if (S.abort) { try { S.abort.abort(); } catch (_) {} }
+  S.abort = new AbortController();
 
   // Reset state
-  searchState.groups = {};
-  searchState.totalCounts = {};
-  searchState.activeFilter = "all";
-  searchState.lastError = null;
+  resetSearchState(q);
 
-  if (searchAbort) { try { searchAbort.abort(); } catch (_) {} }
-  searchAbort = new AbortController();
-  const signal = searchAbort.signal;
-
-  const t0 = performance.now();
-  const jobs = PROVIDERS.map(async (p) => {
-    try {
-      const items = await searchProvider(p, q, signal);
-      return { providerId: p.id, items: items || [] };
-    } catch (e) {
-      if (e.name === "AbortError") throw e;
-      return { providerId: p.id, items: [] };
-    }
-  });
-
-  let grouped;
-  try {
-    grouped = await Promise.all(jobs);
-  } catch (e) {
-    if (e.name === "AbortError") return;
-    grid.innerHTML = '<div class="empty">Search failed.</div>';
-    status.textContent = "";
-    return;
-  }
-  if (signal.aborted) return;
-
-  searchState.lastMs = Math.round(performance.now() - t0);
-
-  // Group by provider, deduplicate within each
-  for (const g of grouped) {
-    const seen = new Set();
-    const clean = [];
-    for (const it of g.items) {
-      const k = (it.detailPath || it.pageUrl || it.title || "").toLowerCase() + "|" + it.providerId;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      clean.push(it);
-    }
-    searchState.groups[g.providerId] = clean;
-    searchState.totalCounts[g.providerId] = clean.length;
-  }
-
-  renderFilterBar();
-  renderSearchResults();
+  await loadSearchPage(1);
 }
 
-function renderFilterBar() {
+async function loadSearchPage(n) {
+  if (S.loading) return;
+  if (n > 1 && !S.hasMore) return;
+
+  S.loading = true;
+
+  if (n > 1) {
+    document.getElementById("searchLoading").hidden = false;
+  }
+
+  const signal = S.abort ? S.abort.signal : undefined;
+  const t0 = performance.now();
+
+  // Determine which providers to hit
+  const activeProviders = PROVIDERS.filter(p => !S.providerExhausted[p.id]);
+  if (!activeProviders.length) {
+    S.hasMore = false;
+    S.loading = false;
+    document.getElementById("searchLoading").hidden = true;
+    document.getElementById("searchEndMsg").hidden = false;
+    return;
+  }
+
+  let results;
+  try {
+    results = await Promise.all(activeProviders.map(async p => {
+      try {
+        let items;
+        if (p.id === MOVIEBOX_VIRTUAL.id) {
+          items = await searchMovieBoxPage(S.query, n, signal);
+        } else {
+          items = await searchProviderPage(p, S.query, n, signal);
+        }
+        return { pid: p.id, items: items || [] };
+      } catch (e) {
+        if (e.name === "AbortError") throw e;
+        return { pid: p.id, items: [] };
+      }
+    }));
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    S.loading = false;
+    document.getElementById("searchLoading").hidden = true;
+    if (n === 1) {
+      document.getElementById("searchGrid").innerHTML =
+        '<div class="empty">Search failed.</div>';
+    }
+    return;
+  }
+
+  if (signal && signal.aborted) return;
+
+  S.lastMs += Math.round(performance.now() - t0);
+
+  // Merge results, dedupe
+  const newItemsInterleaved = [];
+  const seenThisPage = new Set();
+
+  // Build interleaved list from all providers
+  const perProv = results.map(r => ({ pid: r.pid, arr: r.items, i: 0 }));
+  let remaining = true;
+  while (remaining) {
+    remaining = false;
+    for (const p of perProv) {
+      if (p.i < p.arr.length) {
+        const it = p.arr[p.i++];
+        const k = itemKey(it);
+        if (S.seenKeys.has(k)) continue;
+        if (seenThisPage.has(k)) continue;
+        seenThisPage.add(k);
+        newItemsInterleaved.push(it);
+        remaining = true;
+      }
+    }
+  }
+
+  // Register into state
+  for (const it of newItemsInterleaved) {
+    const k = itemKey(it);
+    S.seenKeys.add(k);
+    const group = S.groups[it.providerId] || (S.groups[it.providerId] = []);
+    group.push(it);
+    S.totalCounts[it.providerId] = group.length;
+    S.itemMap.set(k, it);
+  }
+
+  // Mark providers that returned 0 for this page (exhaustion)
+  for (const r of results) {
+    if (!r.items.length) {
+      S.providerExhausted[r.pid] = true;
+    }
+    // non-MovieBox only has 1 page
+    if (n === 1 && r.pid !== MOVIEBOX_VIRTUAL.id) {
+      S.providerExhausted[r.pid] = true;
+    }
+  }
+
+  S.page = n;
+
+  // Check if any provider has more
+  S.hasMore = !PROVIDERS.every(p => S.providerExhausted[p.id]);
+
+  // First page: reset grid
+  const grid = document.getElementById("searchGrid");
+  if (n === 1) {
+    grid.innerHTML = "";
+  }
+
+  // Append new items (respect current filter)
+  const filter = S.activeFilter;
+  const itemsToAppend = filter === "all"
+    ? newItemsInterleaved
+    : newItemsInterleaved.filter(it => it.providerId === filter);
+
+  let pageAnchor = null;
+  let appendedThisPage = 0;
+
+  for (const it of itemsToAppend) {
+    grid.insertAdjacentHTML("beforeend", cardHtml(it));
+    if (!pageAnchor) pageAnchor = grid.lastElementChild;
+    appendedThisPage++;
+  }
+
+  // Register anchor for this page (only if filter is "all" — page bar makes sense there)
+  if (pageAnchor && filter === "all") {
+    S.pageAnchors.push(pageAnchor);
+  }
+  S.pageItemCounts.push(appendedThisPage);
+
+  // Insert sentinel + end msg if missing (they get wiped when we cleared grid.innerHTML)
+  ensureSearchFooter();
+
+  // Empty state on first page
+  if (n === 1 && newItemsInterleaved.length === 0) {
+    grid.innerHTML =
+      '<div class="empty"><strong>No results found.</strong><br>' +
+      '<span style="font-size:12px">Nothing matched "' + escapeHtml(S.query) + '" on any provider.</span></div>';
+  }
+
+  S.loading = false;
+  document.getElementById("searchLoading").hidden = true;
+
+  // Filter pills
+  rebuildFilterBar();
+  updateSearchStatus();
+
+  // Page bar
+  if (filter === "all" && S.pageAnchors.length > 0) {
+    showPageBar();
+    updatePageBar();
+  } else {
+    hidePageBar();
+  }
+
+  // End message
+  document.getElementById("searchEndMsg").hidden = S.hasMore || newItemsInterleaved.length === 0;
+
+  // Prefetch
+  if (S.hasMore && !S.loading) {
+    maybePrefetch();
+  }
+}
+
+function ensureSearchFooter() {
+  const grid = document.getElementById("searchGrid");
+  const search = document.getElementById("searchSection");
+  // The sentinel/loading/endMsg elements live in the section, not the grid,
+  // so they persist across grid.innerHTML resets
+  // (nothing to do here — they're siblings of the grid)
+}
+
+/* ─────── filter bar ─────── */
+function rebuildFilterBar() {
   const filterBar = document.getElementById("filterBar");
-  const total = Object.values(searchState.totalCounts).reduce((a, b) => a + b, 0);
+  const total = Object.values(S.totalCounts).reduce((a, b) => a + b, 0);
 
-  // Only show filter bar if more than one provider returned results,
-  // OR if we want the user to see the breakdown even when one is empty.
   const pills = [];
-
-  // "All" pill
   pills.push(`
-    <button class="filter-pill ${searchState.activeFilter === "all" ? "active" : ""}" data-filter="all">
+    <button class="filter-pill ${S.activeFilter === "all" ? "active" : ""}" data-filter="all">
       <span>All results</span>
       <span class="count">${total}</span>
     </button>
   `);
 
-  // Per-provider pills — show every provider that was searched
   for (const p of PROVIDERS) {
-    const pid = p.id;
-    const count = searchState.totalCounts[pid] || 0;
-    const name = providerDisplayName(pid);
-    const isActive = searchState.activeFilter === pid;
+    const count = S.totalCounts[p.id] || 0;
+    const name = providerDisplayName(p.id);
+    const isActive = S.activeFilter === p.id;
     pills.push(`
-      <button class="filter-pill ${isActive ? "active" : ""}" data-filter="${escapeHtml(pid)}" data-provider="${escapeHtml(pid)}">
+      <button class="filter-pill ${isActive ? "active" : ""}" data-filter="${escapeHtml(p.id)}" data-provider="${escapeHtml(p.id)}">
         <span class="provider-dot"></span>
         <span>${escapeHtml(name)}</span>
         <span class="count">${count}</span>
@@ -619,73 +786,224 @@ function renderFilterBar() {
 
   filterBar.querySelectorAll(".filter-pill").forEach(btn => {
     btn.addEventListener("click", () => {
-      searchState.activeFilter = btn.dataset.filter;
-      renderFilterBar();
-      renderSearchResults();
+      const newFilter = btn.dataset.filter;
+      if (newFilter === S.activeFilter) return;
+      S.activeFilter = newFilter;
+      rebuildFilterBar();
+      rerenderGridForFilter();
     });
   });
 }
 
-function renderSearchResults() {
+function rerenderGridForFilter() {
   const grid = document.getElementById("searchGrid");
-  const status = document.getElementById("searchStatus");
-  const total = Object.values(searchState.totalCounts).reduce((a, b) => a + b, 0);
-  const ms = searchState.lastMs;
+  grid.innerHTML = "";
+  S.pageAnchors = [];
 
-  if (total === 0) {
-    grid.innerHTML =
-      '<div class="empty"><strong>No results found.</strong><br>' +
-      '<span style="font-size:12px">Nothing matched “' + escapeHtml(currentSearchQuery) + '” on any provider.</span></div>';
-    status.textContent = ms + "ms · 0 results";
-    return;
-  }
-
-  // Get items to display
-  let items = [];
-  if (searchState.activeFilter === "all") {
-    // Interleave results from each provider so no single provider drowns out others
-    const perProv = Object.entries(searchState.groups).map(([pid, arr]) => ({ pid, arr, i: 0 }));
+  let items;
+  if (S.activeFilter === "all") {
+    // Interleave all groups
+    const perProv = Object.entries(S.groups).map(([pid, arr]) => ({ pid, arr, i: 0 }));
+    items = [];
     let remaining = true;
     while (remaining) {
       remaining = false;
       for (const p of perProv) {
         if (p.i < p.arr.length) {
-          items.push(p.arr[p.i]);
-          p.i++;
+          items.push(p.arr[p.i++]);
           remaining = true;
         }
       }
     }
   } else {
-    items = searchState.groups[searchState.activeFilter] || [];
+    items = S.groups[S.activeFilter] || [];
   }
 
   if (!items.length) {
     grid.innerHTML =
       '<div class="empty"><strong>No results from this provider.</strong><br>' +
-      '<span style="font-size:12px">Try “All results” to see other providers.</span></div>';
-    status.textContent = ms + "ms · 0 in this view";
+      '<span style="font-size:12px">Try "All results" to see other providers.</span></div>';
+    hidePageBar();
+    document.getElementById("searchEndMsg").hidden = true;
     return;
   }
 
-  // Update status line
+  // Append all
+  let currentAnchor = null;
+  let cardInPage = 0;
+  const anchorCount = S.pageAnchors.length;
+
+  // For filtered views, we can't track pages precisely — just append all
+  for (const it of items) {
+    grid.insertAdjacentHTML("beforeend", cardHtml(it));
+  }
+
+  // Page bar only in "all" view
+  if (S.activeFilter === "all") {
+    // Reconstruct anchors approximately: split by pageItemCounts totals
+    // Actually if we're re-rendering filtered, we lose precise page positions.
+    // Simpler: hide page bar when filtered.
+  }
+
+  // End message
+  document.getElementById("searchEndMsg").hidden = S.hasMore || S.activeFilter !== "all";
+  if (S.activeFilter !== "all") {
+    hidePageBar();
+  } else {
+    // Not ideal — but we lose page anchors when re-rendering. Show end msg only.
+    hidePageBar();
+  }
+}
+
+/* ─────── status line ─────── */
+function updateSearchStatus() {
+  const status = document.getElementById("searchStatus");
+  const total = Object.values(S.totalCounts).reduce((a, b) => a + b, 0);
   const breakdown = PROVIDERS
     .map(p => {
-      const c = searchState.totalCounts[p.id] || 0;
+      const c = S.totalCounts[p.id] || 0;
       if (c === 0) return null;
       return escapeHtml(providerDisplayName(p.id)) + ": " + c;
     })
     .filter(Boolean)
     .join(" · ");
-
-  status.innerHTML = `${total} results · ${ms}ms · ${breakdown}`;
-
-  // Render cards
-  grid.innerHTML = items.map(cardHtml).join("");
-  bindCardClicks(grid, items);
+  status.innerHTML = `${total} results · ${S.lastMs}ms` +
+    (breakdown ? ' · ' + breakdown : '') +
+    (S.hasMore ? ' · more available' : '');
 }
 
-/* ─────── card click → detail page ─────── */
+/* ─────── infinite scroll ─────── */
+const sentinelObserver = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    if (!S.active) continue;
+    if (S.loading) continue;
+    if (!S.hasMore) continue;
+    loadSearchPage(S.page + 1);
+  }
+}, { rootMargin: "800px 0px" });
+sentinelObserver.observe(document.getElementById("searchSentinel"));
+
+// Scroll fallback
+let scrollTimer = null;
+window.addEventListener("scroll", () => {
+  if (!S.active) return;
+  if (S.loading || !S.hasMore) return;
+  if (scrollTimer) return;
+  scrollTimer = setTimeout(() => {
+    scrollTimer = null;
+    const bottom = window.scrollY + window.innerHeight;
+    const docHeight = document.documentElement.scrollHeight;
+    if (docHeight - bottom < 900) {
+      loadSearchPage(S.page + 1);
+    }
+  }, 200);
+}, { passive: true });
+
+function maybePrefetch() {
+  if (!S.hasMore || S.loading || !S.active) return;
+  // Prefetch one page ahead silently
+  // (skip for simplicity — infinite scroll handles it fast enough)
+}
+
+/* ─────── page bar (search only) ─────── */
+const pageBar = document.getElementById("pageBar");
+const pagePrev = document.getElementById("pagePrev");
+const pageNext = document.getElementById("pageNext");
+const pageCurEl = document.getElementById("pageCur");
+const pageTotalEl = document.getElementById("pageTotal");
+const pageJump = document.getElementById("pageJump");
+const pageJumpBtn = document.getElementById("pageJumpBtn");
+
+function showPageBar() { pageBar.hidden = false; pageBar.classList.remove("fade"); }
+function hidePageBar() { pageBar.hidden = true; pageBar.classList.remove("fade"); }
+
+function updatePageBar() {
+  pageCurEl.textContent = S.currentPage;
+  const total = S.pageAnchors.length || 1;
+  pageTotalEl.textContent = total + (S.hasMore ? "+" : "");
+  pagePrev.disabled = S.currentPage <= 1;
+  pageNext.disabled = S.currentPage >= total && !S.hasMore;
+  pageJump.max = S.hasMore ? "" : String(total);
+}
+
+function updateCurrentPageFromScroll() {
+  if (pageBar.hidden) return;
+  if (!S.pageAnchors.length) return;
+  const probe = window.scrollY + window.innerHeight * 0.30;
+  let cur = 1;
+  for (let i = 0; i < S.pageAnchors.length; i++) {
+    const el = S.pageAnchors[i];
+    if (!el || !el.isConnected) continue;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    if (top <= probe) cur = i + 1;
+    else break;
+  }
+  if (cur !== S.currentPage) {
+    S.currentPage = cur;
+    updatePageBar();
+  }
+}
+
+async function scrollToPage(n) {
+  if (n < 1) n = 1;
+  while (n > S.pageAnchors.length && S.hasMore && !S.loading) {
+    await loadSearchPage(S.page + 1);
+  }
+  const idx = Math.min(n, S.pageAnchors.length) - 1;
+  const el = S.pageAnchors[idx];
+  if (!el || !el.isConnected) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  const top = el.getBoundingClientRect().top + window.scrollY - 60;
+  window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+}
+
+pagePrev.addEventListener("click", () => {
+  if (S.currentPage > 1) scrollToPage(S.currentPage - 1);
+  else window.scrollTo({ top: 0, behavior: "smooth" });
+});
+pageNext.addEventListener("click", async () => {
+  const total = S.pageAnchors.length;
+  if (S.currentPage < total) scrollToPage(S.currentPage + 1);
+  else if (S.hasMore) {
+    await loadSearchPage(S.page + 1);
+    scrollToPage(S.currentPage + 1);
+  }
+});
+function handleJump() {
+  const raw = pageJump.value.trim();
+  if (!raw) { pageJump.blur(); return; }
+  const n = Math.max(1, parseInt(raw, 10) || 1);
+  pageJump.value = "";
+  pageJump.blur();
+  scrollToPage(n);
+}
+pageJumpBtn.addEventListener("click", handleJump);
+pageJump.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); handleJump(); pageJump.blur(); }
+});
+
+let pageBarFadeTimer = null;
+window.addEventListener("scroll", () => {
+  if (S.active) updateCurrentPageFromScroll();
+  if (!pageBar.hidden) {
+    pageBar.classList.add("fade");
+    clearTimeout(pageBarFadeTimer);
+    pageBarFadeTimer = setTimeout(() => pageBar.classList.remove("fade"), 900);
+  }
+}, { passive: true });
+
+/* ─────── card click (delegated) ─────── */
+document.getElementById("searchGrid").addEventListener("click", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  const key = card.dataset.key;
+  const item = S.itemMap.get(key);
+  if (item) handleCardClick(item);
+});
+
 function handleCardClick(item) {
   if (item.isMovieBox && item.detailPath && item.subjectId) {
     const params = new URLSearchParams({
