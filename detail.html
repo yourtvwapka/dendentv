@@ -303,6 +303,18 @@
   .provider-progress-row.ok .status-text { color: #22c55e; }
   .provider-progress-row.error .status-text { color: #fca5a5; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+  /* debug overlay */
+  #debugOutput {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    max-height: 40vh; overflow: auto;
+    background: #000; color: #0f0;
+    padding: 12px; font-family: ui-monospace, monospace;
+    font-size: 11px; line-height: 1.5;
+    z-index: 9999;
+    border-top: 1px solid #333;
+    white-space: pre-wrap; word-break: break-all;
+  }
 </style>
 </head>
 <body>
@@ -340,18 +352,45 @@ const Q = {
   tmdbId:     QS.get("tmdbId") || "",
   mediaType:  QS.get("mediaType") || "",
   isSeries:   QS.get("isSeries") === "1" || QS.get("mediaType") === "tv",
+  debug:      QS.get("debug") === "1",
 };
+
+/* ═══════════ DEBUG OVERLAY ═══════════ */
+if (Q.debug) {
+  const _log = console.log.bind(console);
+  const _warn = console.warn.bind(console);
+  const _err = console.error.bind(console);
+  const getEl = () => {
+    let el = document.getElementById("debugOutput");
+    if (!el) {
+      el = document.createElement("pre");
+      el.id = "debugOutput";
+      document.body.appendChild(el);
+    }
+    return el;
+  };
+  const append = (level, args) => {
+    const el = getEl();
+    const line = "[" + level + "] " + args.map(x =>
+      typeof x === "object" ? JSON.stringify(x) : String(x)
+    ).join(" ");
+    el.textContent = (el.textContent + "\n" + line).trim();
+    el.scrollTop = el.scrollHeight;
+  };
+  console.log   = (...a) => { _log(...a);   append("LOG", a); };
+  console.warn  = (...a) => { _warn(...a);  append("WARN", a); };
+  console.error = (...a) => { _err(...a);   append("ERR", a); };
+  document.body.style.paddingBottom = "40vh";
+}
 
 /* ═══════════ SOURCE DETECTION ═══════════ */
 function detectSource() {
-  // Explicit source wins
-  if (Q.source === "tmdb"    || Q.tmdbId)     return "tmdb";
+  if (Q.source === "tmdb" || Q.tmdbId) return "tmdb";
   if (Q.source === "moviebox" || Q.detailPath) return "moviebox";
-  if (Q.source === "hdhub")                    return "hdhub";
-  if (Q.source === "drive")                    return "drive";
-  // Guess from URL
+  if (Q.source === "hdhub") return "hdhub";
+  if (Q.source === "drive") return "drive";
   if (Q.url) {
-    if (/hdhub4u/i.test(Q.url))     return "hdhub";
+    if (/hdhub4u/i.test(Q.url)) return "hdhub";
     if (/moviesdrive/i.test(Q.url)) return "drive";
     return "external";
   }
@@ -361,7 +400,6 @@ function detectSource() {
 /* ═══════════ STATE ═══════════ */
 const state = {
   source: detectSource(),
-
   hero: {
     title:    Q.title || "Loading…",
     poster:   "",
@@ -376,32 +414,10 @@ const state = {
     tmdbId:   Q.tmdbId,
     tmdbLoaded: false,
   },
-
-  moviebox: {
-    detailPath: Q.detailPath,
-    subjectId:  Q.subjectId,
-    data: null,
-    status: "idle",  // idle | loading | ok | empty | error
-    error: null,
-    selectedDub: 0,
-    selectedSe: 0,
-    selectedEp: 1,
-  },
-  hdhub: {
-    url: "",
-    streams: [],
-    status: "idle",
-    error: null,
-    selectedServer: 0,
-  },
-  drive: {
-    url: "",
-    streams: [],
-    status: "idle",
-    error: null,
-    selectedServer: 0,
-  },
-
+  moviebox: { detailPath: Q.detailPath, subjectId: Q.subjectId, data: null,
+              status: "idle", error: null, selectedDub: 0, selectedSe: 0, selectedEp: 1 },
+  hdhub:    { url: "", streams: [], status: "idle", error: null, selectedServer: 0 },
+  drive:    { url: "", streams: [], status: "idle", error: null, selectedServer: 0 },
   activeTab: "",
   bootError: null,
 };
@@ -416,16 +432,44 @@ function imgUrl(v) {
   if (typeof v === "string") return v.startsWith("//") ? "https:" + v : v;
   return v.url || v.src || v.path || "";
 }
+
+/* ═══════════ TITLE NORMALIZATION ═══════════ */
 function cleanTitle(s) {
-  return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[×✕✖]/g, " x ")                     // ← × → " x "
+    .replace(/[‐‑‒–—―]/g, "-")                     // fancy dashes → hyphen
+    .replace(/[\u00A0\u2000-\u200B]/g, " ")       // fancy whitespace
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
+
 function cleanForSearch(s) {
   return String(s || "")
+    .replace(/[×✕✖]/g, " x ")                     // ← × → " x "
+    .replace(/[\u00A0\u2000-\u200B]/g, " ")
     .replace(/\s*\((?:19|20)\d{2}\)\s*/g, " ")
     .replace(/\s*\[\s*[Ss]\d+.*?\]\s*/g, " ")
     .replace(/\s+Season\s+\d+.*$/i, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function matchScore(norm, needle) {
+  if (norm === needle) return 100;
+  if (norm.startsWith(needle + " ") || norm.endsWith(" " + needle)) return 85;
+  if (norm.includes(needle) || needle.includes(norm)) return 65;
+
+  // Word-overlap fallback for fuzzy matches
+  const needleWords = needle.split(" ").filter(w => w.length > 1);
+  const normWords   = norm.split(" ").filter(w => w.length > 1);
+  if (needleWords.length === 0) return 0;
+
+  const overlap  = needleWords.filter(w => normWords.includes(w)).length;
+  const coverage = overlap / needleWords.length;
+
+  if (coverage >= 0.5) return Math.round(40 + coverage * 25);
+  return 0;
 }
 
 /* ═══════════ TMDB ═══════════ */
@@ -479,18 +523,15 @@ async function searchTmdbByTitle(title, isTVHint) {
     for (const r of results) {
       const name = r.title || r.name || "";
       const norm = cleanTitle(name);
-      let score = 0;
-      if (norm === needle) score = 100;
-      else if (norm.startsWith(needle + " ") || norm.endsWith(" " + needle)) score = 85;
-      else if (norm.includes(needle) || needle.includes(norm)) score = 60;
-      else continue;
+      let score = matchScore(norm, needle);
+      if (score === 0) continue;
 
       if (targetYear) {
         const relYear = (r.release_date || r.first_air_date || "").slice(0, 4);
         if (relYear === targetYear) score += 30;
       }
       if (r.popularity > 20) score += 5;
-      if (bestScore === 0 && isTVHint !== undefined && r.media_type === (isTVHint ? "tv" : "movie")) score += 5;
+      if (isTVHint !== undefined && r.media_type === (isTVHint ? "tv" : "movie")) score += 5;
 
       if (score > bestScore) { bestScore = score; best = r; }
     }
@@ -607,58 +648,121 @@ function normalizeSeasons(rawSeasons, isSeries) {
   return out;
 }
 
-/* ═══════════ SEARCHERS ═══════════ */
+/* ═══════════ SEARCH: MovieBox ═══════════ */
 async function searchMovieBox(title, isTV) {
   if (!title) return null;
+
+  const cleaned = cleanForSearch(title);
+  if (!cleaned) return null;
+
+  // Build query variants for maximum hit rate
+  const queries = [
+    cleaned,
+    cleaned.replace(/\b(the|a|an)\b/gi, " ").replace(/\s+/g, " ").trim(),
+    cleaned.split(" ").slice(0, 3).join(" "),
+  ].filter((q, i, arr) => q && arr.indexOf(q) === i);
+
+  console.log("[match] MovieBox searching: " + JSON.stringify(queries));
+
+  for (const q of queries) {
+    const result = await tryMovieBoxQuery(q, isTV);
+    if (result) return result;
+  }
+  return null;
+}
+
+async function tryMovieBoxQuery(query, isTV) {
+  const endpoints = [
+    "/search?q=" + encodeURIComponent(query),
+    "/newWeb/searchResult?keyword=" + encodeURIComponent(query),
+  ];
+  for (const ep of endpoints) {
+    const result = await tryMovieBoxEndpoint(ep, query, isTV);
+    if (result) return result;
+  }
+  return null;
+}
+
+async function tryMovieBoxEndpoint(endpoint, query, isTV) {
   try {
-    const searchUrl = BASE + "/search?q=" + encodeURIComponent(title);
-    const res = await fetch(PROXY + "/?url=" + encodeURIComponent(searchUrl) + "&referer=" + encodeURIComponent(BASE + "/"));
+    const fullUrl = BASE + endpoint;
+    const res = await fetch(PROXY + "/?url=" + encodeURIComponent(fullUrl) + "&referer=" + encodeURIComponent(BASE + "/"));
     if (!res.ok) return null;
     const resolved = extractNuxt3Payload(await res.text());
     if (!resolved) return null;
     const subjects = findSubjects(resolved);
-    const needle = cleanTitle(title);
-    let best = null, bestScore = 0;
+    const endpointName = endpoint.split("?")[0];
+
+    if (subjects.length === 0) {
+      console.log("[match] MovieBox '" + query + "' via " + endpointName + " → 0 results");
+      return null;
+    }
+
+    const needle = cleanTitle(query);
+    const scored = [];
+
     for (const s of subjects) {
       if (isTV !== undefined && s.isTV !== isTV) continue;
       const norm = cleanTitle(s.title);
-      let score = 0;
-      if (norm === needle) score = 100;
-      else if (norm.startsWith(needle + " ") || norm.endsWith(" " + needle)) score = 85;
-      else if (norm.includes(needle) || needle.includes(norm)) score = 60;
-      else continue;
-      if (score > bestScore) { bestScore = score; best = s; }
+      const score = matchScore(norm, needle);
+      if (score > 0) scored.push({ subject: s, score, norm });
     }
-    return best && bestScore >= 40 ? best : null;
+
+    scored.sort((a, b) => b.score - a.score);
+    const best = scored[0];
+
+    console.log("[match] MovieBox '" + query + "' via " + endpointName +
+                " → " + subjects.length + " results, best: '" +
+                (best?.subject.title || "none") + "' score=" + (best?.score || 0));
+    scored.slice(0, 3).forEach(s => {
+      console.log("[match]   candidate: '" + s.subject.title + "' score=" + s.score);
+    });
+
+    if (best && best.score >= 45) return best.subject;
   } catch (e) {
-    console.warn("[moviebox search]", e);
-    return null;
+    console.warn("[match] endpoint error:", e.message);
   }
+  return null;
 }
 
+/* ═══════════ SEARCH: hdhub / drive ═══════════ */
 async function searchProvider(pid, title) {
   if (!title) return null;
+
+  const cleaned = cleanForSearch(title);
+  if (!cleaned) return null;
+
   try {
-    const res = await fetch(PROXY + "/providers/" + pid + "/search?q=" + encodeURIComponent(title));
+    const res = await fetch(PROXY + "/providers/" + pid + "/search?q=" + encodeURIComponent(cleaned));
     if (!res.ok) return null;
     const data = await res.json();
     const results = data.results || [];
-    const needle = cleanTitle(title);
-    let best = null, bestScore = 0;
+
+    if (results.length === 0) {
+      console.log("[match] " + pid + " '" + cleaned + "' → 0 results");
+      return null;
+    }
+
+    const needle = cleanTitle(cleaned);
+    const scored = [];
     for (const r of results) {
       const norm = cleanTitle(r.title);
-      let score = 0;
-      if (norm === needle) score = 100;
-      else if (norm.startsWith(needle + " ") || norm.endsWith(" " + needle)) score = 85;
-      else if (norm.includes(needle) || needle.includes(norm)) score = 60;
-      else continue;
-      if (score > bestScore) { bestScore = score; best = r; }
+      const score = matchScore(norm, needle);
+      if (score > 0) scored.push({ result: r, score, norm });
     }
-    return best && bestScore >= 40 ? best.url : null;
+
+    scored.sort((a, b) => b.score - a.score);
+    const best = scored[0];
+
+    console.log("[match] " + pid + " '" + cleaned + "' → " + results.length +
+                " results, best: '" + (best?.result.title || "none") +
+                "' score=" + (best?.score || 0));
+
+    if (best && best.score >= 45) return best.result.url;
   } catch (e) {
-    console.warn("[search " + pid + "]", e);
-    return null;
+    console.warn("[match] " + pid + " error:", e.message);
   }
+  return null;
 }
 
 /* ═══════════ PROVIDER LOADERS ═══════════ */
@@ -696,12 +800,12 @@ async function loadMovieBox(detailPath, subjectId) {
     state.moviebox.selectedEp = state.moviebox.data.seasons[0]?.episodes?.[0]?.ep ?? 1;
     state.moviebox.status = "ok";
 
-    // If hero is still using the URL title, upgrade it with MovieBox's title
     if (state.hero.title === Q.title || !state.hero.title) {
       state.hero.title = state.moviebox.data.title;
       if (!state.hero.poster && state.moviebox.data.cover) state.hero.poster = state.moviebox.data.cover;
       if (!state.hero.overview && state.moviebox.data.description) state.hero.overview = state.moviebox.data.description;
     }
+    console.log("[moviebox] loaded: '" + state.moviebox.data.title + "'");
   } catch (e) {
     console.warn("[moviebox]", e);
     state.moviebox.error = e.message;
@@ -741,13 +845,13 @@ async function loadExternal(source, url) {
     }
   } catch (e) { console.warn("[ext meta " + source + "]", e); }
 
-  // Fetch streams
   try {
     const res = await fetch(PROXY + "/providers/" + source + "/streams?url=" + encodeURIComponent(url));
     if (res.ok) {
       const data = await res.json();
       state[source].streams = (data.streams || []).filter(s => s.url);
       state[source].status = state[source].streams.length ? "ok" : "empty";
+      console.log("[" + source + "] streams: " + state[source].streams.length);
     } else {
       state[source].status = "empty";
     }
@@ -759,7 +863,7 @@ async function loadExternal(source, url) {
   render();
 }
 
-/* ═══════════ HERO ENRICHMENT FROM TMDB ═══════════ */
+/* ═══════════ HERO ENRICHMENT ═══════════ */
 async function enrichHeroWithTmdb() {
   if (state.hero.tmdbLoaded) return;
 
@@ -771,9 +875,7 @@ async function enrichHeroWithTmdb() {
 
   if (!meta && state.hero.title && state.hero.title !== "Loading…") {
     const match = await searchTmdbByTitle(cleanForSearch(state.hero.title), state.hero.isTV);
-    if (match) {
-      meta = await fetchTmdbDetails(match.id, match.mediaType);
-    }
+    if (match) meta = await fetchTmdbDetails(match.id, match.mediaType);
   }
 
   if (meta) {
@@ -805,10 +907,8 @@ function getAvailableProviders() {
 }
 
 function getAllTried() {
-  const mbDone = state.moviebox.status === "ok" || state.moviebox.status === "empty" || state.moviebox.status === "error";
-  const hdDone = state.hdhub.status === "ok" || state.hdhub.status === "empty" || state.hdhub.status === "error";
-  const drDone = state.drive.status === "ok" || state.drive.status === "empty" || state.drive.status === "error";
-  return mbDone && hdDone && drDone;
+  const ok = s => s.status === "ok" || s.status === "empty" || s.status === "error";
+  return ok(state.moviebox) && ok(state.hdhub) && ok(state.drive);
 }
 
 function renderHero() {
@@ -853,7 +953,6 @@ function renderProviderProgress() {
     { id: "hdhub",    name: "hdhub4u" },
     { id: "drive",    name: "moviesDrive" },
   ];
-
   const rows = providers.map(p => {
     const s = state[p.id];
     let cls = "loading", text = "Checking…";
@@ -869,7 +968,6 @@ function renderProviderProgress() {
       </div>
     `;
   }).join("");
-
   return `
     <div class="provider-progress">
       <div class="provider-progress-title">Checking stream availability</div>
@@ -935,7 +1033,6 @@ function renderMovieBoxTab() {
 function renderServerTab(provider) {
   const s = state[provider];
   if (!s.streams.length) return `<div class="loading-block">No streams</div>`;
-
   return `
     <div class="section"><div class="section-title">Server</div><div class="pills">
       ${s.streams.map((st, i) => `
@@ -951,11 +1048,9 @@ function renderServerTab(provider) {
 
 function render() {
   const main = document.getElementById("main");
-
   const available = getAvailableProviders();
   const allTried = getAllTried();
 
-  // Set active tab
   if (!state.activeTab || !available.includes(state.activeTab)) {
     if (available.length > 0) {
       if (state.source && available.includes(state.source)) state.activeTab = state.source;
@@ -980,22 +1075,16 @@ function render() {
       </div>
     `);
   } else if (available.length > 0) {
-    // Show tabs
     parts.push(renderTabs(available));
     for (const id of available) {
       const isActive = id === state.activeTab;
       const content = id === "moviebox" ? renderMovieBoxTab() : renderServerTab(id);
       parts.push(`<div class="tab-content ${isActive ? "active" : ""}" data-tab-content="${id}">${content}</div>`);
     }
-    // If not all tried yet, still show progress below
-    if (!allTried) {
-      parts.push(renderProviderProgress());
-    }
+    if (!allTried) parts.push(renderProviderProgress());
   } else if (!allTried) {
-    // Still loading, no tabs yet
     parts.push(renderProviderProgress());
   } else {
-    // All tried, nothing found
     parts.push(`
       <div class="unavailable-banner">
         <div class="unavailable-icon">⚠</div>
@@ -1061,7 +1150,7 @@ function bindEvents() {
   if (retryAll) retryAll.addEventListener("click", () => boot(true));
 }
 
-/* ═══════════ PLAY ACTIONS ═══════════ */
+/* ═══════════ PLAY ═══════════ */
 function playMovieBox() {
   const m = state.moviebox;
   if (!m.data) return;
@@ -1105,6 +1194,7 @@ async function boot(retry = false) {
     state.hdhub   = { ...state.hdhub,   streams: [], status: "idle", error: null, url: "" };
     state.drive   = { ...state.drive,   streams: [], status: "idle", error: null, url: "" };
     state.activeTab = "";
+    state.bootError = null;
   }
 
   document.getElementById("pageTitle").textContent = state.hero.title || "Details";
@@ -1119,7 +1209,6 @@ async function boot(retry = false) {
   } else if (source === "hdhub" || source === "drive") {
     await bootFromExternal(source);
   } else if (source === "external") {
-    // Guess by URL
     if (/hdhub4u/i.test(Q.url)) await bootFromExternal("hdhub");
     else if (/moviesdrive/i.test(Q.url)) await bootFromExternal("drive");
     else state.bootError = "Cannot determine source";
@@ -1131,7 +1220,6 @@ async function boot(retry = false) {
 }
 
 async function bootFromTmdb() {
-  // 1. Fetch TMDB details (fast)
   if (Q.tmdbId) {
     const meta = await fetchTmdbDetails(Q.tmdbId, Q.mediaType || "movie");
     if (meta) {
@@ -1160,7 +1248,6 @@ async function bootFromTmdb() {
     return;
   }
 
-  // 2. Search all 3 providers in parallel
   state.moviebox.status = state.hdhub.status = state.drive.status = "loading";
   render();
 
@@ -1170,7 +1257,6 @@ async function bootFromTmdb() {
     searchProvider("drive", searchTitle),
   ]);
 
-  // 3. Load streams for each match
   await Promise.all([
     (async () => {
       if (mbMatch) await loadMovieBox(mbMatch.detailPath, mbMatch.subjectId);
@@ -1198,7 +1284,6 @@ async function bootFromMovieBox() {
 
   await loadMovieBox(Q.detailPath, Q.subjectId);
 
-  // Cross-search others after MovieBox loads
   const title = cleanForSearch(state.moviebox.data?.title || state.hero.title);
   if (!title) {
     state.hdhub.status = state.drive.status = "empty";
@@ -1225,7 +1310,6 @@ async function bootFromMovieBox() {
     })(),
   ]);
 
-  // Enrich hero with TMDB in background
   enrichHeroWithTmdb();
 }
 
@@ -1239,8 +1323,6 @@ async function bootFromExternal(source) {
   render();
 
   await loadExternal(source, Q.url);
-
-  // Enrich hero with TMDB first (so title matches are better)
   await enrichHeroWithTmdb();
 
   const title = cleanForSearch(state.hero.title);
@@ -1252,8 +1334,6 @@ async function bootFromExternal(source) {
     return;
   }
 
-  // Cross-search others
-  const toLoad = [];
   if (source !== "moviebox") state.moviebox.status = "loading";
   if (source !== "hdhub")   state.hdhub.status = "loading";
   if (source !== "drive")   state.drive.status = "loading";
