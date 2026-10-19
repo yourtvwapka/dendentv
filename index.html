@@ -77,6 +77,57 @@
   .empty{text-align:center;padding:70px 24px;color:var(--muted);font-size:14px}
   .empty strong{color:#fff;font-weight:700}
 
+  /* ────── SEARCH FILTER PILLS ────── */
+  .filter-bar{
+    display:flex;flex-wrap:wrap;gap:8px;
+    padding:4px 2px 16px;
+    margin-bottom:14px;
+  }
+  .filter-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 16px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    color:#e5e5ea;border-radius:999px;
+    font-size:13px;font-weight:700;
+    transition:.15s;
+    -webkit-tap-highlight-color:transparent;
+    cursor:pointer;
+  }
+  .filter-pill:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.20)}
+  .filter-pill.active{
+    background:var(--accent);border-color:var(--accent);color:#fff;
+    box-shadow:0 4px 14px rgba(229,9,20,.35);
+  }
+  .filter-pill .count{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:22px;height:20px;padding:0 7px;
+    background:rgba(255,255,255,.15);
+    color:inherit;border-radius:999px;
+    font-size:11px;font-weight:800;
+    letter-spacing:.3px;
+  }
+  .filter-pill.active .count{background:rgba(0,0,0,.25)}
+  .filter-pill .provider-dot{
+    width:8px;height:8px;border-radius:50%;
+    flex-shrink:0;
+  }
+  .filter-pill[data-provider="__moviebox"] .provider-dot{background:#e50914}
+  .filter-pill[data-provider="hdhub"] .provider-dot{background:#22c55e}
+  .filter-pill[data-provider="drive"] .provider-dot{background:#3b82f6}
+  .filter-pill.active .provider-dot{background:#fff}
+
+  .provider-count-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:11.5px;font-weight:700;
+    color:var(--muted);
+    padding:2px 8px;border-radius:6px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.06);
+    margin-left:8px;
+  }
+  .provider-count-badge .dot{width:6px;height:6px;border-radius:50%}
+
   .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);padding:11px 18px;border-radius:10px;background:rgba(20,20,24,.96);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:13.5px;font-weight:600;box-shadow:0 12px 40px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;max-width:90vw;text-align:center}
   .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -90,6 +141,8 @@
     .grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px 10px}
     .row .card{width:132px}
     .row{gap:10px}
+    .filter-pill{padding:8px 12px;font-size:12px}
+    .filter-pill .count{min-width:18px;height:18px;padding:0 5px;font-size:10px}
   }
 </style>
 </head>
@@ -134,6 +187,9 @@
       <h2>Results for “<span id="searchQuery"></span>”</h2>
       <span class="hint" id="searchStatus"></span>
     </div>
+
+    <div class="filter-bar" id="filterBar"></div>
+
     <div class="grid" id="searchGrid"></div>
   </section>
 </main>
@@ -155,6 +211,15 @@ const MOVIEBOX_VIRTUAL = {
 let PROVIDERS = [];
 let searchAbort = null;
 let currentSearchQuery = "";
+
+/* ─────── search state ─────── */
+const searchState = {
+  groups: {},         // providerId -> [items]
+  totalCounts: {},    // providerId -> count
+  activeFilter: "all",
+  lastMs: 0,
+  lastError: null,
+};
 
 /* ─────── helpers ─────── */
 function escapeHtml(s) {
@@ -179,8 +244,13 @@ function proxyFor(url, referer, providerId) {
   if (providerId) q += "&provider=" + encodeURIComponent(providerId);
   return q;
 }
+function providerDisplayName(pid) {
+  if (pid === "__moviebox") return "MovieBox";
+  const p = PROVIDERS.find(x => x.id === pid);
+  return p?.name || pid;
+}
 
-/* ─────── Nuxt3 devalue decoder (for MovieBox search fallback) ─────── */
+/* ─────── Nuxt3 devalue decoder ─────── */
 const DEVALUE_WRAPPERS = {
   ShallowReactive: v => v, Reactive: v => v, Ref: v => v,
   ShallowRef: v => v, EmptyRef: () => undefined, EmptyShallowRef: () => undefined,
@@ -371,30 +441,25 @@ function renderRow(container, items) {
   container.innerHTML = items.map(cardHtml).join("");
   bindCardClicks(container, items);
 }
-function renderGrid(container, items) {
-  if (!items || !items.length) {
-    container.innerHTML = '<div class="empty"><strong>No results.</strong><br>' +
-      '<span style="font-size:12px">Try a different search term.</span></div>';
-    return;
-  }
-  container.innerHTML = items.map(cardHtml).join("");
-  bindCardClicks(container, items);
-}
 
 /* ─────── search ─────── */
 async function searchProvider(p, q, signal) {
   try {
     if (p.id === MOVIEBOX_VIRTUAL.id) {
-      try {
-        const apiUrl = BASE + "/wefeed-h5api-bff/subject/search?" +
-          new URLSearchParams({ keyword: q, page: "1", perPage: "36" });
-        const r = await fetch(proxyFor(apiUrl, BASE + "/"), { signal });
-        if (r.ok) {
-          const json = await r.json();
-          const list = json.data?.subjectList || json.data?.items || json.data?.list || [];
-          if (list.length) return list.map(normalizeMovieBoxItem);
-        }
-      } catch (_) {}
+      // Try official API first (multiple param names)
+      for (const param of ["keyword", "q", "query"]) {
+        try {
+          const apiUrl = BASE + "/wefeed-h5api-bff/subject/search?" +
+            new URLSearchParams({ [param]: q, page: "1", perPage: "40" });
+          const r = await fetch(proxyFor(apiUrl, BASE + "/"), { signal });
+          if (r.ok) {
+            const json = await r.json();
+            const list = json.data?.subjectList || json.data?.items || json.data?.list || [];
+            if (list.length) return list.map(normalizeMovieBoxItem);
+          }
+        } catch (_) {}
+      }
+      // Fallback: Nuxt payload scrape
       try {
         const searchUrl = BASE + "/search?q=" + encodeURIComponent(q);
         const r = await fetch(proxyFor(searchUrl, BASE + "/"), { signal });
@@ -444,6 +509,7 @@ function normalizeGenericItem(item, p) {
     isMovieBox: false,
   };
 }
+
 async function doSearch(q) {
   q = (q || "").trim();
   currentSearchQuery = q;
@@ -452,6 +518,7 @@ async function doSearch(q) {
   const grid = document.getElementById("searchGrid");
   const status = document.getElementById("searchStatus");
   const qLabel = document.getElementById("searchQuery");
+  const filterBar = document.getElementById("filterBar");
 
   if (q.length < 2) {
     search.hidden = true;
@@ -462,17 +529,34 @@ async function doSearch(q) {
   search.hidden = false;
   qLabel.textContent = q;
   status.textContent = "Searching " + PROVIDERS.length + " source(s)…";
+  filterBar.innerHTML = "";
   grid.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div>Searching…</div>';
+
+  // Reset state
+  searchState.groups = {};
+  searchState.totalCounts = {};
+  searchState.activeFilter = "all";
+  searchState.lastError = null;
 
   if (searchAbort) { try { searchAbort.abort(); } catch (_) {} }
   searchAbort = new AbortController();
   const signal = searchAbort.signal;
 
   const t0 = performance.now();
-  const jobs = PROVIDERS.map((p) => searchProvider(p, q, signal));
+  const jobs = PROVIDERS.map(async (p) => {
+    try {
+      const items = await searchProvider(p, q, signal);
+      return { providerId: p.id, items: items || [] };
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      return { providerId: p.id, items: [] };
+    }
+  });
+
   let grouped;
-  try { grouped = await Promise.all(jobs); }
-  catch (e) {
+  try {
+    grouped = await Promise.all(jobs);
+  } catch (e) {
     if (e.name === "AbortError") return;
     grid.innerHTML = '<div class="empty">Search failed.</div>';
     status.textContent = "";
@@ -480,29 +564,125 @@ async function doSearch(q) {
   }
   if (signal.aborted) return;
 
-  const flat = grouped.flat();
-  const ms = Math.round(performance.now() - t0);
+  searchState.lastMs = Math.round(performance.now() - t0);
 
-  if (!flat.length) {
+  // Group by provider, deduplicate within each
+  for (const g of grouped) {
+    const seen = new Set();
+    const clean = [];
+    for (const it of g.items) {
+      const k = (it.detailPath || it.pageUrl || it.title || "").toLowerCase() + "|" + it.providerId;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      clean.push(it);
+    }
+    searchState.groups[g.providerId] = clean;
+    searchState.totalCounts[g.providerId] = clean.length;
+  }
+
+  renderFilterBar();
+  renderSearchResults();
+}
+
+function renderFilterBar() {
+  const filterBar = document.getElementById("filterBar");
+  const total = Object.values(searchState.totalCounts).reduce((a, b) => a + b, 0);
+
+  // Only show filter bar if more than one provider returned results,
+  // OR if we want the user to see the breakdown even when one is empty.
+  const pills = [];
+
+  // "All" pill
+  pills.push(`
+    <button class="filter-pill ${searchState.activeFilter === "all" ? "active" : ""}" data-filter="all">
+      <span>All results</span>
+      <span class="count">${total}</span>
+    </button>
+  `);
+
+  // Per-provider pills — show every provider that was searched
+  for (const p of PROVIDERS) {
+    const pid = p.id;
+    const count = searchState.totalCounts[pid] || 0;
+    const name = providerDisplayName(pid);
+    const isActive = searchState.activeFilter === pid;
+    pills.push(`
+      <button class="filter-pill ${isActive ? "active" : ""}" data-filter="${escapeHtml(pid)}" data-provider="${escapeHtml(pid)}">
+        <span class="provider-dot"></span>
+        <span>${escapeHtml(name)}</span>
+        <span class="count">${count}</span>
+      </button>
+    `);
+  }
+
+  filterBar.innerHTML = pills.join("");
+
+  filterBar.querySelectorAll(".filter-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      searchState.activeFilter = btn.dataset.filter;
+      renderFilterBar();
+      renderSearchResults();
+    });
+  });
+}
+
+function renderSearchResults() {
+  const grid = document.getElementById("searchGrid");
+  const status = document.getElementById("searchStatus");
+  const total = Object.values(searchState.totalCounts).reduce((a, b) => a + b, 0);
+  const ms = searchState.lastMs;
+
+  if (total === 0) {
     grid.innerHTML =
       '<div class="empty"><strong>No results found.</strong><br>' +
-      '<span style="font-size:12px">Nothing matched “' + escapeHtml(q) + '”.</span></div>';
+      '<span style="font-size:12px">Nothing matched “' + escapeHtml(currentSearchQuery) + '” on any provider.</span></div>';
     status.textContent = ms + "ms · 0 results";
     return;
   }
-  const seen = new Set();
-  const dedup = [];
-  for (const it of flat) {
-    const k = it.providerId + "|" + (it.detailPath || it.pageUrl || it.title).toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
-    dedup.push(it);
+
+  // Get items to display
+  let items = [];
+  if (searchState.activeFilter === "all") {
+    // Interleave results from each provider so no single provider drowns out others
+    const perProv = Object.entries(searchState.groups).map(([pid, arr]) => ({ pid, arr, i: 0 }));
+    let remaining = true;
+    while (remaining) {
+      remaining = false;
+      for (const p of perProv) {
+        if (p.i < p.arr.length) {
+          items.push(p.arr[p.i]);
+          p.i++;
+          remaining = true;
+        }
+      }
+    }
+  } else {
+    items = searchState.groups[searchState.activeFilter] || [];
   }
-  const perProvider = {};
-  for (const it of dedup) perProvider[it.providerName] = (perProvider[it.providerName] || 0) + 1;
-  const summary = Object.entries(perProvider).map(([k, v]) => k + ": " + v).join(" · ");
-  status.textContent = dedup.length + " results · " + ms + "ms · " + summary;
-  renderGrid(grid, dedup);
+
+  if (!items.length) {
+    grid.innerHTML =
+      '<div class="empty"><strong>No results from this provider.</strong><br>' +
+      '<span style="font-size:12px">Try “All results” to see other providers.</span></div>';
+    status.textContent = ms + "ms · 0 in this view";
+    return;
+  }
+
+  // Update status line
+  const breakdown = PROVIDERS
+    .map(p => {
+      const c = searchState.totalCounts[p.id] || 0;
+      if (c === 0) return null;
+      return escapeHtml(providerDisplayName(p.id)) + ": " + c;
+    })
+    .filter(Boolean)
+    .join(" · ");
+
+  status.innerHTML = `${total} results · ${ms}ms · ${breakdown}`;
+
+  // Render cards
+  grid.innerHTML = items.map(cardHtml).join("");
+  bindCardClicks(grid, items);
 }
 
 /* ─────── card click → detail page ─────── */
