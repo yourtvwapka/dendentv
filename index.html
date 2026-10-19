@@ -8,8 +8,6 @@
 
 <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
 <link rel="dns-prefetch" href="https://image.tmdb.org">
-<link rel="preconnect" href="https://api.themoviedb.org" crossorigin>
-<link rel="dns-prefetch" href="https://api.themoviedb.org">
 
 <style>
   :root{
@@ -19,107 +17,510 @@
     --radius:10px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+
+  /* ────── PREMIUM SCROLLBARS ────── */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.18) transparent;
+  }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,.14);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background .2s;
+    min-height: 40px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,.30);
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:active {
+    background: rgba(255,255,255,.42);
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-corner { background: transparent; }
+
+  /* Rows: slightly more visible thumb */
+  .row::-webkit-scrollbar { height: 8px; }
+  .row::-webkit-scrollbar-thumb { background: rgba(255,255,255,.20); background-clip: padding-box; }
+  .row::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.38); background-clip: padding-box; }
+
+  /* Suggestions: subtle */
+  .suggestions::-webkit-scrollbar { width: 6px; }
+  .suggestions::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); background-clip: padding-box; }
+
+  /* Hide on touch devices to feel native */
+  @media (hover: none) and (pointer: coarse) {
+    *::-webkit-scrollbar { width: 0; height: 0; }
+    * { scrollbar-width: none; }
+    .row { padding-bottom: 4px; }
+  }
+
   html,body{background:var(--bg);color:var(--text);min-height:100%}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:96px}
   img{display:block}
   button{font-family:inherit;color:inherit;cursor:pointer}
 
+  /* ══════════════ TOP BAR ══════════════ */
   .topbar{
-    position:sticky;top:0;z-index:50;
+    position:sticky;top:0;z-index:100;
     display:flex;align-items:center;gap:16px;
     padding:14px 22px;
-    background:linear-gradient(180deg,rgba(0,0,0,.95) 60%,rgba(0,0,0,.6));
-    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    background:linear-gradient(180deg,rgba(0,0,0,.96) 65%,rgba(0,0,0,.65));
+    backdrop-filter:blur(14px) saturate(1.2);
+    -webkit-backdrop-filter:blur(14px) saturate(1.2);
     border-bottom:1px solid rgba(255,255,255,.05);
   }
   .brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;letter-spacing:-.3px;color:#fff;white-space:nowrap;flex-shrink:0}
   .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-  .search-wrap{flex:1;max-width:640px;position:relative;display:flex;align-items:center}
-  .search-wrap svg.search-ico{position:absolute;left:14px;width:18px;height:18px;fill:var(--muted);pointer-events:none;transition:fill .15s}
+
+  /* ══════════════ SEARCH ══════════════ */
+  .search-wrap{flex:1;max-width:640px;position:relative}
+  .search-input-wrap{position:relative;display:flex;align-items:center}
+  .search-wrap svg.search-ico{
+    position:absolute;left:14px;width:18px;height:18px;
+    fill:var(--muted);pointer-events:none;transition:fill .15s;
+  }
   .search-wrap:focus-within svg.search-ico{fill:#fff}
-  #searchInput{width:100%;height:44px;padding:0 40px 0 44px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#fff;border-radius:var(--radius);font-size:14px;font-family:inherit;outline:none;transition:border .15s,background .15s}
+  #searchInput{
+    width:100%;height:44px;padding:0 40px 0 44px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    color:#fff;border-radius:var(--radius);
+    font-size:14px;font-family:inherit;outline:none;
+    transition:border .15s,background .15s;
+  }
   #searchInput::placeholder{color:var(--muted)}
   #searchInput:focus{border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.10)}
-  #searchClear{position:absolute;right:8px;width:30px;height:30px;border-radius:6px;background:transparent;border:none;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px}
+  #searchClear{
+    position:absolute;right:8px;width:30px;height:30px;border-radius:6px;
+    background:transparent;border:none;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:16px;
+  }
   #searchClear:hover{background:rgba(255,255,255,.08);color:#fff}
   #searchClear[hidden]{display:none}
 
-  main{padding:24px 22px 120px;max-width:1600px;margin:0 auto}
-  section[hidden]{display:none!important}
+  /* Suggestions dropdown */
+  .suggestions{
+    position:absolute;top:calc(100% + 6px);left:0;right:0;
+    background:rgba(18,18,22,.98);
+    backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:12px;
+    max-height:65vh;overflow-y:auto;
+    z-index:200;
+    box-shadow:0 20px 50px rgba(0,0,0,.7);
+    animation:sugPop .15s ease;
+  }
+  .suggestions[hidden]{display:none}
+  @keyframes sugPop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
-  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:26px 0 14px}
+  .sug-section-head{
+    font-size:10.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+    color:#6b7280;padding:10px 14px 6px;
+    background:rgba(255,255,255,.02);
+    border-bottom:1px solid rgba(255,255,255,.04);
+    position:sticky;top:0;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    z-index:1;
+  }
+
+  .sug-item{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 14px;
+    cursor:pointer;
+    border-bottom:1px solid rgba(255,255,255,.03);
+    transition:background .12s;
+  }
+  .sug-item:last-child{border-bottom:none}
+  .sug-item:hover, .sug-item.active{background:rgba(255,255,255,.06)}
+  .sug-item img{
+    width:44px;height:66px;object-fit:cover;border-radius:6px;
+    flex-shrink:0;background:#1a1a20;
+  }
+  .sug-item.sug-person img{width:44px;height:44px;border-radius:50%}
+  .sug-item .sug-fallback{
+    width:44px;height:66px;flex-shrink:0;
+    background:linear-gradient(135deg,#1a1a20 0%,#22222b 100%);
+    border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;font-weight:800;color:rgba(255,255,255,.25);
+  }
+  .sug-item.sug-person .sug-fallback{
+    height:44px;border-radius:50%;
+  }
+  .sug-info{flex:1;min-width:0}
+  .sug-title{
+    font-size:13.5px;font-weight:600;color:#e5e5ea;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .sug-meta{
+    font-size:11.5px;color:var(--muted);margin-top:3px;
+    display:flex;gap:8px;align-items:center;
+    white-space:nowrap;overflow:hidden;
+  }
+  .sug-badge{
+    display:inline-block;padding:1px 6px;border-radius:999px;
+    font-size:9.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
+    border:1px solid;
+    flex-shrink:0;
+  }
+  .sug-badge.movie{background:rgba(229,9,20,.15);border-color:rgba(229,9,20,.35);color:#ff7a84}
+  .sug-badge.tv{background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.35);color:#93c5fd}
+  .sug-badge.person{background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.4);color:#c4b5fd}
+
+  .sug-empty{padding:20px 14px;color:#6b7280;font-size:13px;text-align:center}
+
+  /* ══════════════ MAIN ══════════════ */
+  main{padding:24px 22px 100px;max-width:1600px;margin:0 auto}
+  .view[hidden]{display:none!important}
+
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;margin:26px 0 14px;
+  }
   .section-head:first-child{margin-top:0}
-  .section-head h2{font-size:20px;font-weight:800;letter-spacing:-.3px}
-  .section-head .hint{font-size:12.5px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .section-head h2{
+    font-size:20px;font-weight:800;letter-spacing:-.3px;
+    display:flex;align-items:center;gap:10px;min-width:0;
+  }
+  .section-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .section-actions .hint{
+    font-size:12.5px;color:var(--muted);font-weight:600;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .show-all-btn{
+    background:transparent;border:1px solid rgba(255,255,255,.15);
+    color:#e5e5ea;padding:6px 14px;border-radius:999px;
+    font-size:12.5px;font-weight:600;
+    transition:.15s;
+    white-space:nowrap;
+  }
+  .show-all-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.28);color:#fff}
+  .show-all-btn:active{transform:scale(.96)}
 
-  .row{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 16px;scroll-snap-type:x proximity;scrollbar-width:thin}
-  .row::-webkit-scrollbar{height:8px}
-  .row::-webkit-scrollbar-thumb{background:#2a2a33;border-radius:4px}
-  .row::-webkit-scrollbar-thumb:hover{background:#3a3a44}
+  /* Rows */
+  .row{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 16px;scroll-snap-type:x proximity}
+  .row .card{width:168px}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:18px 14px}
 
-  .card{display:flex;flex-direction:column;gap:8px;background:transparent;border:none;padding:0;text-align:left;color:inherit;scroll-snap-align:start;flex-shrink:0;transition:transform .15s ease;-webkit-tap-highlight-color:transparent}
-  .row .card{width:168px}
+  /* Cards */
+  .card{
+    display:flex;flex-direction:column;gap:8px;
+    background:transparent;border:none;padding:0;text-align:left;color:inherit;
+    scroll-snap-align:start;flex-shrink:0;
+    transition:transform .15s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
   .card:hover{transform:translateY(-3px)}
   .card:active{transform:translateY(-1px) scale(.98)}
-
-  .poster{position:relative;width:100%;aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a20 0%,#0a0a0d 100%);border-radius:var(--radius);overflow:hidden;border:1px solid var(--line)}
-  .poster img{width:100%;height:100%;object-fit:cover;transition:transform .25s ease}
+  .poster{
+    position:relative;width:100%;aspect-ratio:2/3;
+    background:linear-gradient(135deg,#1a1a20 0%,#0a0a0d 100%);
+    border-radius:var(--radius);overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .poster img{
+    width:100%;height:100%;object-fit:cover;
+    transition:transform .25s ease;
+  }
   .card:hover .poster img{transform:scale(1.05)}
-  .poster .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:rgba(255,255,255,.22)}
-  .poster .badge,.poster .rating{position:absolute;padding:2px 6px;border-radius:999px;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(4px)}
+  .poster .fallback{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:44px;font-weight:800;color:rgba(255,255,255,.22);
+  }
+  .poster .badge,.poster .rating{
+    position:absolute;padding:2px 6px;border-radius:999px;
+    font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
+    border:1px solid rgba(255,255,255,.14);
+    backdrop-filter:blur(4px);
+  }
   .poster .badge{top:6px;left:6px;background:rgba(0,0,0,.72);color:#fff}
   .poster .rating{top:6px;right:6px;background:rgba(0,0,0,.72);color:#ffc93c;border-color:rgba(255,201,60,.35);text-transform:none}
+  .card-title{
+    font-size:13px;font-weight:600;line-height:1.3;color:#e5e5ea;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    overflow:hidden;padding:0 2px;
+  }
+  .card-sub{
+    font-size:11px;color:var(--muted);padding:0 2px;
+    display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;
+    overflow:hidden;
+  }
 
-  .card-title{font-size:13px;font-weight:600;line-height:1.3;color:#e5e5ea;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 2px}
+  /* Person cards (circular) */
+  .person-card{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    background:transparent;border:none;padding:6px;text-align:center;color:inherit;
+    flex-shrink:0;
+    transition:transform .15s;
+  }
+  .person-card:hover{transform:translateY(-3px)}
+  .person-card:active{transform:translateY(-1px) scale(.97)}
+  .row .person-card{width:140px}
+  .person-avatar{
+    width:110px;height:110px;border-radius:50%;
+    object-fit:cover;
+    background:linear-gradient(135deg,#1a1a20 0%,#22222b 100%);
+    border:2px solid rgba(255,255,255,.08);
+    box-shadow:0 6px 20px rgba(0,0,0,.4);
+  }
+  .person-avatar-fallback{
+    width:110px;height:110px;border-radius:50%;
+    background:linear-gradient(135deg,#1a1a20 0%,#22222b 100%);
+    display:flex;align-items:center;justify-content:center;
+    font-size:36px;font-weight:800;color:rgba(255,255,255,.25);
+    border:2px solid rgba(255,255,255,.08);
+    box-shadow:0 6px 20px rgba(0,0,0,.4);
+  }
+  .person-name{
+    font-size:13px;font-weight:700;color:#e5e5ea;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    overflow:hidden;
+    max-width:130px;
+  }
+  .person-sub{
+    font-size:11px;color:var(--muted);
+    max-width:130px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
 
-  .spinner-wrap{display:flex;align-items:center;justify-content:center;padding:70px 20px;gap:12px;color:var(--muted);font-size:13px}
-  .spinner{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:var(--accent);animation:spin .8s linear infinite}
+  /* States */
+  .spinner-wrap{
+    display:flex;align-items:center;justify-content:center;
+    padding:70px 20px;gap:12px;color:var(--muted);font-size:13px;
+  }
+  .spinner{
+    width:26px;height:26px;border-radius:50%;
+    border:3px solid rgba(255,255,255,.12);
+    border-top-color:var(--accent);
+    animation:spin .8s linear infinite;
+  }
   @keyframes spin{to{transform:rotate(360deg)}}
   .empty{text-align:center;padding:70px 24px;color:var(--muted);font-size:14px}
   .empty strong{color:#fff;font-weight:700}
 
+  /* Filter pills */
   .filter-bar{display:flex;flex-wrap:wrap;gap:8px;padding:4px 2px 16px;margin-bottom:14px}
-  .filter-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#e5e5ea;border-radius:999px;font-size:13px;font-weight:700;transition:.15s}
+  .filter-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 16px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    color:#e5e5ea;border-radius:999px;
+    font-size:13px;font-weight:700;
+    transition:.15s;
+  }
   .filter-pill:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.20)}
   .filter-pill.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(229,9,20,.35)}
-  .filter-pill .count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 7px;background:rgba(255,255,255,.15);border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.3px}
+  .filter-pill .count{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:22px;height:20px;padding:0 7px;
+    background:rgba(255,255,255,.15);
+    border-radius:999px;font-size:11px;font-weight:800;
+  }
   .filter-pill.active .count{background:rgba(0,0,0,.25)}
 
+  /* People strip in search results */
+  .people-strip-wrap{margin:0 0 26px}
+  .people-strip-wrap[hidden]{display:none}
+  .people-strip-head{
+    font-size:12px;font-weight:800;letter-spacing:1.2px;
+    text-transform:uppercase;color:#8a8a94;
+    margin-bottom:12px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .people-strip-head .count{
+    font-weight:600;color:#6b7280;letter-spacing:0;
+    text-transform:none;font-size:11px;
+  }
+  .people-strip{
+    display:flex;gap:14px;overflow-x:auto;padding:2px 2px 14px;
+    scroll-snap-type:x proximity;
+  }
+
+  /* Pagination */
   .sentinel{grid-column:1/-1;height:1px;pointer-events:none;opacity:0}
-  .end-msg{grid-column:1/-1;text-align:center;padding:36px 20px 20px;color:var(--muted);font-size:11.5px;letter-spacing:1.4px;text-transform:uppercase;user-select:none}
+  .end-msg{
+    grid-column:1/-1;text-align:center;padding:36px 20px 20px;
+    color:var(--muted);font-size:11.5px;letter-spacing:1.4px;
+    text-transform:uppercase;
+  }
   .end-msg[hidden]{display:none}
-  .search-loading{grid-column:1/-1;display:flex;align-items:center;justify-content:center;padding:30px;gap:12px;color:var(--muted);font-size:12.5px}
+  .search-loading{
+    grid-column:1/-1;display:flex;align-items:center;justify-content:center;
+    padding:30px;gap:12px;color:var(--muted);font-size:12.5px;
+  }
   .search-loading[hidden]{display:none}
 
-  .page-bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(23,23,28,.92);border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 12px 40px rgba(0,0,0,.6);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:150;transition:opacity .18s}
+  .page-bar{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+    display:flex;align-items:center;gap:6px;
+    background:rgba(23,23,28,.92);
+    border:1px solid var(--line);
+    border-radius:999px;padding:6px 8px;
+    box-shadow:0 12px 40px rgba(0,0,0,.6);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    z-index:150;
+    transition:opacity .18s;
+  }
   .page-bar[hidden]{display:none}
   .page-bar.fade{opacity:.35}
   .page-bar.fade:hover{opacity:1}
-  .page-btn{width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:#e5e5ea;font-size:20px;line-height:1;font-weight:600;border-radius:999px;cursor:pointer;transition:.15s}
+  .page-btn{
+    width:34px;height:34px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;border:none;color:#e5e5ea;
+    font-size:20px;line-height:1;font-weight:600;
+    border-radius:999px;cursor:pointer;transition:.15s;
+  }
   .page-btn:hover:not(:disabled){background:rgba(255,255,255,.10);color:#fff}
   .page-btn:disabled{opacity:.28;cursor:default}
-  .page-label{font-size:12.5px;font-weight:700;color:#e5e5ea;font-variant-numeric:tabular-nums;min-width:70px;text-align:center;padding:0 6px;user-select:none}
-  .page-label .page-cur{color:#fff}
+  .page-label{
+    font-size:12.5px;font-weight:700;color:#e5e5ea;
+    min-width:70px;text-align:center;padding:0 6px;
+    user-select:none;
+  }
   .page-label .page-sep{color:#6b7280;margin:0 3px}
   .page-label .page-total{color:var(--muted)}
-  .page-bar .jump-input{width:52px;height:34px;flex:none;background:#101014;border:1px solid var(--line);color:#e5e5ea;font-size:13px;font-weight:600;border-radius:999px;text-align:center;outline:none;font-variant-numeric:tabular-nums;padding:0 4px;-moz-appearance:textfield}
+  .page-bar .jump-input{
+    width:52px;height:34px;flex:none;
+    background:#101014;border:1px solid var(--line);
+    color:#e5e5ea;font-size:13px;font-weight:600;
+    border-radius:999px;text-align:center;outline:none;
+    padding:0 4px;
+    -moz-appearance:textfield;
+  }
   .page-bar .jump-input:focus{border-color:var(--accent)}
   .page-bar .jump-input::-webkit-outer-spin-button,
   .page-bar .jump-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-  .page-bar .jump-btn{height:34px;padding:0 12px;flex:none;background:var(--card-2);border:1px solid var(--line);color:#e5e5ea;font-size:12px;font-weight:700;border-radius:999px;cursor:pointer;transition:.15s}
+  .page-bar .jump-btn{
+    height:34px;padding:0 12px;flex:none;
+    background:var(--card-2);border:1px solid var(--line);
+    color:#e5e5ea;font-size:12px;font-weight:700;
+    border-radius:999px;cursor:pointer;transition:.15s;
+  }
   .page-bar .jump-btn:hover{background:#26262f;border-color:#4a4a58;color:#fff}
 
-  .toast{position:fixed;left:50%;bottom:80px;transform:translate(-50%,20px);padding:11px 18px;border-radius:10px;background:rgba(20,20,24,.96);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:13.5px;font-weight:600;box-shadow:0 12px 40px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;max-width:90vw;text-align:center}
+  /* Toast */
+  .toast{
+    position:fixed;left:50%;bottom:80px;transform:translate(-50%,20px);
+    padding:11px 18px;border-radius:10px;
+    background:rgba(20,20,24,.96);
+    border:1px solid rgba(255,255,255,.12);
+    color:#fff;font-size:13.5px;font-weight:600;
+    box-shadow:0 12px 40px rgba(0,0,0,.6);
+    opacity:0;pointer-events:none;
+    transition:opacity .2s,transform .2s;
+    z-index:200;max-width:90vw;text-align:center;
+  }
   .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ══════════════ SEARCH HEADER ══════════════ */
+  .search-header{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    margin-bottom:24px;
+  }
+  .search-header h2{
+    font-size:22px;font-weight:800;letter-spacing:-.4px;
+    min-width:0;
+  }
+  .search-header h2 .q{color:var(--accent)}
+  .search-header .result-count{
+    font-size:13px;color:var(--muted);font-weight:600;
+  }
+
+  /* ══════════════ PERSON VIEW ══════════════ */
+  .back-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    color:#e5e5ea;padding:9px 18px;border-radius:999px;
+    font-size:13px;font-weight:600;
+    margin-bottom:24px;
+    transition:.15s;
+  }
+  .back-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22);color:#fff}
+  .back-btn:active{transform:scale(.96)}
+
+  .person-hero{
+    display:flex;gap:28px;margin-bottom:32px;align-items:flex-start;
+  }
+  @media (max-width:720px){
+    .person-hero{flex-direction:column;align-items:center;text-align:center;gap:20px}
+  }
+  .person-hero-avatar{
+    width:160px;height:160px;border-radius:50%;
+    object-fit:cover;flex-shrink:0;
+    background:linear-gradient(135deg,#1a1a20 0%,#22222b 100%);
+    border:3px solid rgba(255,255,255,.08);
+    box-shadow:0 16px 40px rgba(0,0,0,.6);
+  }
+  .person-hero-avatar-fallback{
+    width:160px;height:160px;border-radius:50%;
+    background:linear-gradient(135deg,#1a1a20 0%,#22222b 100%);
+    display:flex;align-items:center;justify-content:center;
+    font-size:60px;font-weight:800;color:rgba(255,255,255,.3);
+    flex-shrink:0;
+    border:3px solid rgba(255,255,255,.08);
+    box-shadow:0 16px 40px rgba(0,0,0,.6);
+  }
+  .person-hero-info{flex:1;min-width:0}
+  .person-hero-info h1{
+    font-size:32px;font-weight:800;letter-spacing:-.5px;
+    line-height:1.15;margin-bottom:12px;
+  }
+  @media (max-width:720px){ .person-hero-info h1{font-size:24px} }
+  .person-hero-meta{
+    display:flex;flex-wrap:wrap;gap:8px 14px;
+    font-size:13px;color:var(--muted);
+    margin-bottom:14px;align-items:center;
+  }
+  @media (max-width:720px){ .person-hero-meta{justify-content:center} }
+  .person-hero-meta .dept-badge{
+    background:rgba(139,92,246,.15);
+    border:1px solid rgba(139,92,246,.4);
+    color:#c4b5fd;padding:3px 10px;border-radius:999px;
+    font-size:11px;font-weight:700;
+    letter-spacing:.5px;text-transform:uppercase;
+  }
+  .person-bio{
+    font-size:14px;line-height:1.65;color:#c3c3cd;
+    max-width:780px;
+    display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .person-bio.expanded{-webkit-line-clamp:unset;display:block}
+  .person-bio-toggle{
+    display:inline-block;margin-top:8px;
+    font-size:12.5px;font-weight:700;
+    color:var(--accent);background:none;border:none;
+    cursor:pointer;padding:0;
+  }
+
+  .credits-section h3{
+    font-size:16px;font-weight:800;
+    letter-spacing:-.2px;
+    margin-bottom:16px;
+    display:flex;align-items:baseline;gap:10px;
+  }
+  .credits-section h3 .count{
+    font-size:12px;color:var(--muted);font-weight:600;
+  }
 
   @media (max-width:640px){
     .topbar{padding:12px 14px;gap:10px}
     .brand{font-size:15px}
     .brand .dot{width:8px;height:8px}
     #searchInput{height:40px;font-size:13.5px;padding:0 36px 0 40px}
-    main{padding:16px 14px 110px}
+    main{padding:16px 14px 80px}
     .section-head h2{font-size:17px}
     .grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px 10px}
     .row .card{width:132px}
@@ -131,6 +532,12 @@
     .page-label{min-width:58px;font-size:12px;padding:0 4px}
     .page-bar .jump-input{width:44px;height:32px;font-size:12px}
     .page-bar .jump-btn{height:32px;padding:0 10px;font-size:11px}
+    .row .person-card{width:112px}
+    .person-avatar, .person-avatar-fallback{width:88px;height:88px}
+    .person-avatar-fallback{font-size:28px}
+    .person-hero-avatar, .person-hero-avatar-fallback{width:120px;height:120px;font-size:44px}
+    .show-all-btn{padding:5px 11px;font-size:11.5px}
+    .section-actions .hint{display:none}
   }
 </style>
 </head>
@@ -138,27 +545,42 @@
 
 <header class="topbar">
   <div class="brand"><span class="dot"></span>Browse</div>
-  <div class="search-wrap">
-    <svg class="search-ico" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
-    <input id="searchInput" type="search" placeholder="Search movies, TV shows, people…" autocomplete="off" />
-    <button id="searchClear" hidden aria-label="Clear">✕</button>
+  <div class="search-wrap" id="searchWrap">
+    <div class="search-input-wrap">
+      <svg class="search-ico" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+      <input id="searchInput" type="search" inputmode="search"
+             placeholder="Search movies, TV shows, actors…" autocomplete="off" />
+      <button id="searchClear" hidden aria-label="Clear">✕</button>
+    </div>
+    <div class="suggestions" id="suggestions" hidden></div>
   </div>
 </header>
 
 <main>
-  <section id="browseSection">
+
+  <!-- ═══════ BROWSE VIEW ═══════ -->
+  <section class="view" id="browseView">
     <div id="browseRows"></div>
   </section>
 
-  <section id="searchSection" hidden>
-    <div class="section-head">
-      <h2>Results for “<span id="searchQuery"></span>”</h2>
-      <span class="hint" id="searchStatus"></span>
+  <!-- ═══════ SEARCH VIEW ═══════ -->
+  <section class="view" id="searchView" hidden>
+    <div class="search-header">
+      <h2>Results for <span class="q" id="searchQueryLabel"></span></h2>
+      <span class="result-count" id="searchResultCount"></span>
+    </div>
+
+    <div class="people-strip-wrap" id="peopleStripWrap" hidden>
+      <div class="people-strip-head">
+        <span>Cast & Crew</span>
+        <span class="count" id="peopleCount"></span>
+      </div>
+      <div class="people-strip" id="peopleStrip"></div>
     </div>
 
     <div class="filter-bar" id="filterBar"></div>
 
-    <div class="grid" id="searchGrid"></div>
+    <div class="grid" id="titlesGrid"></div>
     <div id="searchSentinel" class="sentinel" aria-hidden="true"></div>
     <div id="searchLoading" class="search-loading" hidden>
       <div class="spinner" style="width:18px;height:18px;border-width:2px"></div>
@@ -166,6 +588,25 @@
     </div>
     <div id="searchEndMsg" class="end-msg" hidden>— End of results —</div>
   </section>
+
+  <!-- ═══════ PERSON VIEW ═══════ -->
+  <section class="view" id="personView" hidden>
+    <button class="back-btn" id="personBackBtn">← Back</button>
+    <div id="personContent"></div>
+  </section>
+
+  <!-- ═══════ ROW FULL VIEW ═══════ -->
+  <section class="view" id="rowFullView" hidden>
+    <button class="back-btn" id="rowFullBackBtn">← Back</button>
+    <div class="section-head">
+      <h2 id="rowFullTitle">Show all</h2>
+      <div class="section-actions">
+        <span class="hint" id="rowFullCount"></span>
+      </div>
+    </div>
+    <div class="grid" id="rowFullGrid"></div>
+  </section>
+
 </main>
 
 <div id="pageBar" class="page-bar" hidden>
@@ -183,50 +624,81 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    CONFIG
-   ═══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 const TMDB_API_KEY = "09c7460bdc6319d6538d786919306438";
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w342";
-const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w780";
+const TMDB_IMG_PROFILE = "https://image.tmdb.org/t/p/w185";
 const TMDB_LANG = "en-US";
 
-/* Rows shown on the browse page */
 const BROWSE_ROWS = [
-  { title: "Trending Movies",  endpoint: "/trending/movie/week", mediaType: "movie", hint: "This week" },
-  { title: "Trending TV Shows", endpoint: "/trending/tv/week",    mediaType: "tv",    hint: "This week" },
-  { title: "New Releases",      endpoint: "/movie/now_playing",   mediaType: "movie", hint: "In theaters" },
-  { title: "Popular TV",        endpoint: "/tv/popular",          mediaType: "tv",    hint: "All time" },
+  { key: "trending_movies", title: "Trending Movies",  endpoint: "/trending/movie/week", mediaType: "movie", hint: "This week" },
+  { key: "trending_tv",     title: "Trending TV Shows", endpoint: "/trending/tv/week",    mediaType: "tv",    hint: "This week" },
+  { key: "new_releases",    title: "New Releases",      endpoint: "/movie/now_playing",   mediaType: "movie", hint: "In theaters" },
+  { key: "popular_tv",      title: "Popular TV",        endpoint: "/tv/popular",          mediaType: "tv",    hint: "All time" },
 ];
 
-const PAGE_SIZE = 20; // TMDB default; each search page = 20 results
+const SUGGEST_LIMIT_TITLES = 6;
+const SUGGEST_LIMIT_PEOPLE = 3;
+const SUGGEST_DEBOUNCE_MS = 280;
+const SEARCH_DEBOUNCE_MS = 400;
+const ROW_FULL_PAGES = 3; // load 3 pages when "show all" is clicked
 
-/* ═══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    STATE
-   ═══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 const S = {
-  active: false,
-  query: "",
-  page: 0,
-  hasMore: true,
-  loading: false,
-  totalPages: 0,
-  totalResults: 0,
-  activeType: "all",       // "all" | "movie" | "tv"
-  rawItems: [],            // full list from TMDB for current query (all pages loaded)
-  filteredItems: [],       // activeType filter applied
-  seenIds: new Set(),
-  itemMap: new Map(),      // tmdbId+type -> item
-  abort: null,
-  lastMs: 0,
-  pageAnchors: [],
-  currentPage: 1,
+  view: "browse",           // browse | search | person | rowFull
+  prevView: "browse",
+
+  search: {
+    query: "",
+    page: 0,
+    hasMore: true,
+    loading: false,
+    totalPages: 0,
+    totalResults: 0,
+    activeType: "all",       // all | movie | tv
+    titles: [],              // all title results accumulated
+    people: [],              // people from /search/person
+    seenIds: new Set(),
+    itemMap: new Map(),
+    pageAnchors: [],
+    currentPage: 1,
+    lastMs: 0,
+    abort: null,
+  },
+
+  person: {
+    id: null,
+    data: null,
+    credits: [],
+    loading: false,
+    abort: null,
+  },
+
+  rowFull: {
+    key: null,
+    title: "",
+    items: [],
+    loading: false,
+    abort: null,
+  },
+
+  suggest: {
+    items: [],
+    activeIdx: -1,
+    abort: null,
+    timer: null,
+    active: false,
+  },
 };
 
-/* ═══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    HELPERS
-   ═══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
@@ -239,9 +711,6 @@ function showToast(msg, ms) {
   showToast._t = setTimeout(() => t.classList.remove("show"), ms || 2400);
 }
 
-/* ═══════════════════════════════════════════════════
-   TMDB FETCHER
-   ═══════════════════════════════════════════════════ */
 async function tmdbFetch(path, params = {}, signal) {
   const url = new URL(TMDB_BASE + path);
   url.searchParams.set("api_key", TMDB_API_KEY);
@@ -254,8 +723,7 @@ async function tmdbFetch(path, params = {}, signal) {
   return res.json();
 }
 
-/* Map TMDB result to a card item */
-function mapTmdbItem(r) {
+function mapTmdbTitle(r) {
   const isTV = r.media_type === "tv" || (!r.title && !!r.name);
   const title = r.title || r.name || "";
   const dateStr = r.release_date || r.first_air_date || "";
@@ -266,17 +734,55 @@ function mapTmdbItem(r) {
     title,
     year: dateStr ? dateStr.slice(0, 4) : "",
     poster: r.poster_path ? TMDB_IMG_POSTER + r.poster_path : "",
-    backdrop: r.backdrop_path ? TMDB_IMG_BACKDROP + r.backdrop_path : "",
     rating: r.vote_average ? Number(r.vote_average).toFixed(1) : "",
-    overview: r.overview || "",
-    popularity: r.popularity || 0,
   };
 }
 
-/* ═══════════════════════════════════════════════════
-   BROWSE ROWS
-   ═══════════════════════════════════════════════════ */
-function cardHtml(item, opts = {}) {
+function mapTmdbPerson(r) {
+  return {
+    personId: String(r.id),
+    name: r.name || "",
+    profile: r.profile_path ? TMDB_IMG_PROFILE + r.profile_path : "",
+    dept: r.known_for_department || "",
+    popularity: r.popularity || 0,
+    knownFor: (r.known_for || []).slice(0, 2)
+      .map(k => k.title || k.name || "").filter(Boolean).join(", "),
+  };
+}
+
+/* Check if a person's name is a strong match for the query */
+function isLikelyActorMatch(query, personName) {
+  const q = query.toLowerCase().trim();
+  const n = personName.toLowerCase().trim();
+  if (!q || !n) return 0;
+  if (n === q) return 100;
+  if (n.includes(q) || q.includes(n)) return 80;
+  const qWords = q.split(/\s+/).filter(w => w.length > 1);
+  if (!qWords.length) return 0;
+  const nWords = n.split(/\s+/);
+  const matches = qWords.filter(w => nWords.includes(w)).length;
+  return (matches / qWords.length) * 100;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VIEW SWITCHING
+   ═══════════════════════════════════════════════════════════════ */
+function switchView(name) {
+  if (S.view === name) return;
+  S.prevView = S.view;
+  S.view = name;
+  document.getElementById("browseView").hidden = name !== "browse";
+  document.getElementById("searchView").hidden = name !== "search";
+  document.getElementById("personView").hidden = name !== "person";
+  document.getElementById("rowFullView").hidden = name !== "rowFull";
+  if (name !== "search") hidePageBar();
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CARD RENDERERS
+   ═══════════════════════════════════════════════════════════════ */
+function titleCardHtml(item, sub) {
   const badge = item.isTV ? "TV" : "Movie";
   const img = item.poster
     ? `<img src="${escapeHtml(item.poster)}" alt="" loading="lazy"
@@ -286,47 +792,75 @@ function cardHtml(item, opts = {}) {
     ${escapeHtml((item.title || "?").charAt(0).toUpperCase())}
   </div>`;
   const ratingBadge = item.rating ? `<span class="rating">★ ${escapeHtml(item.rating)}</span>` : "";
-  const key = item.tmdbId + "|" + item.mediaType;
-  return `<button class="card" data-key="${escapeHtml(key)}">
+  return `<button class="card" data-tmdb="${escapeHtml(item.tmdbId)}" data-media="${item.mediaType}">
     <div class="poster">${img}${fallback}
       <span class="badge">${badge}</span>
       ${ratingBadge}
     </div>
     <div class="card-title">${escapeHtml(item.title)}</div>
+    ${sub ? `<div class="card-sub">${escapeHtml(sub)}</div>` : ""}
   </button>`;
 }
 
-function renderRow(container, items) {
-  if (!items || !items.length) {
-    container.innerHTML = '<div class="empty">Nothing to show.</div>';
-    return;
-  }
-  container.innerHTML = items.map(it => cardHtml(it)).join("");
-  container.querySelectorAll(".card").forEach(el => {
-    el.addEventListener("click", () => {
-      const [tmdbId, mediaType] = el.dataset.key.split("|");
-      const item = S.itemMap.get(el.dataset.key);
-      navigateToDetail(tmdbId, mediaType, item?.title || "");
-    });
-  });
-  for (const it of items) {
-    S.itemMap.set(it.tmdbId + "|" + it.mediaType, it);
-  }
+function personCardHtml(p) {
+  const initial = (p.name || "?").charAt(0).toUpperCase();
+  const avatar = p.profile
+    ? `<img class="person-avatar" src="${escapeHtml(p.profile)}" alt="" loading="lazy"
+           onerror="this.outerHTML='<div class=\\'person-avatar-fallback\\'>${escapeHtml(initial)}</div>'">`
+    : `<div class="person-avatar-fallback">${escapeHtml(initial)}</div>`;
+  return `<button class="person-card" data-person="${escapeHtml(p.personId)}">
+    ${avatar}
+    <div class="person-name">${escapeHtml(p.name)}</div>
+    ${p.dept ? `<div class="person-sub">${escapeHtml(p.dept)}</div>` : ""}
+  </button>`;
 }
 
+function bindTitleCards(root) {
+  root.querySelectorAll(".card").forEach(el => {
+    el.addEventListener("click", () => {
+      const tmdbId = el.dataset.tmdb;
+      const media = el.dataset.media;
+      if (tmdbId) navigateToDetail(tmdbId, media);
+    });
+  });
+}
+
+function bindPersonCards(root) {
+  root.querySelectorAll(".person-card").forEach(el => {
+    el.addEventListener("click", () => {
+      const pid = el.dataset.person;
+      if (pid) openPersonView(pid);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BROWSE ROWS
+   ═══════════════════════════════════════════════════════════════ */
 async function loadBrowseRows() {
   const rowsWrap = document.getElementById("browseRows");
   rowsWrap.innerHTML = BROWSE_ROWS.map((row, i) => `
     <div class="section-head">
       <h2>${escapeHtml(row.title)}</h2>
-      <span class="hint" id="hint-${i}">${escapeHtml(row.hint)}</span>
+      <div class="section-actions">
+        <span class="hint" id="hint-${i}">Loading…</span>
+        <button class="show-all-btn" data-row="${i}">Show all →</button>
+      </div>
     </div>
     <div class="row" id="row-${i}">
       <div class="spinner-wrap"><div class="spinner"></div>Loading…</div>
     </div>
   `).join("");
 
-  // Fetch all rows in parallel
+  // Bind "Show all" buttons
+  rowsWrap.querySelectorAll(".show-all-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.row);
+      openRowFull(idx);
+    });
+  });
+
+  // Load row items in parallel
   await Promise.all(BROWSE_ROWS.map(async (row, i) => {
     const container = document.getElementById("row-" + i);
     const hint = document.getElementById("hint-" + i);
@@ -334,176 +868,526 @@ async function loadBrowseRows() {
       const data = await tmdbFetch(row.endpoint, { page: 1 });
       const items = (data.results || [])
         .filter(r => r && r.poster_path && (r.media_type === row.mediaType || (!r.media_type && row.mediaType)))
-        .map(mapTmdbItem)
+        .map(mapTmdbTitle)
         .filter(it => it.title);
-      if (items.length === 0) {
+      if (!items.length) {
         container.innerHTML = '<div class="empty">Nothing to show.</div>';
         hint.textContent = "";
         return;
       }
       hint.textContent = items.length + " titles";
-      renderRow(container, items);
+      container.innerHTML = items.map(it => titleCardHtml(it)).join("");
+      bindTitleCards(container);
     } catch (e) {
-      console.error("[browse row " + row.title + "]", e);
+      console.error("[browse row]", row.key, e);
       container.innerHTML = '<div class="empty">Failed to load.</div>';
       hint.textContent = "";
     }
   }));
 }
 
-/* ═══════════════════════════════════════════════════
-   NAVIGATION
-   ═══════════════════════════════════════════════════ */
-function navigateToDetail(tmdbId, mediaType, title) {
-  if (!tmdbId) return;
-  const params = new URLSearchParams({
-    source: "tmdb",
-    tmdbId: String(tmdbId),
-    mediaType: mediaType || "movie",
-    title: title || "",
+/* ═══════════════════════════════════════════════════════════════
+   ROW FULL VIEW (Show All)
+   ═══════════════════════════════════════════════════════════════ */
+async function openRowFull(rowIdx) {
+  const row = BROWSE_ROWS[rowIdx];
+  if (!row) return;
+
+  if (S.rowFull.abort) { try { S.rowFull.abort.abort(); } catch (_) {} }
+  S.rowFull.abort = new AbortController();
+  S.rowFull.key = row.key;
+  S.rowFull.title = row.title;
+  S.rowFull.items = [];
+  S.rowFull.loading = true;
+
+  document.getElementById("rowFullTitle").textContent = row.title;
+  document.getElementById("rowFullCount").textContent = "Loading…";
+  document.getElementById("rowFullGrid").innerHTML =
+    '<div class="spinner-wrap" style="grid-column:1/-1"><div class="spinner"></div>Loading more titles…</div>';
+
+  switchView("rowFull");
+
+  try {
+    const pages = Array.from({ length: ROW_FULL_PAGES }, (_, i) => i + 1);
+    const results = await Promise.all(
+      pages.map(p => tmdbFetch(row.endpoint, { page: p }, S.rowFull.abort.signal)
+        .catch(() => ({ results: [] })))
+    );
+    if (S.rowFull.abort.signal.aborted) return;
+
+    const seen = new Set();
+    const items = [];
+    for (const data of results) {
+      for (const r of (data.results || [])) {
+        if (!r || !r.poster_path) continue;
+        if (r.media_type && r.media_type !== row.mediaType && r.media_type !== "movie" && r.media_type !== "tv") continue;
+        const mapped = mapTmdbTitle(r);
+        if (!mapped.title || seen.has(mapped.tmdbId)) continue;
+        seen.add(mapped.tmdbId);
+        items.push(mapped);
+      }
+    }
+
+    S.rowFull.items = items;
+    S.rowFull.loading = false;
+
+    const grid = document.getElementById("rowFullGrid");
+    if (!items.length) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Nothing to show.</div>';
+      document.getElementById("rowFullCount").textContent = "";
+      return;
+    }
+    document.getElementById("rowFullCount").textContent = items.length + " titles";
+    grid.innerHTML = items.map(it => titleCardHtml(it)).join("");
+    bindTitleCards(grid);
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    console.error("[rowFull]", e);
+    S.rowFull.loading = false;
+    document.getElementById("rowFullGrid").innerHTML =
+      '<div class="empty" style="grid-column:1/-1">Failed to load.</div>';
+  }
+}
+
+document.getElementById("rowFullBackBtn").addEventListener("click", () => {
+  switchView("browse");
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   SUGGESTIONS (autocomplete)
+   ═══════════════════════════════════════════════════════════════ */
+const suggestionsEl = document.getElementById("suggestions");
+const searchInput = document.getElementById("searchInput");
+const searchClear = document.getElementById("searchClear");
+
+function hideSuggestions() {
+  suggestionsEl.hidden = true;
+  S.suggest.active = false;
+  S.suggest.activeIdx = -1;
+}
+
+function renderSuggestions(titles, people) {
+  if (!titles.length && !people.length) {
+    suggestionsEl.innerHTML = '<div class="sug-empty">No matches</div>';
+    suggestionsEl.hidden = false;
+    S.suggest.active = true;
+    return;
+  }
+
+  let html = "";
+  if (people.length) {
+    html += '<div class="sug-section-head">Cast & Crew</div>';
+    html += people.slice(0, SUGGEST_LIMIT_PEOPLE).map((p, i) => {
+      const initial = (p.name || "?").charAt(0).toUpperCase();
+      const avatar = p.profile
+        ? `<img src="${escapeHtml(p.profile)}" alt=""
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+           <div class="sug-fallback" style="display:none">${escapeHtml(initial)}</div>`
+        : `<div class="sug-fallback">${escapeHtml(initial)}</div>`;
+      return `<div class="sug-item sug-person" data-type="person" data-id="${escapeHtml(p.personId)}" data-idx="${i}">
+        ${avatar}
+        <div class="sug-info">
+          <div class="sug-title">${escapeHtml(p.name)}</div>
+          <div class="sug-meta">
+            <span class="sug-badge person">${escapeHtml(p.dept || "Person")}</span>
+            ${p.knownFor ? `<span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.knownFor)}</span>` : ""}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  if (titles.length) {
+    html += '<div class="sug-section-head">Movies & TV</div>';
+    html += titles.slice(0, SUGGEST_LIMIT_TITLES).map((t, i) => {
+      const initial = (t.title || "?").charAt(0).toUpperCase();
+      const poster = t.poster
+        ? `<img src="${escapeHtml(t.poster)}" alt=""
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+           <div class="sug-fallback" style="display:none">${escapeHtml(initial)}</div>`
+        : `<div class="sug-fallback">${escapeHtml(initial)}</div>`;
+      return `<div class="sug-item" data-type="title" data-id="${escapeHtml(t.tmdbId)}" data-media="${t.mediaType}" data-idx="${people.length + i}">
+        ${poster}
+        <div class="sug-info">
+          <div class="sug-title">${escapeHtml(t.title)}</div>
+          <div class="sug-meta">
+            <span class="sug-badge ${t.isTV ? 'tv' : 'movie'}">${t.isTV ? "TV" : "Movie"}</span>
+            ${t.year ? `<span>${escapeHtml(t.year)}</span>` : ""}
+            ${t.rating ? `<span>★ ${escapeHtml(t.rating)}</span>` : ""}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  suggestionsEl.innerHTML = html;
+  suggestionsEl.hidden = false;
+  S.suggest.active = true;
+  S.suggest.activeIdx = -1;
+
+  suggestionsEl.querySelectorAll(".sug-item").forEach(el => {
+    el.addEventListener("click", () => {
+      handleSuggestionClick(el);
+    });
   });
-  location.href = "detail.html?" + params.toString();
 }
 
-/* ═══════════════════════════════════════════════════
+function handleSuggestionClick(el) {
+  hideSuggestions();
+  searchInput.blur(); // dismiss mobile keyboard
+
+  const type = el.dataset.type;
+  if (type === "person") {
+    const pid = el.dataset.id;
+    if (pid) openPersonView(pid);
+  } else if (type === "title") {
+    const tid = el.dataset.id;
+    const media = el.dataset.media || "movie";
+    if (tid) navigateToDetail(tid, media);
+  }
+}
+
+async function fetchSuggestions(q) {
+  if (!q || q.length < 2) {
+    hideSuggestions();
+    return;
+  }
+
+  if (S.suggest.abort) { try { S.suggest.abort.abort(); } catch (_) {} }
+  S.suggest.abort = new AbortController();
+
+  try {
+    const data = await tmdbFetch("/search/multi", {
+      query: q, page: 1, include_adult: "false"
+    }, S.suggest.abort.signal);
+
+    const results = data.results || [];
+    const titles = [];
+    const people = [];
+
+    for (const r of results) {
+      if (!r || !r.media_type) continue;
+      if (r.media_type === "person") {
+        people.push(mapTmdbPerson(r));
+      } else if (r.poster_path) {
+        titles.push(mapTmdbTitle(r));
+      }
+    }
+
+    // Sort people by popularity
+    people.sort((a, b) => b.popularity - a.popularity);
+
+    renderSuggestions(titles, people);
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    console.warn("[suggest]", e);
+  }
+}
+
+/* ───── Suggestion keyboard navigation ───── */
+function moveSuggestion(dir) {
+  if (!S.suggest.active) return;
+  const items = suggestionsEl.querySelectorAll(".sug-item");
+  if (!items.length) return;
+
+  let idx = S.suggest.activeIdx;
+  idx = Math.max(-1, Math.min(items.length - 1, idx + dir));
+  S.suggest.activeIdx = idx;
+
+  items.forEach((el, i) => el.classList.toggle("active", i === idx));
+
+  if (idx >= 0 && items[idx]) {
+    items[idx].scrollIntoView({ block: "nearest" });
+  }
+}
+
+function selectActiveSuggestion() {
+  if (!S.suggest.active || S.suggest.activeIdx < 0) return false;
+  const items = suggestionsEl.querySelectorAll(".sug-item");
+  const el = items[S.suggest.activeIdx];
+  if (el) {
+    handleSuggestionClick(el);
+    return true;
+  }
+  return false;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SEARCH INPUT HANDLERS
+   ═══════════════════════════════════════════════════════════════ */
+let searchDebounceTimer = null;
+
+searchInput.addEventListener("input", (e) => {
+  const v = e.target.value;
+  searchClear.hidden = v.length === 0;
+
+  // Suggestions debounce
+  clearTimeout(S.suggest.timer);
+  if (v.length >= 2) {
+    S.suggest.timer = setTimeout(() => fetchSuggestions(v), SUGGEST_DEBOUNCE_MS);
+  } else {
+    hideSuggestions();
+  }
+
+  // Search debounce
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    if (!S.suggest.active) {
+      performSearch(v.trim());
+    }
+  }, SEARCH_DEBOUNCE_MS);
+});
+
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (S.suggest.active) {
+      e.preventDefault();
+      hideSuggestions();
+      return;
+    }
+    if (searchInput.value) {
+      searchInput.value = "";
+      searchClear.hidden = true;
+      performSearch("");
+    }
+    return;
+  }
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (S.suggest.active) moveSuggestion(1);
+    return;
+  }
+
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (S.suggest.active) moveSuggestion(-1);
+    return;
+  }
+
+  if (e.key === "Enter" || e.key === "Search" || e.key === "Go") {
+    e.preventDefault();
+    clearTimeout(searchDebounceTimer);
+
+    // If an item is highlighted in the dropdown, use it
+    if (S.suggest.active && S.suggest.activeIdx >= 0) {
+      if (selectActiveSuggestion()) {
+        searchInput.blur();
+        return;
+      }
+    }
+
+    // Otherwise do the search and dismiss keyboard
+    hideSuggestions();
+    searchInput.blur();  // ← dismiss mobile keyboard
+    performSearch(searchInput.value.trim());
+  }
+});
+
+document.addEventListener("click", (e) => {
+  if (!document.getElementById("searchWrap").contains(e.target)) {
+    hideSuggestions();
+  }
+});
+
+searchClear.addEventListener("click", () => {
+  searchInput.value = "";
+  searchClear.hidden = true;
+  hideSuggestions();
+  performSearch("");
+  searchInput.focus();
+});
+
+/* ═══════════════════════════════════════════════════════════════
    SEARCH
-   ═══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 function resetSearchState(q) {
-  S.active = true;
-  S.query = q;
-  S.page = 0;
-  S.hasMore = true;
-  S.loading = false;
-  S.totalPages = 0;
-  S.totalResults = 0;
-  S.activeType = "all";
-  S.rawItems = [];
-  S.filteredItems = [];
-  S.seenIds = new Set();
-  S.itemMap = new Map();
-  S.pageAnchors = [];
-  S.currentPage = 1;
-  S.lastMs = 0;
+  S.search.query = q;
+  S.search.page = 0;
+  S.search.hasMore = true;
+  S.search.loading = false;
+  S.search.totalPages = 0;
+  S.search.totalResults = 0;
+  S.search.activeType = "all";
+  S.search.titles = [];
+  S.search.people = [];
+  S.search.seenIds = new Set();
+  S.search.itemMap = new Map();
+  S.search.pageAnchors = [];
+  S.search.currentPage = 1;
+  S.search.lastMs = 0;
 }
 
-async function doSearch(q) {
+async function performSearch(q) {
   q = (q || "").trim();
-  const browse = document.getElementById("browseSection");
-  const search = document.getElementById("searchSection");
-  const grid = document.getElementById("searchGrid");
-  const filterBar = document.getElementById("filterBar");
-  const status = document.getElementById("searchStatus");
-  const qLabel = document.getElementById("searchQuery");
-  const loadingEl = document.getElementById("searchLoading");
-  const endMsg = document.getElementById("searchEndMsg");
+  const browse = document.getElementById("browseView");
+  const search = document.getElementById("searchView");
 
   if (q.length < 2) {
-    search.hidden = true;
-    browse.hidden = false;
-    S.active = false;
+    // Return to browse
+    switchView("browse");
+    resetSearchState("");
+    document.getElementById("searchQueryLabel").textContent = "";
+    document.getElementById("searchResultCount").textContent = "";
+    document.getElementById("peopleStripWrap").hidden = true;
+    document.getElementById("filterBar").innerHTML = "";
+    document.getElementById("titlesGrid").innerHTML = "";
     hidePageBar();
     return;
   }
 
-  browse.hidden = true;
-  search.hidden = false;
-  qLabel.textContent = q;
-  status.textContent = "Searching TMDB…";
-  grid.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div>Searching…</div>';
-  filterBar.innerHTML = "";
-  loadingEl.hidden = true;
-  endMsg.hidden = true;
+  switchView("search");
+
+  // Reset UI
+  document.getElementById("searchQueryLabel").textContent = '"' + q + '"';
+  document.getElementById("searchResultCount").textContent = "Searching…";
+  document.getElementById("peopleStripWrap").hidden = true;
+  document.getElementById("filterBar").innerHTML = "";
+  document.getElementById("titlesGrid").innerHTML =
+    '<div class="spinner-wrap" style="grid-column:1/-1"><div class="spinner"></div>Searching…</div>';
+  document.getElementById("searchLoading").hidden = true;
+  document.getElementById("searchEndMsg").hidden = true;
   hidePageBar();
 
-  if (S.abort) { try { S.abort.abort(); } catch (_) {} }
-  S.abort = new AbortController();
+  if (S.search.abort) { try { S.search.abort.abort(); } catch (_) {} }
+  S.search.abort = new AbortController();
   resetSearchState(q);
 
   await loadSearchPage(1);
 }
 
 async function loadSearchPage(n) {
-  if (S.loading) return;
-  if (n > 1 && !S.hasMore) return;
+  if (S.search.loading) return;
+  if (n > 1 && !S.search.hasMore) return;
 
-  S.loading = true;
+  S.search.loading = true;
   if (n > 1) document.getElementById("searchLoading").hidden = false;
 
-  const signal = S.abort ? S.abort.signal : undefined;
+  const signal = S.search.abort.signal;
   const t0 = performance.now();
-  let data;
 
   try {
-    data = await tmdbFetch("/search/multi", {
-      query: S.query,
-      page: n,
-      include_adult: "false",
+    // On page 1, also fetch people search (in parallel)
+    const multiPromise = tmdbFetch("/search/multi", {
+      query: S.search.query, page: n, include_adult: "false"
     }, signal);
+
+    const peoplePromise = (n === 1)
+      ? tmdbFetch("/search/person", {
+          query: S.search.query, page: 1, include_adult: "false"
+        }, signal).catch(() => ({ results: [] }))
+      : Promise.resolve({ results: [] });
+
+    const [data, peopleData] = await Promise.all([multiPromise, peoplePromise]);
+
+    if (signal.aborted) return;
+
+    S.search.lastMs += Math.round(performance.now() - t0);
+    S.search.totalPages = data.total_pages || 0;
+    S.search.totalResults = data.total_results || 0;
+    S.search.page = n;
+    S.search.hasMore = n < Math.min(S.search.totalPages, 500);
+
+    // Extract titles from multi search
+    const results = (data.results || [])
+      .filter(r => r && (r.media_type === "movie" || r.media_type === "tv"))
+      .map(mapTmdbTitle)
+      .filter(it => it.title && it.poster);
+
+    const newTitles = [];
+    for (const it of results) {
+      const key = it.tmdbId + "|" + it.mediaType;
+      if (S.search.seenIds.has(key)) continue;
+      S.search.seenIds.add(key);
+      S.search.titles.push(it);
+      S.search.itemMap.set(key, it);
+      newTitles.push(it);
+    }
+
+    // Extract people on page 1
+    if (n === 1) {
+      const rawPeople = (peopleData.results || [])
+        .map(mapTmdbPerson)
+        .filter(p => p.personId && p.name);
+
+      // Only show people if the top match is a strong actor match
+      const scored = rawPeople.map(p => ({
+        person: p,
+        score: isLikelyActorMatch(S.search.query, p.name)
+      })).sort((a, b) => b.score - a.score || b.person.popularity - a.person.popularity);
+
+      const topScore = scored[0]?.score || 0;
+      if (topScore >= 60) {
+        // Filter to people with score >= 40 (reasonable matches)
+        S.search.people = scored.filter(s => s.score >= 40).slice(0, 12).map(s => s.person);
+      } else {
+        S.search.people = [];
+      }
+    }
+
+    // Render
+    if (n === 1) {
+      document.getElementById("titlesGrid").innerHTML = "";
+      renderPeopleStrip();
+    }
+
+    renderFilterBar();
+    renderSearchTitles(newTitles, n === 1);
+    updateSearchHeader();
+    updatePageBar();
+    document.getElementById("searchLoading").hidden = true;
+    document.getElementById("searchEndMsg").hidden = S.search.hasMore || S.search.titles.length === 0;
+
+    S.search.loading = false;
   } catch (e) {
     if (e.name === "AbortError") return;
-    S.loading = false;
+    S.search.loading = false;
     document.getElementById("searchLoading").hidden = true;
     if (n === 1) {
-      document.getElementById("searchGrid").innerHTML =
-        '<div class="empty"><strong>Search failed.</strong><br>' +
+      document.getElementById("titlesGrid").innerHTML =
+        '<div class="empty" style="grid-column:1/-1"><strong>Search failed.</strong><br>' +
         '<span style="font-size:12px">' + escapeHtml(e.message) + '</span></div>';
+      document.getElementById("searchResultCount").textContent = "";
     }
+  }
+}
+
+function renderPeopleStrip() {
+  const wrap = document.getElementById("peopleStripWrap");
+  const strip = document.getElementById("peopleStrip");
+  const count = document.getElementById("peopleCount");
+
+  if (!S.search.people.length) {
+    wrap.hidden = true;
+    strip.innerHTML = "";
     return;
   }
 
-  if (signal && signal.aborted) return;
-
-  S.lastMs += Math.round(performance.now() - t0);
-  S.totalPages = data.total_pages || 0;
-  S.totalResults = data.total_results || 0;
-
-  const results = (data.results || [])
-    .filter(r => r && (r.media_type === "movie" || r.media_type === "tv"))
-    .map(mapTmdbItem)
-    .filter(it => it.title && it.poster);
-
-  // Dedupe against already-seen
-  const newItems = [];
-  for (const it of results) {
-    const key = it.tmdbId + "|" + it.mediaType;
-    if (S.seenIds.has(key)) continue;
-    S.seenIds.add(key);
-    S.rawItems.push(it);
-    S.itemMap.set(key, it);
-    newItems.push(it);
-  }
-
-  S.page = n;
-  S.hasMore = n < S.totalPages && n < 500; // TMDB caps at page 500
-
-  // Render
-  const grid = document.getElementById("searchGrid");
-  if (n === 1) grid.innerHTML = "";
-  rebuildFilterBar();
-  applyFilterAndRender(newItems);
-
-  S.loading = false;
-  document.getElementById("searchLoading").hidden = true;
-  document.getElementById("searchEndMsg").hidden = S.hasMore || S.rawItems.length === 0;
-
-  updateSearchStatus();
-  if (S.pageAnchors.length > 0) { showPageBar(); updatePageBar(); }
+  wrap.hidden = false;
+  count.textContent = S.search.people.length + (S.search.people.length === 1 ? " match" : " matches");
+  strip.innerHTML = S.search.people.map(personCardHtml).join("");
+  bindPersonCards(strip);
 }
 
-function rebuildFilterBar() {
+function renderFilterBar() {
   const filterBar = document.getElementById("filterBar");
-  const movieCount = S.rawItems.filter(it => !it.isTV).length;
-  const tvCount = S.rawItems.filter(it => it.isTV).length;
-  const total = S.rawItems.length;
+  const movieCount = S.search.titles.filter(t => !t.isTV).length;
+  const tvCount = S.search.titles.filter(t => t.isTV).length;
+  const total = S.search.titles.length;
+
+  if (total === 0 && S.search.people.length === 0) {
+    filterBar.innerHTML = "";
+    return;
+  }
 
   const pills = [
-    `<button class="filter-pill ${S.activeType === "all" ? "active" : ""}" data-type="all">
+    `<button class="filter-pill ${S.search.activeType === "all" ? "active" : ""}" data-type="all">
       <span>All</span><span class="count">${total}</span>
     </button>`,
-    `<button class="filter-pill ${S.activeType === "movie" ? "active" : ""}" data-type="movie">
+    `<button class="filter-pill ${S.search.activeType === "movie" ? "active" : ""}" data-type="movie">
       <span>Movies</span><span class="count">${movieCount}</span>
     </button>`,
-    `<button class="filter-pill ${S.activeType === "tv" ? "active" : ""}" data-type="tv">
+    `<button class="filter-pill ${S.search.activeType === "tv" ? "active" : ""}" data-type="tv">
       <span>TV Shows</span><span class="count">${tvCount}</span>
     </button>`,
   ];
@@ -513,132 +1397,288 @@ function rebuildFilterBar() {
   filterBar.querySelectorAll(".filter-pill").forEach(btn => {
     btn.addEventListener("click", () => {
       const newType = btn.dataset.type;
-      if (newType === S.activeType) return;
-      S.activeType = newType;
-      rebuildFilterBar();
-      rerenderGrid();
+      if (newType === S.search.activeType) return;
+      S.search.activeType = newType;
+      renderFilterBar();
+      rerenderTitles();
       if (newType !== "all") hidePageBar();
     });
   });
 }
 
-function applyFilterAndRender(newItems) {
-  const itemsToRender = S.activeType === "all"
+function renderSearchTitles(newItems, clear) {
+  const grid = document.getElementById("titlesGrid");
+  if (clear) grid.innerHTML = "";
+
+  const itemsToAdd = S.search.activeType === "all"
     ? newItems
-    : newItems.filter(it => (S.activeType === "tv" ? it.isTV : !it.isTV));
+    : newItems.filter(t => S.search.activeType === "tv" ? t.isTV : !t.isTV);
 
-  if (!itemsToRender.length) return;
-
-  const grid = document.getElementById("searchGrid");
-  let firstNew = null;
-  for (const it of itemsToRender) {
-    const html = cardHtml(it);
-    grid.insertAdjacentHTML("beforeend", html);
-    if (!firstNew) firstNew = grid.lastElementChild;
-  }
-
-  if (firstNew && S.activeType === "all") {
-    S.pageAnchors.push(firstNew);
-  }
-
-  // Bind click on newly added cards
-  grid.querySelectorAll(".card:not([data-bound])").forEach(el => {
-    el.dataset.bound = "1";
-    el.addEventListener("click", () => {
-      const [tmdbId, mediaType] = el.dataset.key.split("|");
-      const item = S.itemMap.get(el.dataset.key);
-      navigateToDetail(tmdbId, mediaType, item?.title || "");
-    });
-  });
-}
-
-function rerenderGrid() {
-  const grid = document.getElementById("searchGrid");
-  grid.innerHTML = "";
-  S.pageAnchors = [];
-
-  const items = S.activeType === "all"
-    ? S.rawItems
-    : S.rawItems.filter(it => (S.activeType === "tv" ? it.isTV : !it.isTV));
-
-  if (!items.length) {
-    grid.innerHTML =
-      '<div class="empty"><strong>No results in this filter.</strong><br>' +
-      '<span style="font-size:12px">Try "All" to see everything.</span></div>';
-    document.getElementById("searchEndMsg").hidden = true;
+  if (clear && itemsToAdd.length === 0) {
+    const msg = S.search.people.length
+      ? "No matching titles — tap a person above to browse their work."
+      : "No results found. Try a different search.";
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">' + escapeHtml(msg) + '</div>';
     return;
   }
 
-  // Re-render all with anchor tracking (per search page of 20)
-  let pageStart = 0;
-  const perPage = 20;
+  let firstNew = null;
+  for (const it of itemsToAdd) {
+    grid.insertAdjacentHTML("beforeend", titleCardHtml(it));
+    if (!firstNew) firstNew = grid.lastElementChild;
+  }
+
+  if (firstNew && S.search.activeType === "all") {
+    S.search.pageAnchors.push(firstNew);
+  }
+
+  bindTitleCards(grid);
+}
+
+function rerenderTitles() {
+  const grid = document.getElementById("titlesGrid");
+  grid.innerHTML = "";
+  S.search.pageAnchors = [];
+
+  const items = S.search.activeType === "all"
+    ? S.search.titles
+    : S.search.titles.filter(t => S.search.activeType === "tv" ? t.isTV : !t.isTV);
+
+  if (!items.length) {
+    const msg = S.search.people.length
+      ? "No titles in this filter — tap a person above."
+      : "No results found.";
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">' + escapeHtml(msg) + '</div>';
+    return;
+  }
+
+  // Rebuild with page anchors (20 per page)
+  let count = 0;
   for (let i = 0; i < items.length; i++) {
-    if (i % perPage === 0) {
+    if (i % 20 === 0) {
       const marker = document.createElement("div");
       marker.style.cssText = "grid-column:1/-1;height:0";
       grid.appendChild(marker);
-      S.pageAnchors.push(marker);
+      S.search.pageAnchors.push(marker);
     }
-    grid.insertAdjacentHTML("beforeend", cardHtml(items[i]));
+    grid.insertAdjacentHTML("beforeend", titleCardHtml(items[i]));
+    count++;
   }
 
-  grid.querySelectorAll(".card").forEach(el => {
-    el.addEventListener("click", () => {
-      const [tmdbId, mediaType] = el.dataset.key.split("|");
-      const item = S.itemMap.get(el.dataset.key);
-      navigateToDetail(tmdbId, mediaType, item?.title || "");
+  bindTitleCards(grid);
+  document.getElementById("searchEndMsg").hidden = S.search.hasMore || S.search.activeType !== "all";
+}
+
+function updateSearchHeader() {
+  const countEl = document.getElementById("searchResultCount");
+  const parts = [];
+  const movieCount = S.search.titles.filter(t => !t.isTV).length;
+  const tvCount = S.search.titles.filter(t => t.isTV).length;
+  if (movieCount) parts.push(movieCount + " movies");
+  if (tvCount) parts.push(tvCount + " TV");
+  if (S.search.people.length) parts.push(S.search.people.length + " people");
+
+  const total = S.search.titles.length + S.search.people.length;
+  if (total === 0) {
+    countEl.textContent = "";
+    return;
+  }
+
+  countEl.textContent = parts.join(" · ") + " · " + S.search.lastMs + "ms";
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PERSON VIEW
+   ═══════════════════════════════════════════════════════════════ */
+async function openPersonView(personId) {
+  if (S.person.abort) { try { S.person.abort.abort(); } catch (_) {} }
+  S.person.abort = new AbortController();
+  S.person.id = personId;
+  S.person.data = null;
+  S.person.credits = [];
+  S.person.loading = true;
+
+  switchView("person");
+
+  document.getElementById("personContent").innerHTML =
+    '<div class="spinner-wrap"><div class="spinner"></div>Loading person…</div>';
+
+  try {
+    const [details, credits] = await Promise.all([
+      tmdbFetch(`/person/${personId}`, {}, S.person.abort.signal),
+      tmdbFetch(`/person/${personId}/combined_credits`, {}, S.person.abort.signal)
+    ]);
+
+    if (S.person.abort.signal.aborted) return;
+
+    S.person.data = details;
+    S.person.loading = false;
+
+    // Collect credits: cast + crew, dedupe, filter to those with posters
+    const seen = new Set();
+    const items = [];
+
+    for (const c of (credits.cast || [])) {
+      if (!c || !c.poster_path) continue;
+      const key = c.media_type + ":" + c.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({
+        tmdbId: String(c.id),
+        mediaType: c.media_type === "tv" ? "tv" : "movie",
+        isTV: c.media_type === "tv",
+        title: c.title || c.name || "",
+        year: String(c.release_date || c.first_air_date || "").slice(0, 4),
+        poster: TMDB_IMG_POSTER + c.poster_path,
+        rating: c.vote_average ? Number(c.vote_average).toFixed(1) : "",
+        role: c.character || "Cast",
+        popularity: c.popularity || 0,
+      });
+    }
+
+    for (const c of (credits.crew || [])) {
+      if (!c || !c.poster_path) continue;
+      const key = c.media_type + ":" + c.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({
+        tmdbId: String(c.id),
+        mediaType: c.media_type === "tv" ? "tv" : "movie",
+        isTV: c.media_type === "tv",
+        title: c.title || c.name || "",
+        year: String(c.release_date || c.first_air_date || "").slice(0, 4),
+        poster: TMDB_IMG_POSTER + c.poster_path,
+        rating: c.vote_average ? Number(c.vote_average).toFixed(1) : "",
+        role: c.job || "Crew",
+        popularity: c.popularity || 0,
+      });
+    }
+
+    // Sort by popularity
+    items.sort((a, b) => b.popularity - a.popularity);
+    S.person.credits = items.slice(0, 80);
+
+    renderPersonView();
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    console.error("[person]", e);
+    S.person.loading = false;
+    document.getElementById("personContent").innerHTML =
+      '<div class="empty"><strong>Could not load person</strong><br>' +
+      '<span style="font-size:12px">' + escapeHtml(e.message) + '</span></div>';
+  }
+}
+
+function renderPersonView() {
+  const d = S.person.data;
+  if (!d) return;
+
+  const name = d.name || "Unknown";
+  const initial = name.charAt(0).toUpperCase();
+  const profile = d.profile_path ? TMDB_IMG_PROFILE.replace("w185", "w300") + d.profile_path : "";
+  const dept = d.known_for_department || "";
+  const birthday = d.birthday || "";
+  const deathday = d.deathday || "";
+  const place = d.place_of_birth || "";
+  const bio = (d.biography || "").trim();
+
+  const avatar = profile
+    ? `<img class="person-hero-avatar" src="${escapeHtml(profile)}" alt=""
+           onerror="this.outerHTML='<div class=\\'person-hero-avatar-fallback\\'>${escapeHtml(initial)}</div>'">`
+    : `<div class="person-hero-avatar-fallback">${escapeHtml(initial)}</div>`;
+
+  const metaParts = [];
+  if (dept) metaParts.push(`<span class="dept-badge">${escapeHtml(dept)}</span>`);
+  if (birthday) {
+    const b = deathday ? `${birthday} – ${deathday}` : birthday;
+    metaParts.push(`<span>${escapeHtml(b)}</span>`);
+  }
+  if (place) metaParts.push(`<span>${escapeHtml(place)}</span>`);
+
+  const bioHtml = bio
+    ? `<div class="person-bio" id="personBio">${escapeHtml(bio)}</div>
+       <button class="person-bio-toggle" id="personBioToggle">Read more</button>`
+    : "";
+
+  const credits = S.person.credits;
+  const creditsHtml = credits.length
+    ? `<div class="grid" id="personCreditsGrid">${credits.map(c => titleCardHtml(c, c.role + (c.year ? " · " + c.year : ""))).join("")}</div>`
+    : '<div class="empty">No filmography available.</div>';
+
+  document.getElementById("personContent").innerHTML = `
+    <div class="person-hero">
+      ${avatar}
+      <div class="person-hero-info">
+        <h1>${escapeHtml(name)}</h1>
+        <div class="person-hero-meta">${metaParts.join("")}</div>
+        ${bioHtml}
+      </div>
+    </div>
+    <div class="credits-section">
+      <h3>Filmography <span class="count">${credits.length} title${credits.length === 1 ? "" : "s"}</span></h3>
+      ${creditsHtml}
+    </div>
+  `;
+
+  // Bio toggle
+  const bioEl = document.getElementById("personBio");
+  const bioBtn = document.getElementById("personBioToggle");
+  if (bioEl && bioBtn) {
+    if (bioEl.scrollHeight <= bioEl.clientHeight + 4) bioBtn.style.display = "none";
+    bioBtn.addEventListener("click", () => {
+      const expanded = bioEl.classList.toggle("expanded");
+      bioBtn.textContent = expanded ? "Show less" : "Read more";
     });
-  });
+  }
 
-  document.getElementById("searchEndMsg").hidden = S.hasMore || S.activeType !== "all";
-  if (S.activeType !== "all") hidePageBar();
+  // Bind credit cards
+  const creditsGrid = document.getElementById("personCreditsGrid");
+  if (creditsGrid) bindTitleCards(creditsGrid);
 }
 
-function updateSearchStatus() {
-  const status = document.getElementById("searchStatus");
-  const breakdown = [];
-  const movieCount = S.rawItems.filter(it => !it.isTV).length;
-  const tvCount = S.rawItems.filter(it => it.isTV).length;
-  if (movieCount) breakdown.push("Movies: " + movieCount);
-  if (tvCount) breakdown.push("TV: " + tvCount);
+document.getElementById("personBackBtn").addEventListener("click", () => {
+  // Return to search if we came from there
+  if (S.search.query) {
+    switchView("search");
+  } else {
+    switchView("browse");
+  }
+});
 
-  status.innerHTML =
-    S.rawItems.length + " results" +
-    (S.lastMs ? " · " + S.lastMs + "ms" : "") +
-    (breakdown.length ? " · " + breakdown.join(" · ") : "") +
-    (S.hasMore ? " · more available" : "");
-}
-
-/* ═══════════════════════════════════════════════════
-   INFINITE SCROLL
-   ═══════════════════════════════════════════════════ */
-const sentinelObserver = new IntersectionObserver((entries) => {
+/* ═══════════════════════════════════════════════════════════════
+   INFINITE SCROLL (search)
+   ═══════════════════════════════════════════════════════════════ */
+const searchSentinel = document.getElementById("searchSentinel");
+const searchObserver = new IntersectionObserver((entries) => {
   for (const entry of entries) {
     if (!entry.isIntersecting) continue;
-    if (!S.active) continue;
-    if (S.loading) continue;
-    if (!S.hasMore) continue;
-    loadSearchPage(S.page + 1);
+    if (S.view !== "search") continue;
+    if (S.search.loading) continue;
+    if (!S.search.hasMore) continue;
+    if (S.search.query.length < 2) continue;
+    loadSearchPage(S.search.page + 1);
   }
 }, { rootMargin: "800px 0px" });
-sentinelObserver.observe(document.getElementById("searchSentinel"));
+searchObserver.observe(searchSentinel);
 
 let scrollTimer = null;
 window.addEventListener("scroll", () => {
-  if (!S.active) return;
-  if (S.loading || !S.hasMore) return;
+  if (S.view !== "search") return;
+  if (S.search.loading || !S.search.hasMore) return;
   if (scrollTimer) return;
   scrollTimer = setTimeout(() => {
     scrollTimer = null;
     const bottom = window.scrollY + window.innerHeight;
     const docHeight = document.documentElement.scrollHeight;
-    if (docHeight - bottom < 900) loadSearchPage(S.page + 1);
+    if (docHeight - bottom < 900) {
+      loadSearchPage(S.search.page + 1);
+    }
   }, 200);
 }, { passive: true });
 
-/* ═══════════════════════════════════════════════════
-   PAGE BAR (only for "All" filter in search)
-   ═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   PAGE BAR
+   ═══════════════════════════════════════════════════════════════ */
 const pageBar = document.getElementById("pageBar");
 const pagePrev = document.getElementById("pagePrev");
 const pageNext = document.getElementById("pageNext");
@@ -651,38 +1691,43 @@ function showPageBar() { pageBar.hidden = false; pageBar.classList.remove("fade"
 function hidePageBar() { pageBar.hidden = true; pageBar.classList.remove("fade"); }
 
 function updatePageBar() {
-  pageCurEl.textContent = S.currentPage;
-  const total = S.pageAnchors.length || 1;
-  pageTotalEl.textContent = total + (S.hasMore ? "+" : "");
-  pagePrev.disabled = S.currentPage <= 1;
-  pageNext.disabled = S.currentPage >= total && !S.hasMore;
+  if (!S.search.pageAnchors.length) {
+    hidePageBar();
+    return;
+  }
+  showPageBar();
+  pageCurEl.textContent = S.search.currentPage;
+  const total = S.search.pageAnchors.length || 1;
+  pageTotalEl.textContent = total + (S.search.hasMore ? "+" : "");
+  pagePrev.disabled = S.search.currentPage <= 1;
+  pageNext.disabled = S.search.currentPage >= total && !S.search.hasMore;
 }
 
 function updateCurrentPageFromScroll() {
   if (pageBar.hidden) return;
-  if (!S.pageAnchors.length) return;
+  if (!S.search.pageAnchors.length) return;
   const probe = window.scrollY + window.innerHeight * 0.30;
   let cur = 1;
-  for (let i = 0; i < S.pageAnchors.length; i++) {
-    const el = S.pageAnchors[i];
+  for (let i = 0; i < S.search.pageAnchors.length; i++) {
+    const el = S.search.pageAnchors[i];
     if (!el || !el.isConnected) continue;
     const top = el.getBoundingClientRect().top + window.scrollY;
     if (top <= probe) cur = i + 1;
     else break;
   }
-  if (cur !== S.currentPage) {
-    S.currentPage = cur;
+  if (cur !== S.search.currentPage) {
+    S.search.currentPage = cur;
     updatePageBar();
   }
 }
 
 async function scrollToPage(n) {
   if (n < 1) n = 1;
-  while (n > S.pageAnchors.length && S.hasMore && !S.loading) {
-    await loadSearchPage(S.page + 1);
+  while (n > S.search.pageAnchors.length && S.search.hasMore && !S.search.loading) {
+    await loadSearchPage(S.search.page + 1);
   }
-  const idx = Math.min(n, S.pageAnchors.length) - 1;
-  const el = S.pageAnchors[idx];
+  const idx = Math.min(n, S.search.pageAnchors.length) - 1;
+  const el = S.search.pageAnchors[idx];
   if (!el || !el.isConnected) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
@@ -692,15 +1737,15 @@ async function scrollToPage(n) {
 }
 
 pagePrev.addEventListener("click", () => {
-  if (S.currentPage > 1) scrollToPage(S.currentPage - 1);
+  if (S.search.currentPage > 1) scrollToPage(S.search.currentPage - 1);
   else window.scrollTo({ top: 0, behavior: "smooth" });
 });
 pageNext.addEventListener("click", async () => {
-  const total = S.pageAnchors.length;
-  if (S.currentPage < total) scrollToPage(S.currentPage + 1);
-  else if (S.hasMore) {
-    await loadSearchPage(S.page + 1);
-    scrollToPage(S.currentPage + 1);
+  const total = S.search.pageAnchors.length;
+  if (S.search.currentPage < total) scrollToPage(S.search.currentPage + 1);
+  else if (S.search.hasMore) {
+    await loadSearchPage(S.search.page + 1);
+    scrollToPage(S.search.currentPage + 1);
   }
 });
 function handleJump() {
@@ -716,51 +1761,33 @@ pageJump.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); handleJump(); pageJump.blur(); }
 });
 
+let pageBarFadeTimer = null;
 window.addEventListener("scroll", () => {
-  if (S.active) updateCurrentPageFromScroll();
+  if (S.view === "search") updateCurrentPageFromScroll();
   if (!pageBar.hidden) {
     pageBar.classList.add("fade");
-    clearTimeout(window._pageBarFade);
-    window._pageBarFade = setTimeout(() => pageBar.classList.remove("fade"), 900);
+    clearTimeout(pageBarFadeTimer);
+    pageBarFadeTimer = setTimeout(() => pageBar.classList.remove("fade"), 900);
   }
 }, { passive: true });
 
-/* ═══════════════════════════════════════════════════
-   SEARCH INPUT
-   ═══════════════════════════════════════════════════ */
-const searchInput = document.getElementById("searchInput");
-const searchClear = document.getElementById("searchClear");
-let searchTimer = null;
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════════ */
+function navigateToDetail(tmdbId, mediaType, title) {
+  if (!tmdbId) return;
+  const params = new URLSearchParams({
+    source: "tmdb",
+    tmdbId: String(tmdbId),
+    mediaType: mediaType || "movie",
+    title: title || "",
+  });
+  location.href = "detail.html?" + params.toString();
+}
 
-searchInput.addEventListener("input", (e) => {
-  const v = e.target.value;
-  searchClear.hidden = v.length === 0;
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => doSearch(v), 500);
-});
-searchInput.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    e.preventDefault();
-    searchInput.value = "";
-    searchClear.hidden = true;
-    doSearch("");
-  }
-  if (e.key === "Enter") {
-    e.preventDefault();
-    clearTimeout(searchTimer);
-    doSearch(searchInput.value);
-  }
-});
-searchClear.addEventListener("click", () => {
-  searchInput.value = "";
-  searchClear.hidden = true;
-  doSearch("");
-  searchInput.focus();
-});
-
-/* ═══════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    BOOT
-   ═══════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 loadBrowseRows();
 </script>
 </body>
