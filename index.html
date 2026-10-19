@@ -163,7 +163,7 @@ function escapeHtml(s) {
 }
 function imgUrl(v) {
   if (!v) return "";
-  if (typeof v === "string") return v;
+  if (typeof v === "string") return v.startsWith("//") ? "https:" + v : v;
   return v.url || v.src || v.path || "";
 }
 function showToast(msg, ms) {
@@ -245,7 +245,7 @@ function findSubjects(root) {
           title: node.title,
           detailPath: node.detailPath,
           subjectId: String(node.subjectId || ""),
-          image: (typeof node.cover === "string" ? node.cover : (node.cover?.url || "")),
+          image: imgUrl(node.cover),
           isTV: Number(node.subjectType) === 2,
           hasResource: node.hasResource !== false,
         });
@@ -385,7 +385,6 @@ function renderGrid(container, items) {
 async function searchProvider(p, q, signal) {
   try {
     if (p.id === MOVIEBOX_VIRTUAL.id) {
-      // try API first
       try {
         const apiUrl = BASE + "/wefeed-h5api-bff/subject/search?" +
           new URLSearchParams({ keyword: q, page: "1", perPage: "36" });
@@ -396,7 +395,6 @@ async function searchProvider(p, q, signal) {
           if (list.length) return list.map(normalizeMovieBoxItem);
         }
       } catch (_) {}
-      // fallback: parse the search page Nuxt payload
       try {
         const searchUrl = BASE + "/search?q=" + encodeURIComponent(q);
         const r = await fetch(proxyFor(searchUrl, BASE + "/"), { signal });
@@ -507,8 +505,8 @@ async function doSearch(q) {
   renderGrid(grid, dedup);
 }
 
-/* ─────── card click → play ─────── */
-async function handleCardClick(item) {
+/* ─────── card click → detail page ─────── */
+function handleCardClick(item) {
   if (item.isMovieBox && item.detailPath && item.subjectId) {
     const params = new URLSearchParams({
       source: "moviebox",
@@ -529,45 +527,6 @@ async function handleCardClick(item) {
     title: item.title,
   });
   location.href = "detail.html?" + params.toString();
-}  if (!item.pageUrl) { showToast("This item cannot be played (no page URL)."); return; }
-
-  showToast("Fetching streams from " + item.providerName + "…", 60000);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
-
-  try {
-    const url = PROXY_URL + "/providers/" + encodeURIComponent(item.providerId) +
-                "/streams?url=" + encodeURIComponent(item.pageUrl);
-    const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const json = await res.json();
-    const streams = json.streams || [];
-    if (!streams.length) { showToast("No playable streams found."); return; }
-    const stream = pickBestStream(streams);
-    if (!stream || !stream.url) { showToast("Invalid stream from provider."); return; }
-
-    const provider = PROVIDERS.find((p) => p.id === item.providerId);
-    const referer = provider?.url || BASE + "/";
-    const proxied = proxyFor(stream.url, referer, item.providerId);
-    const subtitle = item.providerName +
-      (stream.quality && stream.quality !== "Auto" ? " · " + stream.quality : "");
-
-    const params = new URLSearchParams({
-      streamUrl: proxied,
-      title: item.title,
-      subtitle,
-    });
-    location.href = "player.html?" + params.toString();
-  } catch (e) {
-    if (e.name === "AbortError") showToast("Stream fetch timed out.");
-    else showToast("Failed: " + e.message);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-function pickBestStream(streams) {
-  const score = (s) => { const q = parseInt(s.quality, 10); return isNaN(q) ? 0 : q; };
-  return [...streams].sort((a, b) => score(b) - score(a))[0];
 }
 
 /* ─────── search wiring ─────── */
