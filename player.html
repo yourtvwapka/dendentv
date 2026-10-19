@@ -1477,18 +1477,135 @@ video.addEventListener("ended", () => {
   }
 });
 
-/* ═══════════ PLAY ICON (FIXED) ═══════════ */
-/* Changes:
-   - No more `.hidden` toggle; the pause icon stays visible during playback
-   - `.is-play` class toggles optical centering only for the play triangle
-   - All 5 frame buttons live inside `.player-ui` and fade with it via `.idle` */
+/* ═══════════ MOBILE LANDSCAPE FULLSCREEN ═══════════
+   Auto-opens fullscreen when the device enters landscape on mobile.
+   Closes when the device returns to portrait.
+   Some browsers require a fresh user gesture to enter fullscreen after
+   an orientation change — this handles that via a pending-intent flag
+   that fires on the next tap. */
+
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (window.matchMedia("(hover: none) and (pointer: coarse)").matches);
+
+function isLandscapeNow() {
+  if (screen.orientation && screen.orientation.type) {
+    return screen.orientation.type.startsWith("landscape");
+  }
+  return window.innerWidth > window.innerHeight;
+}
+
+function isCurrentlyFullscreen() {
+  return !!(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.msFullscreenElement
+  );
+}
+
+let _fsIntentPending = false;
+let _lastEntryWasAuto = false;
+
+async function requestMobileFullscreen() {
+  if (!IS_MOBILE) return false;
+  if (!isLandscapeNow()) return false;
+  if (isCurrentlyFullscreen()) return false;
+
+  const el = document.documentElement;
+  _lastEntryWasAuto = true;
+
+  try {
+    if (el.requestFullscreen) {
+      await el.requestFullscreen();
+    } else if (el.webkitRequestFullscreen) {
+      await el.webkitRequestFullscreen();
+    } else if (el.msRequestFullscreen) {
+      await el.msRequestFullscreen();
+    } else if (video.webkitEnterFullscreen) {
+      try { video.webkitEnterFullscreen(); } catch (_) {}
+      return true;
+    } else {
+      _lastEntryWasAuto = false;
+      return false;
+    }
+    return true;
+  } catch (_) {
+    _lastEntryWasAuto = false;
+    return false;
+  }
+}
+
+function exitMobileFullscreen() {
+  if (!IS_MOBILE) return;
+  if (!isCurrentlyFullscreen()) return;
+  try {
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
+  } catch (_) {}
+  _lastEntryWasAuto = false;
+}
+
+let _orientDebounce = null;
+function onOrientationChanged() {
+  if (!IS_MOBILE) return;
+  clearTimeout(_orientDebounce);
+  _orientDebounce = setTimeout(() => {
+    if (isLandscapeNow()) {
+      if (!video.paused || playbackStarted) {
+        requestMobileFullscreen().then((ok) => {
+          if (!ok) _fsIntentPending = true;
+        });
+      }
+    } else {
+      _fsIntentPending = false;
+      if (_lastEntryWasAuto) exitMobileFullscreen();
+    }
+  }, 250);
+}
+
+if (screen.orientation && screen.orientation.addEventListener) {
+  screen.orientation.addEventListener("change", onOrientationChanged);
+}
+window.addEventListener("orientationchange", () => setTimeout(onOrientationChanged, 100));
+window.addEventListener("resize", onOrientationChanged);
+
+document.addEventListener("pointerdown", () => {
+  if (!IS_MOBILE || !_fsIntentPending) return;
+  if (!isLandscapeNow() || isCurrentlyFullscreen()) {
+    _fsIntentPending = false;
+    return;
+  }
+  _fsIntentPending = false;
+  requestMobileFullscreen();
+}, { capture: true });
+
+document.addEventListener("fullscreenchange", () => {
+  if (!isCurrentlyFullscreen()) {
+    _fsIntentPending = false;
+    _lastEntryWasAuto = false;
+  }
+});
+document.addEventListener("webkitfullscreenchange", () => {
+  if (!isCurrentlyFullscreen()) {
+    _fsIntentPending = false;
+    _lastEntryWasAuto = false;
+  }
+});
+
+/* ═══════════ PLAY ICON ═══════════ */
 function setPlayIcon(playing) {
   btnPlayIcon.querySelector("path").setAttribute("d", playing ? ICON_PAUSE : ICON_PLAY);
   bigPlayIcon.querySelector("path").setAttribute("d", playing ? ICON_PAUSE : ICON_PLAY);
   bigPlay.classList.toggle("is-play", !playing);
 }
 
-video.addEventListener("play", () => { setPlayIcon(true); resetIdleTimer(); });
+video.addEventListener("play", () => {
+  setPlayIcon(true);
+  resetIdleTimer();
+  if (IS_MOBILE && isLandscapeNow() && !isCurrentlyFullscreen()) {
+    requestMobileFullscreen();
+  }
+});
 video.addEventListener("pause", () => { setPlayIcon(false); showControls(); });
 
 function togglePlay() {
@@ -1990,9 +2107,40 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* ═══════════ FULLSCREEN / PIP ═══════════ */
-function toggleFullscreen() {
-  if (document.fullscreenElement) document.exitFullscreen();
-  else document.documentElement.requestFullscreen?.().catch(() => {});
+async function toggleFullscreen() {
+  if (isCurrentlyFullscreen()) {
+    _lastEntryWasAuto = false;
+    try {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      else if (document.msExitFullscreen) document.msExitFullscreen();
+    } catch (_) {}
+    try {
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+    } catch (_) {}
+    return;
+  }
+
+  _lastEntryWasAuto = false;
+  const el = document.documentElement;
+  try {
+    if (el.requestFullscreen) await el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+    else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+  } catch (_) {
+    return;
+  }
+
+  // On mobile, try to lock orientation to landscape once fullscreen is active
+  if (IS_MOBILE) {
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("landscape").catch(() => {});
+      }
+    } catch (_) {}
+  }
 }
 document.getElementById("btnFull").addEventListener("click", toggleFullscreen);
 document.getElementById("btnPip").addEventListener("click", async () => {
@@ -2045,6 +2193,14 @@ async function startWithAd() {
   const btn = document.getElementById("adGateBtn");
   const status = document.getElementById("adGateStatus");
   if (!btn || btn.disabled) return;
+
+  // Request fullscreen NOW — still inside the user gesture context.
+  // If we wait until playback starts (after ad/stream fetch), browsers
+  // will reject the fullscreen request.
+  if (IS_MOBILE && isLandscapeNow() && !isCurrentlyFullscreen()) {
+    requestMobileFullscreen();
+  }
+
   btn.disabled = true;
   status.classList.remove("err");
   status.textContent = "Loading ad…";
