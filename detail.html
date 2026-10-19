@@ -57,6 +57,7 @@
       radial-gradient(ellipse at 70% 100%, rgba(88,28,135,.06) 0%, transparent 55%),
       linear-gradient(180deg, rgba(0,0,0,.30) 0%, rgba(0,0,0,.72) 55%, #000 100%);
   }
+  /* Grain + vignette via pseudo-elements */
   .bg-overlay::before {
     content: "";
     position: absolute; inset: 0;
@@ -73,6 +74,7 @@
   }
 
   .page { max-width: 1400px; margin: 0 auto; padding: 0 20px 100px; position: relative; }
+  body.has-footer .page { padding-bottom: 160px; }
 
   /* ═══════════ TOPBAR ═══════════ */
   .topbar {
@@ -337,7 +339,37 @@
     .cast-role { font-size: 10.5px; }
   }
 
-  /* ═══════════ CONTENT SECTIONS ═══════════ */
+  /* ═══════════ TABS ═══════════ */
+  .tabs {
+    display: flex; gap: 4px;
+    border-bottom: 1px solid var(--line);
+    margin: 12px 0 28px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    background: transparent; border: none;
+    color: var(--muted);
+    padding: 16px 22px;
+    font-size: 15px; font-weight: 700;
+    position: relative; white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: .15s; margin-bottom: -1px;
+    display: flex; align-items: center; gap: 8px;
+    letter-spacing: -.2px;
+  }
+  .tab:hover { color: #e5e5ea; }
+  .tab.active { color: #fff; border-bottom-color: var(--accent); }
+  .tab .tab-spinner {
+    width: 12px; height: 12px;
+    border: 2px solid rgba(255,255,255,.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
   .section { margin-bottom: 36px; }
 
   .pills { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -438,98 +470,156 @@
   }
   .unavailable-actions .btn:hover { background: #2e2e38; border-color: #4a4a58; }
 
-  /* ═══════════ TRAILER OVERLAY ═══════════
-     Close button is OUTSIDE the player container, floating above its
-     top-right corner in the backdrop area — never overlaps YouTube's
-     own controls (share / fullscreen / logo). The iframe keeps
-     allowfullscreen so YouTube's native fullscreen button works exactly
-     as it does on youtube.com. */
+  /* ═══════════ PROVIDER FOOTER ═══════════ */
+  .provider-footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,10,13,.98);
+    border-top: 1px solid var(--line);
+    padding: 12px 20px;
+    z-index: 45;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transform: translateY(100%);
+    transition: transform .35s cubic-bezier(.2,.9,.3,1);
+    box-shadow: 0 -12px 40px rgba(0,0,0,.7);
+  }
+  .provider-footer.show { transform: translateY(0); }
+  .provider-footer-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+  }
+  .provider-footer-title {
+    font-size: 11px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 800;
+    margin-right: auto;
+  }
+  .provider-footer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #c3c3cd;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .provider-footer-item .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .provider-footer-item.loading .dot { background: var(--warn); animation: pulse 1s ease-in-out infinite; }
+  .provider-footer-item.ok .dot { background: var(--success); box-shadow: 0 0 8px rgba(34,197,94,.6); }
+  .provider-footer-item.empty .dot { background: #6b7280; }
+  .provider-footer-item.error .dot { background: var(--accent); }
+  .provider-footer-item-status {
+    font-size: 11.5px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .provider-footer-item.ok .provider-footer-item-status { color: var(--success); }
+  .provider-footer-item.error .provider-footer-item-status { color: #fca5a5; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+  @media (max-width: 640px) {
+    .provider-footer { padding: 10px 14px; }
+    .provider-footer-inner { gap: 14px; font-size: 11.5px; }
+    .provider-footer-title { font-size: 10px; letter-spacing: 1.1px; }
+    .provider-footer-item-status { display: none; }
+  }
+
+  /* ═══════════ TRAILER OVERLAY ═══════════ */
   .trailer-overlay {
     position: fixed; inset: 0;
     z-index: 900;
     display: flex; align-items: center; justify-content: center;
-    padding: 72px 20px 20px;
+    padding: 20px;
     animation: trailerIn .28s ease;
   }
   .trailer-overlay[hidden] { display: none; }
-  @keyframes trailerIn { from { opacity: 0; } to { opacity: 1; } }
-
+  @keyframes trailerIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
   .trailer-backdrop {
     position: absolute; inset: 0;
     background: rgba(0,0,0,.94);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
   }
-
-  .trailer-wrapper {
-    position: relative;
-    width: 100%;
-    /* Constrain width so 16:9 height never exceeds available vertical space */
-    max-width: min(1200px, calc((100vh - 140px) * 16 / 9));
-    z-index: 1;
-  }
-
   .trailer-container {
     position: relative;
     width: 100%;
+    max-width: 1200px;
     aspect-ratio: 16/9;
     background: #000;
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 30px 80px rgba(0,0,0,.9);
+    z-index: 1;
     animation: trailerZoom .32s cubic-bezier(.2,.9,.3,1);
   }
   @keyframes trailerZoom {
     from { opacity: 0; transform: scale(.96); }
     to { opacity: 1; transform: scale(1); }
   }
-  .trailer-frame { position: absolute; inset: 0; }
-  .trailer-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
-
-  /* Close button — floats above the player, right-aligned, in the backdrop */
-  .trailer-close {
+  .trailer-frame {
+    position: absolute; inset: 0;
+  }
+  .trailer-frame iframe {
+    width: 100%; height: 100%; border: 0; display: block;
+  }
+  .trailer-close,
+  .trailer-fullscreen {
     position: absolute;
-    top: -56px;
-    right: 0;
+    top: 12px;
     width: 44px; height: 44px;
     border-radius: 50%;
-    background: rgba(255,255,255,.10);
+    background: rgba(0,0,0,.72);
     border: 1px solid rgba(255,255,255,.25);
     color: #fff;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-    z-index: 2;
+    z-index: 3;
     transition: background .15s, transform .15s, border-color .15s;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    -webkit-tap-highlight-color: transparent;
   }
-  .trailer-close:hover {
-    background: rgba(229,9,20,.85);
-    border-color: var(--accent);
+  .trailer-close { right: 12px; font-size: 16px; }
+  .trailer-fullscreen { right: 66px; }
+  .trailer-fullscreen svg { width: 20px; height: 20px; fill: currentColor; }
+  .trailer-close:hover,
+  .trailer-fullscreen:hover {
+    background: rgba(0,0,0,.92);
+    border-color: rgba(255,255,255,.55);
     transform: scale(1.06);
   }
-  .trailer-close:active { transform: scale(.95); }
+  .trailer-close:active,
+  .trailer-fullscreen:active { transform: scale(.95); }
+
+  /* Fullscreen state — fills the viewport */
+  .trailer-container:fullscreen { border-radius: 0; max-width: none; aspect-ratio: auto; width: 100vw; height: 100vh; }
+  .trailer-container:-webkit-full-screen { border-radius: 0; max-width: none; aspect-ratio: auto; width: 100vw; height: 100vh; }
+  .trailer-container:fullscreen .trailer-close { top: 20px; right: 20px; }
+  .trailer-container:fullscreen .trailer-fullscreen { top: 20px; right: 74px; }
 
   @media (max-width: 640px) {
-    .trailer-overlay {
-      padding: 60px 0 0;
-      align-items: stretch;
-    }
-    .trailer-wrapper {
-      width: 100vw;
-      max-width: 100vw;
-    }
+    .trailer-overlay { padding: 0; }
     .trailer-container {
-      aspect-ratio: auto;
-      height: 100%;
+      max-width: none;
       border-radius: 0;
+      aspect-ratio: auto;
+      width: 100vw;
+      height: 100dvh;
     }
-    .trailer-close {
-      top: -52px;
-      right: 14px;
-    }
+    .trailer-close { top: 16px; right: 16px; }
+    .trailer-fullscreen { top: 16px; right: 70px; }
   }
 
   #debugOutput {
@@ -565,14 +655,19 @@
   </div>
 </div>
 
+<div class="provider-footer" id="providerFooter">
+  <div class="provider-footer-inner" id="providerFooterInner"></div>
+</div>
+
 <!-- ═══════════ TRAILER OVERLAY ═══════════ -->
 <div class="trailer-overlay" id="trailerOverlay" hidden>
   <div class="trailer-backdrop" id="trailerBackdrop"></div>
-  <div class="trailer-wrapper">
-    <button class="trailer-close" id="trailerClose" aria-label="Close trailer" title="Close (Esc)">✕</button>
-    <div class="trailer-container" id="trailerContainer">
-      <div class="trailer-frame" id="trailerFrame"></div>
-    </div>
+  <div class="trailer-container" id="trailerContainer">
+    <div class="trailer-frame" id="trailerFrame"></div>
+    <button class="trailer-fullscreen" id="trailerFullscreen" aria-label="Toggle fullscreen" title="Fullscreen">
+      <svg id="trailerFsIcon" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+    </button>
+    <button class="trailer-close" id="trailerClose" aria-label="Close trailer" title="Close">✕</button>
   </div>
 </div>
 
@@ -640,8 +735,13 @@ if (Q.debug) {
 function detectSource() {
   if (Q.source === "tmdb" || Q.tmdbId) return "tmdb";
   if (Q.source === "moviebox" || Q.detailPath) return "moviebox";
-  if (Q.source === "hdhub" || Q.source === "drive" || Q.source === "external") return "external";
-  if (Q.url) return "external";
+  if (Q.source === "hdhub") return "hdhub";
+  if (Q.source === "drive") return "drive";
+  if (Q.url) {
+    if (/hdhub4u/i.test(Q.url)) return "hdhub";
+    if (/moviesdrive/i.test(Q.url)) return "drive";
+    return "external";
+  }
   return "";
 }
 
@@ -666,6 +766,9 @@ const state = {
   },
   moviebox: { detailPath: Q.detailPath, subjectId: Q.subjectId, data: null,
               status: "idle", error: null, selectedDub: 0, selectedSe: 0, selectedEp: 1 },
+  hdhub:    { url: "", streams: [], status: "idle", error: null, selectedServer: 0 },
+  drive:    { url: "", streams: [], status: "idle", error: null, selectedServer: 0 },
+  activeTab: "",
   bootError: null,
 };
 
@@ -818,6 +921,7 @@ async function fetchTmdbTrailer(tmdbId, mediaType) {
   try {
     const data = await tmdbFetch(`/${mediaType || "movie"}/${tmdbId}/videos`);
     const videos = data.results || [];
+    // Priority: Official Trailer > Trailer > Official Teaser > Teaser > Clip
     const priority = ["Trailer", "Teaser", "Clip", "Featurette"];
     for (const type of priority) {
       const hit = videos.find(v => v.site === "YouTube" && v.type === type && v.official);
@@ -1032,7 +1136,40 @@ async function tryMovieBoxEndpoint(endpoint, query, isTV) {
   return null;
 }
 
-/* ═══════════ MOVIEBOX LOADER ═══════════ */
+/* ═══════════ SEARCH: hdhub / drive ═══════════ */
+async function searchProvider(pid, title) {
+  if (!title) return null;
+  const cleaned = cleanForSearch(title);
+  if (!cleaned) return null;
+  try {
+    const res = await fetch(PROXY + "/providers/" + pid + "/search?q=" + encodeURIComponent(cleaned));
+    if (!res.ok) return null;
+    const data = await res.json();
+    const results = data.results || [];
+    if (results.length === 0) {
+      console.log("[match] " + pid + " '" + cleaned + "' → 0 results");
+      return null;
+    }
+    const needle = cleanTitle(cleaned);
+    const scored = [];
+    for (const r of results) {
+      const norm = cleanTitle(r.title);
+      const score = matchScore(norm, needle);
+      if (score > 0) scored.push({ result: r, score, norm });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    console.log("[match] " + pid + " '" + cleaned + "' → " + results.length +
+                " results, best: '" + (best?.result.title || "none") +
+                "' score=" + (best?.score || 0));
+    if (best && best.score >= 45) return best.result.url;
+  } catch (e) {
+    console.warn("[match] " + pid + " error:", e.message);
+  }
+  return null;
+}
+
+/* ═══════════ PROVIDER LOADERS ═══════════ */
 async function loadMovieBox(detailPath, subjectId) {
   state.moviebox.status = "loading";
   state.moviebox.detailPath = detailPath;
@@ -1081,6 +1218,51 @@ async function loadMovieBox(detailPath, subjectId) {
   render();
 }
 
+async function loadExternal(source, url) {
+  if (!url) { state[source].status = "empty"; return; }
+  state[source].url = url;
+  state[source].status = "loading";
+  render();
+
+  const referer = source === "hdhub" ? "https://new8.hdhub4u.cl/" : "https://new3.moviesdrive.beer/";
+  try {
+    const res = await fetch(PROXY + "/?url=" + encodeURIComponent(url) + "&referer=" + encodeURIComponent(referer) + "&provider=" + source);
+    if (res.ok) {
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const ogTitle = doc.querySelector('meta[property="og:title"]')?.content
+        || doc.querySelector("h1.entry-title, h1.page-title, h1")?.textContent || "";
+      const ogImage = doc.querySelector('meta[property="og:image"]')?.content || "";
+      const ogDesc = doc.querySelector('meta[property="og:description"]')?.content || "";
+      if (ogTitle && (!state.hero.title || state.hero.title === Q.title || state.hero.title === "Loading…")) {
+        state.hero.title = ogTitle.trim();
+      }
+      if (ogImage && !state.hero.poster) state.hero.poster = ogImage;
+      if (ogDesc && !state.hero.overview) state.hero.overview = ogDesc;
+      if (/\(Season\s*\d|S\d{2}E\d{2}|Complete\s*Series|Web\s*Series/i.test(ogTitle)) {
+        state.hero.isTV = true;
+      }
+    }
+  } catch (e) { console.warn("[ext meta " + source + "]", e); }
+
+  try {
+    const res = await fetch(PROXY + "/providers/" + source + "/streams?url=" + encodeURIComponent(url));
+    if (res.ok) {
+      const data = await res.json();
+      state[source].streams = (data.streams || []).filter(s => s.url);
+      state[source].status = state[source].streams.length ? "ok" : "empty";
+      console.log("[" + source + "] streams: " + state[source].streams.length);
+    } else {
+      state[source].status = "empty";
+    }
+  } catch (e) {
+    console.warn("[ext streams " + source + "]", e);
+    state[source].error = e.message;
+    state[source].status = "error";
+  }
+  render();
+}
+
 /* ═══════════ HERO ENRICHMENT ═══════════ */
 async function enrichHeroWithTmdb() {
   if (state.hero.tmdbLoaded) return;
@@ -1115,6 +1297,7 @@ async function enrichHeroWithTmdb() {
       trailerKey: state.hero.trailerKey || "",
     };
 
+    // Fetch cast + trailer in parallel
     const [cast, trailerKey] = await Promise.all([
       fetchTmdbCredits(meta.tmdbId, mediaType),
       fetchTmdbTrailer(meta.tmdbId, mediaType),
@@ -1129,6 +1312,30 @@ async function enrichHeroWithTmdb() {
 }
 
 /* ═══════════ TRAILER OVERLAY ═══════════ */
+const TRAILER_FS_ENTER = "M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z";
+const TRAILER_FS_EXIT  = "M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z";
+
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+}
+function isLandscape() {
+  if (screen.orientation && screen.orientation.type) {
+    return screen.orientation.type.startsWith("landscape");
+  }
+  return window.innerWidth > window.innerHeight;
+}
+function isTrailerFullscreen() {
+  const el = document.getElementById("trailerContainer");
+  return document.fullscreenElement === el ||
+         document.webkitFullscreenElement === el;
+}
+function updateTrailerFullscreenIcon() {
+  const icon = document.getElementById("trailerFsIcon");
+  if (!icon) return;
+  icon.querySelector("path").setAttribute("d", isTrailerFullscreen() ? TRAILER_FS_EXIT : TRAILER_FS_ENTER);
+}
+
 function openTrailer() {
   if (!state.hero.trailerKey) return;
   const overlay = document.getElementById("trailerOverlay");
@@ -1138,21 +1345,73 @@ function openTrailer() {
   frame.innerHTML = '<iframe src="' + url + '" title="Trailer" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
   overlay.hidden = false;
   document.body.style.overflow = "hidden";
+  updateTrailerFullscreenIcon();
 }
 
 function closeTrailer() {
   const overlay = document.getElementById("trailerOverlay");
   if (!overlay || overlay.hidden) return;
+  if (isTrailerFullscreen()) {
+    try {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch (_) {}
+  }
+  try {
+    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+  } catch (_) {}
   overlay.hidden = true;
   document.getElementById("trailerFrame").innerHTML = "";
   document.body.style.overflow = "";
 }
 
+async function toggleTrailerFullscreen() {
+  const container = document.getElementById("trailerContainer");
+  if (!container) return;
+
+  if (isTrailerFullscreen()) {
+    try {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch (_) {}
+    try {
+      if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+    } catch (_) {}
+    updateTrailerFullscreenIcon();
+    return;
+  }
+
+  try {
+    if (container.requestFullscreen) await container.requestFullscreen();
+    else if (container.webkitRequestFullscreen) await container.webkitRequestFullscreen();
+    else throw new Error("Fullscreen not supported");
+  } catch (e) {
+    console.warn("[trailer] fullscreen failed:", e.message);
+    return;
+  }
+
+  // Force landscape orientation when entering fullscreen on mobile
+  if (isMobileDevice()) {
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("landscape").catch(() => {});
+      }
+    } catch (_) {}
+  }
+  updateTrailerFullscreenIcon();
+}
+
 document.getElementById("trailerClose").addEventListener("click", closeTrailer);
+document.getElementById("trailerFullscreen").addEventListener("click", toggleTrailerFullscreen);
 document.getElementById("trailerBackdrop").addEventListener("click", closeTrailer);
+document.addEventListener("fullscreenchange", updateTrailerFullscreenIcon);
+document.addEventListener("webkitfullscreenchange", updateTrailerFullscreenIcon);
 document.addEventListener("keydown", (e) => {
   const overlay = document.getElementById("trailerOverlay");
-  if (e.key === "Escape" && overlay && !overlay.hidden) closeTrailer();
+  if (e.key === "Escape" && overlay && !overlay.hidden) {
+    // If we're inside fullscreen, the browser handles exit first — then this closes the overlay
+    closeTrailer();
+  }
 });
 
 /* ═══════════ TRAILER BUTTON HELPER ═══════════ */
@@ -1165,6 +1424,18 @@ function trailerBtnHtml() {
 }
 
 /* ═══════════ RENDER ═══════════ */
+function getAvailableProviders() {
+  const out = [];
+  if (state.moviebox.data) out.push("moviebox");
+  if (state.hdhub.streams.length > 0) out.push("hdhub");
+  if (state.drive.streams.length > 0) out.push("drive");
+  return out;
+}
+function getAllTried() {
+  const ok = s => s.status === "ok" || s.status === "empty" || s.status === "error";
+  return ok(state.moviebox) && ok(state.hdhub) && ok(state.drive);
+}
+
 function renderHero() {
   const h = state.hero;
   const initial = (h.title || "?").charAt(0).toUpperCase();
@@ -1192,6 +1463,7 @@ function renderHero() {
     ? `<h1>${escapeHtml(h.title)}</h1>`
     : `<div class="title-skeleton"></div>`;
 
+  // Hero actions: Play + Watch Trailer
   let heroActions = "";
   const m = state.moviebox;
   const hasPlay = !!m.data;
@@ -1255,9 +1527,17 @@ function renderCastSection() {
   `;
 }
 
-function renderMovieBoxContent() {
+function renderTabs(providers) {
+  const labels = { moviebox: "MovieBox", hdhub: "hdhub4u", drive: "moviesDrive" };
+  return `<nav class="tabs">${providers.map(id => {
+    const isActive = id === state.activeTab;
+    return `<button class="tab ${isActive ? "active" : ""}" data-tab="${id}">${escapeHtml(labels[id])}</button>`;
+  }).join("")}</nav>`;
+}
+
+function renderMovieBoxTab() {
   const m = state.moviebox;
-  if (!m.data) return "";
+  if (!m.data) return `<div class="loading-block"><div class="spinner"></div><div>Loading…</div></div>`;
 
   const d = m.data;
   const parts = [];
@@ -1307,58 +1587,145 @@ function renderMovieBoxContent() {
   return parts.join("");
 }
 
-function unavailableBanner(title, text, showRetry) {
+function renderServerTab(provider) {
+  const s = state[provider];
+  if (!s.streams.length) return `<div class="loading-block">No streams</div>`;
   return `
-    <div class="unavailable-banner">
-      <div class="unavailable-icon">⚠</div>
-      <div class="unavailable-content">
-        <div class="unavailable-title">${escapeHtml(title)}</div>
-        <div class="unavailable-text">${escapeHtml(text)}</div>
-        ${showRetry ? `<div class="unavailable-actions">
-          <button class="btn" id="retryAll">Retry</button>
-          <button class="btn" onclick="location.href='index.html'">Back to catalog</button>
-        </div>` : `<div class="unavailable-actions">
-          <button class="btn" onclick="location.href='index.html'">Back to catalog</button>
-        </div>`}
+    <div class="section"><div class="section-title">Server</div><div class="pills">
+      ${s.streams.map((st, i) => `
+        <button class="pill ${i === s.selectedServer ? "active" : ""}" data-action="pick-server" data-provider="${provider}" data-server="${i}">
+          ${escapeHtml(st.label || ("Server " + (i + 1)))}
+          ${st.quality && st.quality !== "Auto" ? " · " + escapeHtml(st.quality) : ""}
+        </button>`).join("")}
+    </div></div>
+    <div class="play-row">
+      <button class="play-btn" data-action="play-server" data-provider="${provider}" type="button">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        Play
+      </button>
+      ${trailerBtnHtml()}
+    </div>`;
+}
+
+function updateProviderFooter() {
+  const footer = document.getElementById("providerFooter");
+  const inner = document.getElementById("providerFooterInner");
+  if (!footer || !inner) return;
+
+  const allTried = getAllTried();
+  if (allTried) {
+    footer.classList.remove("show");
+    document.body.classList.remove("has-footer");
+    return;
+  }
+
+  const providers = [
+    { id: "moviebox", name: "MovieBox" },
+    { id: "hdhub",    name: "hdhub4u" },
+    { id: "drive",    name: "moviesDrive" },
+  ];
+
+  const items = providers.map(p => {
+    const s = state[p.id];
+    let cls = "loading", text = "Checking";
+    if (s.status === "ok") { cls = "ok"; text = "Available"; }
+    else if (s.status === "empty") { cls = "empty"; text = "Not found"; }
+    else if (s.status === "error") { cls = "error"; text = "Error"; }
+    else if (s.status === "idle") { cls = "loading"; text = "Waiting"; }
+    return `
+      <div class="provider-footer-item ${cls}">
+        <span class="dot"></span>
+        <span>${escapeHtml(p.name)}</span>
+        <span class="provider-footer-item-status">${text}</span>
       </div>
-    </div>
-  `;
+    `;
+  }).join("");
+
+  inner.innerHTML =
+    '<div class="provider-footer-title">Checking availability</div>' + items;
+
+  footer.classList.add("show");
+  document.body.classList.add("has-footer");
 }
 
 function render() {
   const main = document.getElementById("main");
+  const available = getAvailableProviders();
+  const allTried = getAllTried();
 
   if (state.hero.title) {
     document.getElementById("pageTitle").textContent = state.hero.title;
     document.title = state.hero.title + " — Details";
   }
 
+  // Prefer backdrop for the background; fall back to poster
   if (state.hero.backdrop) applyBackground(state.hero.poster, state.hero.backdrop);
   else if (state.hero.poster) applyBackground(state.hero.poster);
 
+  if (!state.activeTab || !available.includes(state.activeTab)) {
+    if (available.length > 0) {
+      if (state.source && available.includes(state.source)) state.activeTab = state.source;
+      else state.activeTab = available[0];
+    }
+  }
+
   const parts = [];
   parts.push(renderHero());
-
   const castHtml = renderCastSection();
   if (castHtml) parts.push(castHtml);
 
   if (state.bootError) {
-    parts.push(unavailableBanner(state.bootError, "Open this page from the catalog, or try again.", false));
-  } else if (state.moviebox.status === "ok" && state.moviebox.data) {
-    parts.push(renderMovieBoxContent());
-  } else if (state.moviebox.status === "empty" || state.moviebox.status === "error") {
-    parts.push(unavailableBanner(
-      "Not available",
-      "This title isn't currently available on MovieBox. Try a different title, or check back later.",
-      true
-    ));
+    parts.push(`
+      <div class="unavailable-banner">
+        <div class="unavailable-icon">⚠</div>
+        <div class="unavailable-content">
+          <div class="unavailable-title">${escapeHtml(state.bootError)}</div>
+          <div class="unavailable-text">Open this page from the catalog, or try again.</div>
+          <div class="unavailable-actions">
+            <button class="btn" onclick="location.href='index.html'">Back to catalog</button>
+          </div>
+        </div>
+      </div>
+    `);
+  } else if (available.length > 0) {
+    parts.push(renderTabs(available));
+    for (const id of available) {
+      const isActive = id === state.activeTab;
+      const content = id === "moviebox" ? renderMovieBoxTab() : renderServerTab(id);
+      parts.push(`<div class="tab-content ${isActive ? "active" : ""}" data-tab-content="${id}">${content}</div>`);
+    }
+  } else if (allTried) {
+    parts.push(`
+      <div class="unavailable-banner">
+        <div class="unavailable-icon">⚠</div>
+        <div class="unavailable-content">
+          <div class="unavailable-title">No streams available</div>
+          <div class="unavailable-text">
+            We checked MovieBox, hdhub4u, and moviesDrive — this title isn't currently available on any provider.
+            Try a different title, or check back later.
+          </div>
+          <div class="unavailable-actions">
+            <button class="btn" id="retryAll">Retry all providers</button>
+            <button class="btn" onclick="location.href='index.html'">Back to catalog</button>
+          </div>
+        </div>
+      </div>
+    `);
   }
 
   main.innerHTML = parts.join("");
   bindEvents();
+  updateProviderFooter();
 }
 
 function bindEvents() {
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      state.activeTab = tab.dataset.tab;
+      render();
+    });
+  });
+
   const seasonSelect = document.getElementById("seasonSelect");
   if (seasonSelect) seasonSelect.addEventListener("change", (e) => {
     const se = Number(e.target.value);
@@ -1378,8 +1745,14 @@ function bindEvents() {
         state.moviebox.selectedSe = Number(btn.dataset.se);
         state.moviebox.selectedEp = Number(btn.dataset.ep);
         playMovieBox();
+      } else if (a === "pick-server") {
+        const p = btn.dataset.provider;
+        state[p].selectedServer = Number(btn.dataset.server);
+        render();
       } else if (a === "play-moviebox") {
         playMovieBox();
+      } else if (a === "play-server") {
+        playServer(btn.dataset.provider);
       } else if (a === "play-trailer") {
         openTrailer();
       }
@@ -1430,10 +1803,42 @@ function playMovieBox() {
   location.href = "player.html?" + params.toString();
 }
 
-/* ═══════════ BOOT ═══════════ */
+function playServer(provider) {
+  const s = state[provider];
+  const stream = s.streams[s.selectedServer] || s.streams[0];
+  if (!stream?.url) return;
+
+  saveToHistory({
+    title: state.hero.title || "Untitled",
+    poster: state.hero.poster,
+    backdrop: state.hero.backdrop,
+    overview: state.hero.overview,
+    year: state.hero.year,
+    rating: state.hero.rating,
+    isTV: state.hero.isTV,
+    tmdbId: state.hero.tmdbId,
+    url: stream.url,
+    provider: provider,
+    kind: "external",
+  });
+
+  const referer = provider === "hdhub" ? "https://new8.hdhub4u.cl/" : "https://new3.moviesdrive.beer/";
+  const proxied = PROXY + "/?url=" + encodeURIComponent(stream.url)
+                + "&referer=" + encodeURIComponent(referer)
+                + "&provider=" + provider;
+  const title = state.hero.title || "Untitled";
+  const subtitle = (stream.label || "") + (stream.quality && stream.quality !== "Auto" ? " · " + stream.quality : "");
+  const params = new URLSearchParams({ streamUrl: proxied, title, subtitle });
+  location.href = "player.html?" + params.toString();
+}
+
+/* ═══════════ BOOT DISPATCHER ═══════════ */
 async function boot(retry = false) {
   if (retry) {
     state.moviebox = { ...state.moviebox, data: null, status: "idle", error: null };
+    state.hdhub   = { ...state.hdhub,   streams: [], status: "idle", error: null, url: "" };
+    state.drive   = { ...state.drive,   streams: [], status: "idle", error: null, url: "" };
+    state.activeTab = "";
     state.bootError = null;
   }
 
@@ -1444,9 +1849,13 @@ async function boot(retry = false) {
   if (source === "tmdb") {
     await bootFromTmdb();
   } else if (source === "moviebox") {
-    await bootFromMoviebox();
+    await bootFromMovieBox();
+  } else if (source === "hdhub" || source === "drive") {
+    await bootFromExternal(source);
   } else if (source === "external") {
-    await bootFromExternalUrl();
+    if (/hdhub4u/i.test(Q.url)) await bootFromExternal("hdhub");
+    else if (/moviesdrive/i.test(Q.url)) await bootFromExternal("drive");
+    else state.bootError = "Cannot determine source";
   } else {
     state.bootError = "No source specified";
   }
@@ -1477,6 +1886,7 @@ async function bootFromTmdb() {
         trailerKey: "",
       };
 
+      // Fetch cast + trailer in parallel with provider checks
       Promise.all([
         fetchTmdbCredits(meta.tmdbId, mediaType),
         fetchTmdbTrailer(meta.tmdbId, mediaType),
@@ -1491,24 +1901,37 @@ async function bootFromTmdb() {
 
   const searchTitle = cleanForSearch(state.hero.title);
   if (!searchTitle) {
-    state.moviebox.status = "empty";
+    state.moviebox.status = state.hdhub.status = state.drive.status = "empty";
     render();
     return;
   }
 
-  state.moviebox.status = "loading";
+  state.moviebox.status = state.hdhub.status = state.drive.status = "loading";
   render();
 
-  const match = await searchMovieBox(searchTitle, state.hero.isTV);
-  if (match) {
-    await loadMovieBox(match.detailPath, match.subjectId);
-  } else {
-    state.moviebox.status = "empty";
-    render();
-  }
+  const [mbMatch, hdUrl, drUrl] = await Promise.all([
+    searchMovieBox(searchTitle, state.hero.isTV),
+    searchProvider("hdhub", searchTitle),
+    searchProvider("drive", searchTitle),
+  ]);
+
+  await Promise.all([
+    (async () => {
+      if (mbMatch) await loadMovieBox(mbMatch.detailPath, mbMatch.subjectId);
+      else { state.moviebox.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (hdUrl) await loadExternal("hdhub", hdUrl);
+      else { state.hdhub.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (drUrl) await loadExternal("drive", drUrl);
+      else { state.drive.status = "empty"; render(); }
+    })(),
+  ]);
 }
 
-async function bootFromMoviebox() {
+async function bootFromMovieBox() {
   if (!Q.detailPath) {
     state.bootError = "Missing detailPath";
     return;
@@ -1516,53 +1939,81 @@ async function bootFromMoviebox() {
   state.moviebox.status = "loading";
   render();
   await loadMovieBox(Q.detailPath, Q.subjectId);
+
+  const title = cleanForSearch(state.moviebox.data?.title || state.hero.title);
+  if (!title) {
+    state.hdhub.status = state.drive.status = "empty";
+    render();
+    return;
+  }
+  state.hdhub.status = state.drive.status = "loading";
+  render();
+
+  const [hdUrl, drUrl] = await Promise.all([
+    searchProvider("hdhub", title),
+    searchProvider("drive", title),
+  ]);
+
+  await Promise.all([
+    (async () => {
+      if (hdUrl) await loadExternal("hdhub", hdUrl);
+      else { state.hdhub.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (drUrl) await loadExternal("drive", drUrl);
+      else { state.drive.status = "empty"; render(); }
+    })(),
+  ]);
   enrichHeroWithTmdb();
 }
 
-async function bootFromExternalUrl() {
+async function bootFromExternal(source) {
   if (!Q.url) {
     state.bootError = "Missing url";
     return;
   }
-
-  try {
-    const res = await fetch(PROXY + "/?url=" + encodeURIComponent(Q.url) + "&referer=" + encodeURIComponent(Q.url));
-    if (res.ok) {
-      const html = await res.text();
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      const ogTitle = doc.querySelector('meta[property="og:title"]')?.content
-        || doc.querySelector("h1.entry-title, h1.page-title, h1")?.textContent || "";
-      const ogImage = doc.querySelector('meta[property="og:image"]')?.content || "";
-      const ogDesc = doc.querySelector('meta[property="og:description"]')?.content || "";
-      if (ogTitle && (!state.hero.title || state.hero.title === Q.title)) state.hero.title = ogTitle.trim();
-      if (ogImage && !state.hero.poster) state.hero.poster = ogImage;
-      if (ogDesc && !state.hero.overview) state.hero.overview = ogDesc;
-      if (/\(Season\s*\d|S\d{2}E\d{2}|Complete\s*Series|Web\s*Series/i.test(ogTitle)) {
-        state.hero.isTV = true;
-      }
-      render();
-    }
-  } catch (e) { console.warn("[ext meta]", e); }
-
+  state[source].status = "loading";
+  render();
+  await loadExternal(source, Q.url);
   await enrichHeroWithTmdb();
 
   const title = cleanForSearch(state.hero.title);
   if (!title) {
-    state.moviebox.status = "empty";
+    if (source !== "moviebox") state.moviebox.status = "empty";
+    if (source !== "hdhub")   state.hdhub.status = "empty";
+    if (source !== "drive")   state.drive.status = "empty";
     render();
     return;
   }
 
-  state.moviebox.status = "loading";
+  if (source !== "moviebox") state.moviebox.status = "loading";
+  if (source !== "hdhub")   state.hdhub.status = "loading";
+  if (source !== "drive")   state.drive.status = "loading";
   render();
 
-  const match = await searchMovieBox(title, state.hero.isTV);
-  if (match) {
-    await loadMovieBox(match.detailPath, match.subjectId);
-  } else {
-    state.moviebox.status = "empty";
-    render();
-  }
+  const [mbMatch, hdUrl, drUrl] = await Promise.all([
+    source !== "moviebox" ? searchMovieBox(title, state.hero.isTV) : Promise.resolve(null),
+    source !== "hdhub"    ? searchProvider("hdhub", title) : Promise.resolve(null),
+    source !== "drive"    ? searchProvider("drive", title) : Promise.resolve(null),
+  ]);
+
+  await Promise.all([
+    (async () => {
+      if (source === "moviebox") return;
+      if (mbMatch) await loadMovieBox(mbMatch.detailPath, mbMatch.subjectId);
+      else { state.moviebox.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (source === "hdhub") return;
+      if (hdUrl) await loadExternal("hdhub", hdUrl);
+      else { state.hdhub.status = "empty"; render(); }
+    })(),
+    (async () => {
+      if (source === "drive") return;
+      if (drUrl) await loadExternal("drive", drUrl);
+      else { state.drive.status = "empty"; render(); }
+    })(),
+  ]);
 }
 
 /* ═══════════ INIT ═══════════ */
