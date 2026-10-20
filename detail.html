@@ -57,7 +57,6 @@
       radial-gradient(ellipse at 70% 100%, rgba(88,28,135,.06) 0%, transparent 55%),
       linear-gradient(180deg, rgba(0,0,0,.30) 0%, rgba(0,0,0,.72) 55%, #000 100%);
   }
-  /* Grain + vignette via pseudo-elements */
   .bg-overlay::before {
     content: "";
     position: absolute; inset: 0;
@@ -103,17 +102,14 @@
     min-width: 0;
   }
 
-  /* ═══════════ HERO ═══════════ */
-  .hero {
+  /* ═══════════ DETAIL CARD (modal-style hero) ═══════════ */
+  .detail-card {
     position: relative;
     margin: 20px 0 36px;
-    padding: 44px 40px 40px;
-    border-radius: 22px;
+    border-radius: 18px;
     overflow: hidden;
-    background: rgba(10, 10, 13, 0.72);
-    backdrop-filter: blur(28px) saturate(1.1);
-    -webkit-backdrop-filter: blur(28px) saturate(1.1);
-    border: 1px solid rgba(255,255,255,.08);
+    background: var(--card);
+    border: 1px solid #24242c;
     box-shadow: 0 30px 80px rgba(0,0,0,.6);
     animation: heroIn .6s cubic-bezier(.2,.9,.3,1);
   }
@@ -121,155 +117,155 @@
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .hero-inner {
-    position: relative; z-index: 1;
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 40px;
-    align-items: end;
-  }
-  @media (max-width: 720px) {
-    .hero { padding: 28px 20px 24px; margin: 12px 0 24px; border-radius: 16px; backdrop-filter: blur(20px); }
-    .hero-inner { grid-template-columns: 1fr; gap: 24px; text-align: center; }
-  }
-  .poster {
+
+  .detail-hero {
     position: relative;
-    aspect-ratio: 2/3;
-    border-radius: 14px;
+    height: 280px;
+    background: #101014;
     overflow: hidden;
-    background: linear-gradient(135deg, #1a1a20 0%, #0a0a0d 100%);
-    border: 1px solid rgba(255,255,255,.1);
-    box-shadow: 0 30px 60px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.04) inset;
-    transition: transform .3s ease;
   }
-  .poster:hover { transform: scale(1.02); }
-  @media (max-width: 720px) { .poster { max-width: 180px; margin: 0 auto; } }
-  .poster img { width: 100%; height: 100%; object-fit: cover; }
-  .poster .fallback {
+  .detail-hero img {
+    width: 100%; height: 100%; object-fit: cover;
+    opacity: .6;
+  }
+  .detail-hero::after {
+    content: '';
     position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 72px; font-weight: 800; color: rgba(255,255,255,.15);
-    letter-spacing: -4px;
+    background: linear-gradient(180deg, rgba(30,30,37,.1) 0%, rgba(30,30,37,.7) 55%, var(--card) 100%);
+    pointer-events: none;
   }
-  .info { min-width: 0; }
-  .info h1 {
-    font-size: 44px; line-height: 1.05; font-weight: 900;
-    margin-bottom: 16px; letter-spacing: -1.5px;
+  .hero-skel {
+    position: absolute; inset: 0;
+    background: linear-gradient(120deg, #101014 0%, #1a1a22 50%, #101014 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  .detail-body {
+    position: relative;
+    padding: 0 28px 28px;
+    margin-top: -104px;
+  }
+
+  .detail-head {
+    display: flex;
+    gap: 22px;
+    align-items: flex-end;
+  }
+
+  .detail-poster,
+  .detail-poster-fallback {
+    width: 160px; flex: none;
+    aspect-ratio: 2/3;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #222;
+    box-shadow: 0 16px 40px rgba(0,0,0,.7);
+  }
+  .detail-poster-fallback {
+    background: linear-gradient(135deg, #1e1e25 0%, #2a2a33 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 56px; font-weight: 800;
+    color: rgba(255,255,255,.15);
+    letter-spacing: -2px;
+  }
+
+  .detail-meta { flex: 1; min-width: 0; }
+  .detail-meta h2 {
+    font-size: 32px; line-height: 1.15; font-weight: 800;
+    letter-spacing: -.8px; margin-bottom: 10px;
     text-shadow: 0 2px 20px rgba(0,0,0,.5);
   }
-  @media (max-width: 900px) { .info h1 { font-size: 32px; letter-spacing: -.8px; } }
-  @media (max-width: 720px) { .info h1 { font-size: 26px; letter-spacing: -.5px; } }
   .title-skeleton {
     width: 60%; max-width: 480px;
-    height: 40px; border-radius: 8px;
+    height: 36px; border-radius: 8px;
     background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.12), rgba(255,255,255,.05));
     background-size: 200% 100%;
     animation: shimmer 1.6s linear infinite;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
-  @media (max-width: 720px) { .title-skeleton { margin: 0 auto 16px; height: 30px; } }
   @keyframes shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
-  .meta {
-    display: flex; flex-wrap: wrap; gap: 6px 14px;
+
+  .detail-sub {
+    display: flex; flex-wrap: wrap; gap: 6px 12px;
     font-size: 13.5px; color: #c3c3cd;
-    margin-bottom: 14px;
-    align-items: center;
+    margin-bottom: 14px; align-items: center;
     font-weight: 500;
   }
-  @media (max-width: 720px) { .meta { justify-content: center; } }
-  .meta .rating { color: #ffc93c; font-weight: 700; }
-  .meta .dot { color: var(--muted); opacity: .5; }
-  .meta .badge {
+  .detail-sub .rating { color: #ffc93c; font-weight: 700; }
+  .detail-sub .dot { color: var(--muted); opacity: .5; }
+  .detail-sub .badge {
     background: rgba(255,255,255,.1);
     border: 1px solid rgba(255,255,255,.18);
     padding: 2px 8px; border-radius: 4px;
     font-size: 10.5px; font-weight: 800; letter-spacing: .6px;
     text-transform: uppercase; color: #fff;
   }
-  .genres {
-    display: flex; flex-wrap: wrap; gap: 6px;
-    margin-bottom: 18px;
+
+  .detail-tags {
+    display: flex; flex-wrap: wrap; gap: 7px;
+    margin-bottom: 16px;
   }
-  @media (max-width: 720px) { .genres { justify-content: center; } }
-  .genre-tag {
-    background: rgba(255,255,255,.07);
-    border: 1px solid rgba(255,255,255,.12);
-    padding: 4px 12px; border-radius: 999px;
-    font-size: 12px; font-weight: 600; color: #e0e0e6;
+  .tag {
+    font-size: 11.5px; padding: 4px 11px; border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    color: #c9c9d4;
+    font-weight: 600;
+  }
+
+  .detail-actions {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 11px 20px;
+    border-radius: 10px;
+    font-size: 14px; font-weight: 600;
     transition: .15s;
   }
-  .genre-tag:hover { background: rgba(255,255,255,.14); }
-  .synopsis {
-    font-size: 14.5px; line-height: 1.7; color: #d0d0d8;
-    max-width: 780px;
-    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
-    overflow: hidden;
+  .btn:hover { border-color: #4a4a58; background: #26262f; }
+  .btn-primary {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+    box-shadow: 0 6px 18px rgba(229,9,20,.32);
   }
-  @media (max-width: 720px) { .synopsis { font-size: 13px; } }
-
-  /* ═══════════ PREMIUM PLAY + TRAILER BUTTONS ═══════════ */
-  .hero-actions {
-    display: flex; flex-wrap: wrap; gap: 10px;
-    margin-top: 26px;
-  }
-  @media (max-width: 720px) { .hero-actions { justify-content: center; } }
-  .play-btn {
-    display: inline-flex; align-items: center; gap: 12px;
-    padding: 16px 36px;
-    background: #fff;
-    color: #0a0a0d;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: -.2px;
-    cursor: pointer;
-    position: relative;
-    box-shadow:
-      0 8px 28px rgba(255,255,255,.1),
-      0 20px 48px rgba(0,0,0,.55);
-    transition: all .25s cubic-bezier(.2,.9,.3,1);
-  }
-  .play-btn svg {
-    width: 20px; height: 20px;
-    color: #e50914;
-    fill: #e50914;
-    flex-shrink: 0;
-  }
-  .play-btn:hover {
-    background: #f2f2f2;
-    transform: translateY(-2px) scale(1.02);
-    box-shadow:
-      0 12px 40px rgba(255,255,255,.15),
-      0 28px 64px rgba(0,0,0,.65);
-  }
-  .play-btn:active { transform: translateY(0) scale(.98); }
-
-  .trailer-btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 16px 30px;
-    background: rgba(255,255,255,.14);
-    border: 1px solid rgba(255,255,255,.24);
+  .btn-primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+  .btn-trailer {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.22);
     color: #fff;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -.2px;
-    cursor: pointer;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    transition: all .2s ease;
   }
-  .trailer-btn svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
-  .trailer-btn:hover {
-    background: rgba(255,255,255,.24);
-    border-color: rgba(255,255,255,.4);
-    transform: translateY(-1px);
+  .btn-trailer:hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.4); }
+  .btn-trailer svg { width: 15px; height: 15px; fill: currentColor; }
+  .btn svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+
+  .detail-desc {
+    margin-top: 22px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #c3c3cd;
+    white-space: pre-wrap;
   }
-  .trailer-btn:active { transform: scale(.98); }
+
+  @media (max-width: 720px) {
+    .detail-card { margin: 12px 0 24px; border-radius: 14px; }
+    .detail-hero { height: 200px; }
+    .detail-body { padding: 0 18px 22px; margin-top: -80px; }
+    .detail-poster, .detail-poster-fallback { width: 106px; }
+    .detail-poster-fallback { font-size: 40px; }
+    .detail-meta h2 { font-size: 22px; letter-spacing: -.5px; }
+    .detail-sub { font-size: 12.5px; }
+    .detail-desc { font-size: 13px; }
+    .title-skeleton { height: 28px; }
+  }
 
   /* ═══════════ CAST ═══════════ */
   .cast-section { margin: 8px 0 40px; }
@@ -292,8 +288,11 @@
     text-align: center;
     scroll-snap-align: start;
     transition: transform .2s ease;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
   .cast-card:hover { transform: translateY(-2px); }
+  .cast-card:active { transform: translateY(-1px) scale(.97); }
   .cast-photo {
     width: 108px; height: 108px;
     border-radius: 50%;
@@ -302,9 +301,12 @@
     border: 2px solid rgba(255,255,255,.1);
     margin: 0 auto 10px;
     box-shadow: 0 8px 24px rgba(0,0,0,.5);
-    transition: border-color .2s;
+    transition: border-color .2s, box-shadow .2s;
   }
-  .cast-card:hover .cast-photo { border-color: rgba(255,255,255,.25); }
+  .cast-card:hover .cast-photo {
+    border-color: var(--accent);
+    box-shadow: 0 8px 24px rgba(0,0,0,.5), 0 0 20px rgba(229,9,20,.25);
+  }
   .cast-photo-fallback {
     display: flex;
     align-items: center;
@@ -417,8 +419,7 @@
     display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
     margin-top: 24px; padding-top: 26px; border-top: 1px solid var(--line);
   }
-  .play-row .play-btn { padding: 16px 32px; font-size: 15.5px; }
-  .play-row .trailer-btn { padding: 16px 26px; font-size: 14.5px; }
+  .play-row .btn { padding: 16px 30px; font-size: 15px; }
 
   .loading-block {
     display: flex; align-items: center; gap: 14px;
@@ -534,12 +535,7 @@
     .provider-footer-item-status { display: none; }
   }
 
-  /* ═══════════ TRAILER OVERLAY ═══════════
-     Close button is OUTSIDE the player window, floating above its
-     top-right corner in the backdrop area — never overlaps YouTube's
-     native controls (share / fullscreen / logo). No custom fullscreen
-     icon; the iframe keeps allowfullscreen so YouTube's own fullscreen
-     button works exactly as native. */
+  /* ═══════════ TRAILER OVERLAY ═══════════ */
   .trailer-overlay {
     position: fixed; inset: 0;
     z-index: 900;
@@ -610,23 +606,166 @@
   .trailer-close:active { transform: scale(.95); }
 
   @media (max-width: 640px) {
-    .trailer-overlay {
-      padding: 60px 0 0;
-      align-items: stretch;
+    .trailer-overlay { padding: 60px 0 0; align-items: stretch; }
+    .trailer-wrapper { width: 100vw; max-width: 100vw; }
+    .trailer-container { aspect-ratio: auto; height: 100%; border-radius: 0; }
+    .trailer-close { top: -52px; right: 14px; }
+  }
+
+  /* ═══════════ PERSON MODAL ═══════════ */
+  .person-modal {
+    position: fixed; inset: 0;
+    z-index: 900;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .person-modal[hidden] { display: none; }
+  .person-modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: personFadeIn .2s ease;
+  }
+  @keyframes personFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .person-modal-panel {
+    position: relative;
+    width: min(880px, 100%);
+    max-height: min(88vh, 900px);
+    overflow-y: auto;
+    background: var(--card);
+    border: 1px solid #24242c;
+    border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.85);
+    animation: personPopIn .24s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes personPopIn {
+    from { opacity: 0; transform: scale(.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .person-modal-panel::-webkit-scrollbar { width: 8px; }
+  .person-modal-panel::-webkit-scrollbar-thumb { background: #333; border-radius: 20px; }
+  .person-modal-close {
+    position: absolute; top: 14px; right: 14px; z-index: 5;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(0,0,0,.55);
+    border: 1px solid rgba(255,255,255,.12);
+    color: #fff; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+  }
+  .person-modal-close:hover { background: var(--accent); border-color: var(--accent); }
+
+  .person-hero {
+    padding: 34px 28px 22px;
+    display: flex; gap: 22px; align-items: flex-start;
+    background: linear-gradient(180deg, #1a1a22 0%, var(--card) 100%);
+  }
+  .person-avatar {
+    width: 132px; height: 132px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    background: #222;
+    border: 3px solid rgba(255,255,255,.08);
+    box-shadow: 0 12px 32px rgba(0,0,0,.6);
+  }
+  .person-avatar-fallback {
+    width: 132px; height: 132px; border-radius: 50%;
+    background: linear-gradient(135deg, #1e1e25 0%, #2a2a33 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px; font-weight: 800; color: rgba(255,255,255,.4);
+    flex-shrink: 0;
+    border: 3px solid rgba(255,255,255,.08);
+    box-shadow: 0 12px 32px rgba(0,0,0,.6);
+  }
+  .person-meta { flex: 1; min-width: 0; }
+  .person-name { font-size: 26px; font-weight: 800; line-height: 1.15; margin-bottom: 8px; letter-spacing: -.3px; }
+  .person-sub { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .person-sub .dim { opacity: .5; margin: 0 6px; }
+  .person-sub .dept-chip {
+    display: inline-block; padding: 2px 9px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .6px;
+    text-transform: uppercase;
+    background: rgba(139,92,246,.14);
+    border: 1px solid rgba(139,92,246,.4);
+    color: #c4b5fd;
+    border-radius: 999px;
+  }
+  .person-bio {
+    margin-top: 16px; font-size: 13.5px; line-height: 1.65;
+    color: #c3c3cd;
+    display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .person-bio.expanded { -webkit-line-clamp: unset; display: block; }
+  .person-bio-toggle {
+    display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 700;
+    color: var(--accent); cursor: pointer; background: none; border: none; padding: 0;
+    font-family: inherit;
+  }
+  .person-credits-section { padding: 0 28px 28px; }
+  .person-credits-section h3 {
+    font-size: 13px; font-weight: 800; letter-spacing: 1px;
+    text-transform: uppercase; color: #8a8a94;
+    margin: 24px 0 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .person-credits-section h3 .count {
+    font-size: 11px; font-weight: 600; color: #6b7280;
+    text-transform: none; letter-spacing: 0;
+  }
+  .person-credits-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 14px;
+  }
+  .person-credit-card {
+    background: transparent; border: none; padding: 0; cursor: pointer;
+    display: flex; flex-direction: column; gap: 7px; text-align: left; color: inherit;
+    font-family: inherit;
+    transition: transform .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .person-credit-card:hover { transform: translateY(-3px); }
+  .person-credit-card:active { transform: translateY(-1px) scale(.98); }
+  .person-credit-poster-wrap {
+    position: relative; width: 100%; aspect-ratio: 2/3;
+    border-radius: 10px; overflow: hidden; background: #1a1a20;
+    border: 1px solid rgba(255,255,255,.05);
+  }
+  .person-credit-poster {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .person-credit-badge {
+    position: absolute; top: 6px; left: 6px;
+    background: rgba(0,0,0,.75); border: 1px solid rgba(255,255,255,.15);
+    color: #fff; font-size: 9px; font-weight: 800;
+    padding: 2px 6px; border-radius: 999px;
+    letter-spacing: .4px; text-transform: uppercase;
+  }
+  .person-credit-badge.tv { background: rgba(59,130,246,.35); border-color: rgba(59,130,246,.55); }
+  .person-credit-title {
+    font-size: 12.5px; font-weight: 600; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .person-credit-role {
+    font-size: 11px; color: var(--muted); line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+    font-style: italic;
+  }
+  .person-loading { padding: 90px 24px; text-align: center; color: var(--muted); }
+
+  @media (max-width: 640px) {
+    .person-modal { padding: 12px; }
+    .person-modal-panel { border-radius: 14px; max-height: 92vh; }
+    .person-hero {
+      padding: 24px 18px 18px; gap: 16px;
+      flex-direction: column; align-items: center; text-align: center;
     }
-    .trailer-wrapper {
-      width: 100vw;
-      max-width: 100vw;
-    }
-    .trailer-container {
-      aspect-ratio: auto;
-      height: 100%;
-      border-radius: 0;
-    }
-    .trailer-close {
-      top: -52px;
-      right: 14px;
-    }
+    .person-avatar, .person-avatar-fallback { width: 96px; height: 96px; font-size: 36px; }
+    .person-name { font-size: 20px; }
+    .person-meta { width: 100%; }
+    .person-bio { text-align: left; }
+    .person-credits-section { padding: 0 18px 22px; }
+    .person-credits-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
   }
 
   #debugOutput {
@@ -653,10 +792,15 @@
     <h1 id="pageTitle">Details</h1>
   </div>
   <div id="main">
-    <div class="hero">
-      <div class="hero-inner">
-        <div class="poster"><div class="fallback">?</div></div>
-        <div class="info"><div class="title-skeleton"></div></div>
+    <div class="detail-card">
+      <div class="detail-hero"><div class="hero-skel"></div></div>
+      <div class="detail-body">
+        <div class="detail-head">
+          <div class="detail-poster-fallback">?</div>
+          <div class="detail-meta">
+            <div class="title-skeleton"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -677,6 +821,15 @@
   </div>
 </div>
 
+<!-- ═══════════ PERSON MODAL ═══════════ -->
+<div class="person-modal" id="personModal" hidden>
+  <div class="person-modal-backdrop" data-person-close></div>
+  <div class="person-modal-panel">
+    <button class="person-modal-close" data-person-close aria-label="Close">✕</button>
+    <div id="personModalContent"></div>
+  </div>
+</div>
+
 <script>
 /* ═══════════ CONFIG ═══════════ */
 const QS = new URLSearchParams(location.search);
@@ -688,6 +841,7 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w500";
 const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w1280";
 const TMDB_IMG_PROFILE = "https://image.tmdb.org/t/p/w185";
+const TMDB_IMG_CREDIT = "https://image.tmdb.org/t/p/w342";
 
 const HISTORY_KEY = "watchHistory";
 
@@ -703,7 +857,6 @@ const Q = {
   debug:      QS.get("debug") === "1",
 };
 
-/* Immediate title */
 if (Q.title) {
   document.title = Q.title + " — Details";
   document.getElementById("pageTitle").textContent = Q.title;
@@ -912,6 +1065,7 @@ async function fetchTmdbCredits(tmdbId, mediaType) {
   try {
     const data = await tmdbFetch(`/${mediaType || "movie"}/${tmdbId}/credits`);
     return (data.cast || []).slice(0, 14).map(c => ({
+      id:        c.id,
       name:      c.name || "",
       character: c.character || "",
       profile:   c.profile_path ? TMDB_IMG_PROFILE + c.profile_path : "",
@@ -927,7 +1081,6 @@ async function fetchTmdbTrailer(tmdbId, mediaType) {
   try {
     const data = await tmdbFetch(`/${mediaType || "movie"}/${tmdbId}/videos`);
     const videos = data.results || [];
-    // Priority: Official Trailer > Trailer > Official Teaser > Teaser > Clip
     const priority = ["Trailer", "Teaser", "Clip", "Featurette"];
     for (const type of priority) {
       const hit = videos.find(v => v.site === "YouTube" && v.type === type && v.official);
@@ -1303,7 +1456,6 @@ async function enrichHeroWithTmdb() {
       trailerKey: state.hero.trailerKey || "",
     };
 
-    // Fetch cast + trailer in parallel
     const [cast, trailerKey] = await Promise.all([
       fetchTmdbCredits(meta.tmdbId, mediaType),
       fetchTmdbTrailer(meta.tmdbId, mediaType),
@@ -1328,26 +1480,198 @@ function openTrailer() {
   overlay.hidden = false;
   document.body.style.overflow = "hidden";
 }
-
 function closeTrailer() {
   const overlay = document.getElementById("trailerOverlay");
   if (!overlay || overlay.hidden) return;
   overlay.hidden = true;
   document.getElementById("trailerFrame").innerHTML = "";
-  document.body.style.overflow = "";
+  if (document.getElementById("personModal").hidden) document.body.style.overflow = "";
 }
-
 document.getElementById("trailerClose").addEventListener("click", closeTrailer);
 document.getElementById("trailerBackdrop").addEventListener("click", closeTrailer);
+
+/* ═══════════ PERSON MODAL ═══════════ */
+const personCache = new Map();
+
+async function fetchPersonDetails(personId) {
+  const url = new URL(TMDB_BASE + `/person/${personId}`);
+  url.searchParams.set("api_key", TMDB_API_KEY);
+  url.searchParams.set("language", "en-US");
+  url.searchParams.set("append_to_response", "combined_credits");
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error("TMDB " + res.status);
+  return await res.json();
+}
+
+function collectPersonCredits(data) {
+  const cast = (data.combined_credits?.cast || []).map(c => ({
+    mediaType: c.media_type,
+    id: c.id,
+    title: c.title || c.name || "",
+    poster: c.poster_path ? (TMDB_IMG_CREDIT + c.poster_path) : "",
+    year: String(c.release_date || c.first_air_date || "").slice(0, 4),
+    role: c.character || "Cast",
+    popularity: c.popularity || 0,
+    isCast: true,
+  }));
+  const crew = (data.combined_credits?.crew || []).map(c => ({
+    mediaType: c.media_type,
+    id: c.id,
+    title: c.title || c.name || "",
+    poster: c.poster_path ? (TMDB_IMG_CREDIT + c.poster_path) : "",
+    year: String(c.release_date || c.first_air_date || "").slice(0, 4),
+    role: c.job || "Crew",
+    popularity: c.popularity || 0,
+    isCast: false,
+  }));
+  const seen = new Map();
+  for (const c of [...cast, ...crew]) {
+    const k = c.mediaType + ":" + c.id;
+    const ex = seen.get(k);
+    if (!ex) { seen.set(k, c); continue; }
+    if (c.isCast && !ex.isCast) seen.set(k, c);
+    else if (c.isCast === ex.isCast && c.popularity > ex.popularity) seen.set(k, c);
+  }
+  return [...seen.values()]
+    .filter(c => c.poster && c.title)
+    .sort((a, b) => b.popularity - a.popularity);
+}
+
+async function openPersonModal(personId) {
+  const modal = document.getElementById("personModal");
+  const content = document.getElementById("personModalContent");
+  modal.hidden = false;
+  document.body.style.overflow = "hidden";
+  content.innerHTML = '<div class="person-loading"><div class="spinner"></div>Loading…</div>';
+
+  let data = personCache.get(String(personId));
+  if (!data) {
+    try {
+      data = await fetchPersonDetails(personId);
+      if (!data) throw new Error("No data");
+      personCache.set(String(personId), data);
+    } catch (e) {
+      console.error("[person] failed:", e);
+      content.innerHTML = '<div class="person-loading">' +
+        '<div style="color:#e50914;font-weight:600;margin-bottom:8px">Could not load person</div>' +
+        '<div style="font-size:12px;color:#8a8a94">' + escapeHtml(e.message || "") + '</div>' +
+        '</div>';
+      return;
+    }
+  }
+  renderPersonModal(data);
+}
+
+function closePersonModal() {
+  const modal = document.getElementById("personModal");
+  if (!modal || modal.hidden) return;
+  modal.hidden = true;
+  document.getElementById("personModalContent").innerHTML = "";
+  if (document.getElementById("trailerOverlay").hidden) document.body.style.overflow = "";
+}
+
+function renderPersonModal(data) {
+  const content = document.getElementById("personModalContent");
+  const name = data.name || "Unknown";
+  const initial = name.charAt(0).toUpperCase();
+  const profile = data.profile_path ? (TMDB_IMG_PROFILE.replace("w185", "w300") + data.profile_path) : "";
+  const dept = data.known_for_department || "";
+  const birthday = data.birthday || "";
+  const deathday = data.deathday || "";
+  const place = data.place_of_birth || "";
+  const bio = (data.biography || "").trim();
+  const credits = collectPersonCredits(data);
+
+  const avatarHtml = profile
+    ? `<img class="person-avatar" src="${escapeHtml(profile)}" alt="" onerror="this.outerHTML='<div class=\\'person-avatar-fallback\\'>${escapeHtml(initial)}</div>'">`
+    : `<div class="person-avatar-fallback">${escapeHtml(initial)}</div>`;
+
+  const subParts = [];
+  if (dept) subParts.push(`<span class="dept-chip">${escapeHtml(dept)}</span>`);
+  if (birthday) {
+    const b = deathday ? `${birthday} – ${deathday}` : birthday;
+    subParts.push(escapeHtml(b));
+  }
+  if (place) subParts.push(escapeHtml(place));
+  const subHtml = subParts.length
+    ? subParts.join('<span class="dim">·</span>')
+    : '<span style="opacity:.5">No additional info</span>';
+
+  const bioHtml = bio
+    ? `<div class="person-bio" id="personBio">${escapeHtml(bio)}</div>
+       <button class="person-bio-toggle" id="personBioToggle" type="button">Read more</button>`
+    : "";
+
+  const creditsHtml = credits.length
+    ? `<div class="person-credits-grid">${credits.slice(0, 60).map(c => `
+        <button class="person-credit-card" type="button" data-media="${c.mediaType}" data-id="${c.id}" data-title="${escapeHtml(c.title)}">
+          <div class="person-credit-poster-wrap">
+            <img class="person-credit-poster" src="${escapeHtml(c.poster)}" alt="" loading="lazy" onerror="this.style.opacity='.3'" />
+            <span class="person-credit-badge${c.mediaType === 'tv' ? ' tv' : ''}">${c.mediaType === 'tv' ? 'TV' : 'Movie'}</span>
+          </div>
+          <div class="person-credit-title">${escapeHtml(c.title)}</div>
+          <div class="person-credit-role">${escapeHtml(c.role)}${c.year ? ' · ' + c.year : ''}</div>
+        </button>
+      `).join("")}</div>`
+    : '<div style="text-align:center;padding:30px 20px;color:#8a8a94;font-size:13px">No filmography available.</div>';
+
+  content.innerHTML = `
+    <div class="person-hero">
+      ${avatarHtml}
+      <div class="person-meta">
+        <div class="person-name">${escapeHtml(name)}</div>
+        <div class="person-sub">${subHtml}</div>
+        ${bioHtml}
+      </div>
+    </div>
+    <div class="person-credits-section">
+      <h3>Known For <span class="count">${credits.length} title${credits.length === 1 ? '' : 's'}</span></h3>
+      ${creditsHtml}
+    </div>`;
+
+  const bioEl = document.getElementById("personBio");
+  const bioToggle = document.getElementById("personBioToggle");
+  if (bioEl && bioToggle) {
+    if (bioEl.scrollHeight <= bioEl.clientHeight + 4) bioToggle.style.display = "none";
+    bioToggle.addEventListener("click", () => {
+      const expanded = bioEl.classList.toggle("expanded");
+      bioToggle.textContent = expanded ? "Show less" : "Read more";
+    });
+  }
+
+  content.querySelectorAll(".person-credit-card").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const mt = btn.dataset.media;
+      const id = btn.dataset.id;
+      const title = btn.dataset.title || "";
+      if (!mt || !id) return;
+      const params = new URLSearchParams({
+        source: "tmdb",
+        tmdbId: String(id),
+        mediaType: mt,
+        title,
+      });
+      location.href = "detail.html?" + params.toString();
+    });
+  });
+}
+
+document.querySelectorAll("[data-person-close]").forEach(el => {
+  el.addEventListener("click", closePersonModal);
+});
+
 document.addEventListener("keydown", (e) => {
-  const overlay = document.getElementById("trailerOverlay");
-  if (e.key === "Escape" && overlay && !overlay.hidden) closeTrailer();
+  if (e.key !== "Escape") return;
+  const trailerOverlay = document.getElementById("trailerOverlay");
+  if (trailerOverlay && !trailerOverlay.hidden) { closeTrailer(); return; }
+  const personModal = document.getElementById("personModal");
+  if (personModal && !personModal.hidden) { closePersonModal(); return; }
 });
 
 /* ═══════════ TRAILER BUTTON HELPER ═══════════ */
 function trailerBtnHtml() {
   if (!state.hero.trailerKey) return "";
-  return `<button class="trailer-btn" data-action="play-trailer" type="button">
+  return `<button class="btn btn-trailer" data-action="play-trailer" type="button">
     <svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
     Watch Trailer
   </button>`;
@@ -1376,56 +1700,65 @@ function renderHero() {
   if (h.runtime) metaBits.push(`<span>${h.runtime}m</span>`);
   if (h.rating) metaBits.push(`<span class="rating">★ ${escapeHtml(h.rating)}</span>`);
   if (h.country) metaBits.push(`<span>${escapeHtml(h.country)}</span>`);
-  const metaHtml = metaBits.length > 1
+  const metaHtml = metaBits.length
     ? metaBits.join('<span class="dot">•</span>')
-    : metaBits.join("");
+    : "";
 
   const genresHtml = h.genres && h.genres.length
-    ? `<div class="genres">${h.genres.map(g => `<span class="genre-tag">${escapeHtml(g)}</span>`).join("")}</div>`
+    ? `<div class="detail-tags">${h.genres.map(g => `<span class="tag">${escapeHtml(g)}</span>`).join("")}</div>`
     : "";
 
   const posterHtml = h.poster
-    ? `<img src="${escapeHtml(h.poster)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-       <div class="fallback" style="display:none">${initial}</div>`
-    : `<div class="fallback">${initial}</div>`;
+    ? `<img class="detail-poster" src="${escapeHtml(h.poster)}" alt=""
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+       <div class="detail-poster-fallback" style="display:none">${initial}</div>`
+    : `<div class="detail-poster-fallback">${initial}</div>`;
 
   const titleHtml = h.title
-    ? `<h1>${escapeHtml(h.title)}</h1>`
+    ? `<h2>${escapeHtml(h.title)}</h2>`
     : `<div class="title-skeleton"></div>`;
 
-  // Hero actions: Play + Watch Trailer
-  let heroActions = "";
+  const backdropHtml = (h.backdrop || h.poster)
+    ? `<img src="${escapeHtml(h.backdrop || h.poster)}" alt="" onerror="this.style.display='none'">`
+    : "";
+
+  // Actions: Play (if moviebox available) + Trailer
   const m = state.moviebox;
   const hasPlay = !!m.data;
   const hasTrailer = !!state.hero.trailerKey;
-
+  let actionsHtml = "";
   if (hasPlay || hasTrailer) {
-    heroActions = '<div class="hero-actions">';
+    actionsHtml = '<div class="detail-actions">';
     if (hasPlay) {
       const playText = m.data.isSeries
         ? `Play S${m.selectedSe}E${String(m.selectedEp).padStart(2, "0")}`
         : "Play Movie";
-      heroActions += `
-        <button class="play-btn" data-action="play-moviebox" type="button">
+      actionsHtml += `
+        <button class="btn btn-primary" data-action="play-moviebox" type="button">
           <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           ${playText}
         </button>`;
     }
-    heroActions += trailerBtnHtml();
-    heroActions += '</div>';
+    actionsHtml += trailerBtnHtml();
+    actionsHtml += '</div>';
   }
 
   return `
-    <div class="hero">
-      <div class="hero-inner">
-        <div class="poster">${posterHtml}</div>
-        <div class="info">
-          ${titleHtml}
-          ${metaHtml ? `<div class="meta">${metaHtml}</div>` : ''}
-          ${genresHtml}
-          ${h.overview ? `<p class="synopsis">${escapeHtml(h.overview)}</p>` : ''}
-          ${heroActions}
+    <div class="detail-card">
+      <div class="detail-hero">
+        ${backdropHtml}
+      </div>
+      <div class="detail-body">
+        <div class="detail-head">
+          ${posterHtml}
+          <div class="detail-meta">
+            ${titleHtml}
+            ${metaHtml ? `<div class="detail-sub">${metaHtml}</div>` : ''}
+            ${genresHtml}
+            ${actionsHtml}
+          </div>
         </div>
+        ${h.overview ? `<p class="detail-desc">${escapeHtml(h.overview)}</p>` : ''}
       </div>
     </div>
   `;
@@ -1441,8 +1774,10 @@ function renderCastSection() {
              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
          <div class="cast-photo cast-photo-fallback" style="display:none">${initial}</div>`
       : `<div class="cast-photo cast-photo-fallback">${initial}</div>`;
+    const actorIdAttr = c.id != null ? ` data-actor-id="${escapeHtml(String(c.id))}"` : "";
+    const actorNameAttr = ` data-actor-name="${escapeHtml(c.name)}"`;
     return `
-      <div class="cast-card">
+      <div class="cast-card"${actorIdAttr}${actorNameAttr} role="button" tabindex="0">
         ${img}
         <div class="cast-name">${escapeHtml(c.name)}</div>
         ${c.character ? `<div class="cast-role">${escapeHtml(c.character)}</div>` : ''}
@@ -1507,7 +1842,7 @@ function renderMovieBoxTab() {
     ? `Play S${m.selectedSe}E${String(m.selectedEp).padStart(2, "0")}`
     : "Play Movie";
   parts.push(`<div class="play-row">
-    <button class="play-btn" data-action="play-moviebox" type="button">
+    <button class="btn btn-primary" data-action="play-moviebox" type="button">
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
       ${playText}
     </button>
@@ -1529,7 +1864,7 @@ function renderServerTab(provider) {
         </button>`).join("")}
     </div></div>
     <div class="play-row">
-      <button class="play-btn" data-action="play-server" data-provider="${provider}" type="button">
+      <button class="btn btn-primary" data-action="play-server" data-provider="${provider}" type="button">
         <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         Play
       </button>
@@ -1588,7 +1923,6 @@ function render() {
     document.title = state.hero.title + " — Details";
   }
 
-  // Prefer backdrop for the background; fall back to poster
   if (state.hero.backdrop) applyBackground(state.hero.poster, state.hero.backdrop);
   else if (state.hero.poster) applyBackground(state.hero.poster);
 
@@ -1691,6 +2025,21 @@ function bindEvents() {
 
   const retryAll = document.getElementById("retryAll");
   if (retryAll) retryAll.addEventListener("click", () => boot(true));
+
+  // Cast cards → open person modal
+  document.querySelectorAll(".cast-card[data-actor-id]").forEach(card => {
+    const open = () => {
+      const id = card.dataset.actorId;
+      if (id) openPersonModal(id);
+    };
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+    });
+  });
 }
 
 /* ═══════════ PLAY ═══════════ */
@@ -1816,7 +2165,6 @@ async function bootFromTmdb() {
         trailerKey: "",
       };
 
-      // Fetch cast + trailer in parallel with provider checks
       Promise.all([
         fetchTmdbCredits(meta.tmdbId, mediaType),
         fetchTmdbTrailer(meta.tmdbId, mediaType),
