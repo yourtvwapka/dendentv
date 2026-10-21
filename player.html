@@ -196,6 +196,10 @@
     z-index:20; backdrop-filter:blur(14px);
   }
   .menu-list[hidden] { display:none; }
+  .menu-wrap.up .menu-list {
+    top:auto;
+    bottom:calc(100% + 6px);
+  }
   .menu-list button {
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     width:100%; background:transparent; border:none;
@@ -206,6 +210,15 @@
   .menu-list button.active { background:var(--accent); color:#fff; }
   .menu-list button .check { font-size:11px; opacity:0; flex-shrink:0; }
   .menu-list button.active .check { opacity:1; }
+
+  .controls .menu-btn {
+    padding:9px 12px;
+    font-size:12.5px;
+    max-width:150px;
+    height:42px;
+    box-sizing:border-box;
+  }
+  .controls .menu-btn .chev { width:10px; height:10px; }
 
   .player-bottom {
     position:absolute; left:0; right:0; bottom:0;
@@ -429,22 +442,6 @@
   }
   .drawer-empty { text-align:center; color:#6b7280; font-size:13px; padding:40px 20px; }
 
-  .log-panel { position:fixed; inset:0; z-index:600; background:rgba(13,13,15,.97); display:flex; flex-direction:column; }
-  .log-panel[hidden] { display:none; }
-  .log-head { display:flex; align-items:center; gap:6px; padding:10px 12px; border-bottom:1px solid var(--line); background:#101014; flex-wrap:wrap; }
-  .log-head h3 { font-size:13px; flex:0 0 auto; font-weight:700; min-width:80px; }
-  .log-btn { background:var(--card-2); border:1px solid var(--line); color:#fff; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:700; cursor:pointer; }
-  .log-btn.log-close { background:var(--accent); border-color:var(--accent); }
-  .log-body { flex:1; overflow-y:auto; padding:8px 10px 40px; font-family:ui-monospace,monospace; font-size:11.5px; line-height:1.5; }
-  .log-empty { text-align:center; color:var(--muted); padding:60px 24px; font-size:13px; }
-  .log-entry { display:flex; gap:8px; padding:7px 8px; border-radius:6px; margin-bottom:3px; background:rgba(255,255,255,.02); border-left:3px solid #444; font-family:ui-monospace,monospace; font-size:11.5px; }
-  .log-entry.LOG { border-left-color:#555; color:#c3c3cd; }
-  .log-entry.WARN { border-left-color:#eab308; color:#fde047; background:rgba(234,179,8,.06); }
-  .log-entry.ERR { border-left-color:var(--accent); color:#fca5a5; background:rgba(229,9,20,.1); font-weight:600; }
-  .log-entry .log-time { color:#6b7280; flex-shrink:0; font-size:10.5px; }
-  .log-entry .log-lvl { color:#4b5563; flex-shrink:0; font-size:10px; font-weight:700; }
-  .log-entry .log-msg { flex:1; word-break:break-all; white-space:pre-wrap; min-width:0; }
-
   .cap-settings-backdrop {
     position:fixed; inset:0; z-index:800;
     background:rgba(0,0,0,.72);
@@ -608,6 +605,7 @@
     .icon-btn { width:36px; height:36px; }
     .icon-btn.small { width:34px; height:34px; }
     .menu-btn { padding:9px 10px; font-size:12px; max-width:120px; }
+    .controls .menu-btn { padding:9px 10px; font-size:12px; max-width:120px; height:36px; }
     .time { font-size:11.5px; padding:0 2px; }
     .player-title { font-size:14px; }
     .player-sub { font-size:11.5px; }
@@ -681,10 +679,6 @@
           <svg viewBox="0 0 24 24"><path d="M20 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 19H5V5h4v14zm10 0h-8V5h8v14z"/></svg>
         </button>
 
-        <button class="icon-btn" id="btnNetInspector" title="Show logs (L)">
-          <svg viewBox="0 0 24 24"><path d="M3 3h18v2H3zm0 4h18v2H3zm0 4h18v2H3zm0 4h12v2H3zm14 0v6l4-3z"/></svg>
-        </button>
-
         <button class="icon-btn" id="playerHome" title="Home">
           <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
         </button>
@@ -734,12 +728,14 @@
           <button class="icon-btn" id="btnPlay" title="Play / Pause (Space)">
             <svg id="btnPlayIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </button>
-          <button class="icon-btn" id="btnRewind" title="-10s">
-            <svg viewBox="0 0 24 24"><path d="M12.5 3a9 9 0 1 0 6.36 15.36l-1.42-1.42A7 7 0 1 1 12.5 5c.55 0 1.08.06 1.59.18L11.5 7.77V6.44L8.34 9.6 11.5 12.77v-1.33l3.32-3.32.07-.07A9 9 0 0 0 12.5 3z"/></svg>
-          </button>
-          <button class="icon-btn" id="btnForward" title="+10s">
-            <svg viewBox="0 0 24 24"><path d="M11.5 3a9 9 0 1 1-6.36 15.36l1.42-1.42A7 7 0 1 0 11.5 5c-.55 0-1.08.06-1.59.18l2.59 2.59v-1.33l3.16 3.16-3.16 3.17v-1.33L9.18 8.11l-.07-.07A9 9 0 0 1 11.5 3z"/></svg>
-          </button>
+
+          <div class="menu-wrap up" id="audioWrap" hidden>
+            <button class="menu-btn" id="audioBtn" title="Audio track (A)">
+              <span class="label" id="audioLabel">Audio</span>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div class="menu-list" id="audioList" hidden></div>
+          </div>
 
           <div class="time">
             <span id="timeCur">0:00</span>
@@ -792,7 +788,6 @@
       <div class="err-msg" id="playerErrorMsg"></div>
       <div class="error-actions">
         <button class="btn btn-primary" id="playerRetry">Retry</button>
-        <button class="btn" id="playerShowLogs2">Show Logs</button>
         <button class="btn" id="playerBack2">Back</button>
       </div>
       <div class="error-detail" id="playerErrorDetail" hidden></div>
@@ -814,17 +809,6 @@
   </div>
 </aside>
 
-<div id="logPanel" class="log-panel" hidden>
-  <div class="log-head">
-    <h3>Logs</h3>
-    <button class="log-btn" id="logCopyAll">Copy All</button>
-    <button class="log-btn" id="logClear">Clear</button>
-    <button class="log-btn log-close" id="logClose">✕</button>
-  </div>
-  <div class="log-body" id="logBody"><div class="log-empty">No logs yet.</div></div>
-</div>
-
-<!-- ═══════════ CAPTION SETTINGS PANEL ═══════════ -->
 <div class="cap-settings-backdrop" id="capSettingsBackdrop" hidden></div>
 <div class="cap-settings-panel" id="capSettingsPanel" hidden>
   <div class="cap-settings-header">
@@ -919,50 +903,12 @@ const ATTEMPT_TIMEOUT_MS = 15000;
 const TOTAL_TIMEOUT_MS = 60000;
 const IDLE_MS = 3000;
 
-/* ═══════════ LOGGING ═══════════ */
-const LOG = [];
-const logBodyEl = document.getElementById("logBody");
-const logPanelEl = document.getElementById("logPanel");
-
-function escapeHtml(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
-}
-function nowTime() {
-  return new Date().toLocaleTimeString("en-GB", { hour12: false });
-}
+/* ═══════════ LOGGING (console only — no UI) ═══════════ */
 function logPush(level, ...args) {
-  const text = args.map(a => typeof a === "object" ? JSON.stringify(a) : String(a)).join(" ");
-  LOG.push({ t: nowTime(), l: level, m: text });
-  if (LOG.length > 2000) LOG.shift();
-  if (!logPanelEl.hidden) renderLogs();
+  if (level === "ERR") console.error("[player]", ...args);
+  else if (level === "WARN") console.warn("[player]", ...args);
+  else console.log("[player]", ...args);
 }
-const _log = console.log.bind(console);
-const _warn = console.warn.bind(console);
-const _err = console.error.bind(console);
-console.log = (...a) => { _log(...a); logPush("LOG", ...a); };
-console.warn = (...a) => { _warn(...a); logPush("WARN", ...a); };
-console.error = (...a) => { _err(...a); logPush("ERR", ...a); };
-
-function renderLogs() {
-  if (!LOG.length) {
-    logBodyEl.innerHTML = '<div class="log-empty">No logs yet.</div>';
-    return;
-  }
-  logBodyEl.innerHTML = LOG.map(e =>
-    `<div class="log-entry ${e.l}"><span class="log-time">${e.t}</span><span class="log-lvl">${e.l}</span><span class="log-msg">${escapeHtml(e.m)}</span></div>`
-  ).join("");
-  logBodyEl.scrollTop = logBodyEl.scrollHeight;
-}
-document.getElementById("logClose").addEventListener("click", () => { logPanelEl.hidden = true; });
-document.getElementById("logCopyAll").addEventListener("click", () => {
-  const txt = LOG.map(e => `[${e.t}] ${e.l} ${e.m}`).join("\n");
-  navigator.clipboard.writeText(txt).then(() => {
-    document.getElementById("logCopyAll").textContent = "Copied!";
-    setTimeout(() => document.getElementById("logCopyAll").textContent = "Copy All", 1500);
-  });
-});
-document.getElementById("logClear").addEventListener("click", () => { LOG.length = 0; renderLogs(); });
 
 /* ═══════════ DOM REFS ═══════════ */
 const playerStage = document.getElementById("playerStage");
@@ -987,6 +933,10 @@ const capWrap = document.getElementById("capWrap");
 const capBtn = document.getElementById("capBtn");
 const capList = document.getElementById("capList");
 const capLabel = document.getElementById("capLabel");
+const audioWrap = document.getElementById("audioWrap");
+const audioBtn = document.getElementById("audioBtn");
+const audioList = document.getElementById("audioList");
+const audioLabel = document.getElementById("audioLabel");
 const seekEl = document.getElementById("seek");
 const seekBuffer = document.getElementById("seekBuffer");
 const seekPlayed = document.getElementById("seekPlayed");
@@ -1021,7 +971,7 @@ const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z";
 const player = {
   streams: [],
   currentIdx: 0,
-  preferredQuality: null,   // null = auto (720→480→highest); number = locked tier
+  preferredQuality: null,
   hls: null,
   signCookie: "",
   triedUrls: new Set(),
@@ -1035,6 +985,7 @@ const player = {
   captionIndex: -1,
   captionBlobUrl: null,
   captionTrackEl: null,
+  captionsRetried: false,
   seasons: [],
   detailTitle: P.title,
   detailCover: "",
@@ -1044,6 +995,8 @@ const player = {
   currentEp: Number(P.ep) || 1,
   seriesLoading: false,
   seriesLoaded: false,
+  audioDubs: [],
+  audioLoaded: false,
 };
 
 function proxied(realUrl, referer, cookie) {
@@ -1079,27 +1032,25 @@ function setRetryStatus(text, cls) {
   retryStatus.className = "retry-status" + (cls ? " " + cls : "");
   retryStatusText.textContent = text;
 }
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
 
 /* ═══════════ QUALITY DEFAULT PICKER ═══════════ */
 function pickStreamIndex(streams, preferredQuality) {
   if (!streams.length) return 0;
-
   if (preferredQuality != null) {
     const exact = streams.findIndex(s => parseInt(s.quality, 10) === preferredQuality);
     if (exact >= 0) return exact;
-
     let bestIdx = -1, bestQ = -1;
     for (let i = 0; i < streams.length; i++) {
       const q = parseInt(streams[i].quality, 10);
-      if (!isNaN(q) && q <= preferredQuality && q > bestQ) {
-        bestQ = q; bestIdx = i;
-      }
+      if (!isNaN(q) && q <= preferredQuality && q > bestQ) { bestQ = q; bestIdx = i; }
     }
     if (bestIdx >= 0) return bestIdx;
     return 0;
   }
-
-  // Auto: 720p → 480p → highest
   for (const target of [720, 480]) {
     const idx = streams.findIndex(s => parseInt(s.quality, 10) === target);
     if (idx >= 0) return idx;
@@ -1288,6 +1239,128 @@ function updatePrevNext() {
   }
 }
 
+/* ═══════════ AUDIO TRACKS ═══════════ */
+async function loadAudioDubs() {
+  if (player.audioLoaded) return player.audioDubs;
+  if (!P.mainDetailPath) return [];
+  try {
+    const realUrl = absolute(BASE, "/moviesDetail/" + P.mainDetailPath);
+    const res = await fetch(proxied(realUrl));
+    if (!res.ok) return [];
+    const resolved = extractNuxt3Payload(await res.text());
+    if (!resolved) return [];
+    const detail = findDetailRoot(resolved);
+    if (!detail) return [];
+
+    const rawDubs = Array.isArray(detail.subject.dubs) ? detail.subject.dubs.filter(d => d && d.subjectId) : [];
+    const isSubtitleTrack = (d) => {
+      const name = String(d.lanName || d.lanCode || "").toLowerCase();
+      return /(^|\s)sub(title)?($|\s)/.test(name) || name.endsWith("sub");
+    };
+    let audioOnly = rawDubs.filter(d => !isSubtitleTrack(d));
+    if (!audioOnly.length) audioOnly = rawDubs.slice();
+
+    const originalId = String(detail.subject.subjectId);
+    const originalPath = detail.subject.detailPath || P.mainDetailPath;
+    const hasOriginal = audioOnly.some(d => String(d.subjectId) === originalId);
+    if (!hasOriginal) {
+      audioOnly.unshift({ subjectId: originalId, detailPath: originalPath, lanName: "Original Audio" });
+    } else {
+      audioOnly.sort((a, b) => {
+        const aOrig = String(a.subjectId) === originalId ? 0 : 1;
+        const bOrig = String(b.subjectId) === originalId ? 0 : 1;
+        return aOrig - bOrig;
+      });
+    }
+
+    player.audioDubs = audioOnly.map(d => ({
+      subjectId: String(d.subjectId || ""),
+      detailPath: d.detailPath || P.mainDetailPath,
+      lanName: d.lanName || d.lanCode || "Audio",
+    }));
+    player.audioLoaded = true;
+    logPush("LOG", "[audio] loaded " + player.audioDubs.length + " tracks: " + player.audioDubs.map(d => d.lanName).join(", "));
+    return player.audioDubs;
+  } catch (e) {
+    logPush("WARN", "[audio] failed:", e.message);
+    return [];
+  }
+}
+
+async function refreshAudioButton() {
+  try {
+    const dubs = await loadAudioDubs();
+    if (dubs.length > 1) {
+      audioWrap.hidden = false;
+      const idx = dubs.findIndex(d => String(d.subjectId) === String(P.subjectId));
+      audioLabel.textContent = dubs[idx]?.lanName || "Audio";
+    } else {
+      audioWrap.hidden = true;
+    }
+  } catch (_) { audioWrap.hidden = true; }
+}
+
+async function buildAudioMenu() {
+  const dubs = await loadAudioDubs();
+  if (!dubs.length) {
+    audioList.innerHTML = '<div style="padding:10px 12px;color:#8a8a94;font-size:12px;text-align:center">No audio tracks</div>';
+    return;
+  }
+  const currentIdx = dubs.findIndex(d => String(d.subjectId) === String(P.subjectId));
+  audioList.innerHTML = dubs.map((d, i) =>
+    `<button type="button" data-a="${i}"${i === currentIdx ? ' class="active"' : ''}><span>${escapeHtml(d.lanName)}</span><span class="check">✓</span></button>`
+  ).join("");
+  audioList.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.a);
+      audioList.hidden = true;
+      audioBtn.classList.remove("open");
+      switchAudio(i);
+    });
+  });
+  audioLabel.textContent = dubs[currentIdx]?.lanName || "Audio";
+}
+
+function switchAudio(idx) {
+  const dub = player.audioDubs[idx];
+  if (!dub) return;
+  if (String(dub.subjectId) === String(P.subjectId)) return;
+
+  logPush("LOG", "[audio] switching to " + dub.lanName + " (" + dub.subjectId + ")");
+  P.subjectId = dub.subjectId;
+  P.detailPath = dub.detailPath || P.detailPath;
+  P.lang = dub.lanName;
+
+  const url = new URL(location.href);
+  url.searchParams.set("subjectId", P.subjectId);
+  url.searchParams.set("detailPath", P.detailPath);
+  url.searchParams.set("lang", P.lang);
+  try { history.pushState({ audio: Date.now() }, "", url.pathname + url.search); } catch (_) {}
+
+  resetPlayerForNewEpisode();
+  startPlayback({ isRetry: false });
+}
+
+audioBtn.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  if (audioList.hidden) {
+    audioList.innerHTML = '<div style="padding:10px 12px;color:#8a8a94;font-size:12px;text-align:center">Loading…</div>';
+    audioList.hidden = false;
+    audioBtn.classList.add("open");
+    resetIdleTimer();
+    await buildAudioMenu();
+  } else {
+    audioList.hidden = true;
+    audioBtn.classList.remove("open");
+  }
+});
+document.addEventListener("click", (e) => {
+  if (!audioWrap.contains(e.target)) {
+    audioList.hidden = true;
+    audioBtn.classList.remove("open");
+  }
+});
+
 /* ═══════════ EPISODE NAVIGATION ═══════════ */
 function navigateToEpisode(se, ep) {
   if (player.busy) return;
@@ -1326,10 +1399,13 @@ function resetPlayerForNewEpisode() {
   player.busy = false;
   player.captions = [];
   player.captionIndex = -1;
+  player.captionsRetried = false;
   removeCaptionTrack();
   capWrap.hidden = true;
   qualityWrap.hidden = true;
   qualityList.hidden = true;
+  audioList.hidden = true;
+  audioBtn.classList.remove("open");
   seekPlayed.style.width = "0%";
   seekKnob.style.left = "0%";
   seekBuffer.style.width = "0%";
@@ -1339,6 +1415,7 @@ function resetPlayerForNewEpisode() {
   playerSub.textContent = P.subtitle;
   setPlayIcon(false);
   updatePrevNext();
+  video.setAttribute("crossorigin", "anonymous");
 }
 
 /* ═══════════ STREAM FETCHING ═══════════ */
@@ -1407,7 +1484,6 @@ function normalizeStreams(data, pageReferer) {
     });
   }
 
-  // Sort descending by quality
   streams.sort((a, b) => {
     const ai = parseInt(a.quality, 10), bi = parseInt(b.quality, 10);
     if (isNaN(ai) && isNaN(bi)) return 0;
@@ -1416,16 +1492,10 @@ function normalizeStreams(data, pageReferer) {
     return bi - ai;
   });
 
-  // ═══ IMPORTANT: We do NOT cap streams by playConfig.maxResolution ═══
-  // The API often reports maxResolution=480, which was hiding 1080p/4K tiers
-  // from the user. We surface every stream the API returns so users can pick
-  // any quality. Default selection (720p → 480p → highest) is handled
-  // separately in startPlayback() via pickStreamIndex().
   const maxRes = Number(d?.playConfig?.maxResolution) || 0;
   if (maxRes > 0) {
     logPush("LOG", "[play] playConfig.maxResolution=" + maxRes + "p (ignored — showing all tiers)");
   }
-
   logPush("LOG", "[play] got " + streams.length + " streams: " + streams.map(s => s.quality).join(", "));
   return { streams, signCookie };
 }
@@ -1480,6 +1550,7 @@ async function startPlayback(opts = {}) {
 
       buildQualityMenu();
       loadCaptionsForCurrentStream();
+      refreshAudioButton();
     }
     setRetryStatus("");
     await tryStream(player.streams[player.currentIdx], player.currentIdx);
@@ -1490,11 +1561,13 @@ async function startPlayback(opts = {}) {
   }
 }
 
-async function tryStream(stream, idx) {
+async function tryStream(stream, idx, opts = {}) {
   clearTimeout(player.attemptTimer);
   player.currentIdx = idx;
   const total = player.streams.length;
-  const label = stream.quality && stream.quality !== "Auto" ? stream.quality : "Auto";
+  const isDirectRetry = opts.directRetry === true;
+  const qualityLabel = (stream.quality && stream.quality !== "Auto" ? stream.quality : "Auto");
+  const label = qualityLabel + (isDirectRetry ? " (direct)" : "");
 
   player.attemptCount++;
   logPush("LOG", "[stream] attempt " + player.attemptCount + "/" + MAX_STREAM_ATTEMPTS + " → " + label + " (" + idx + "/" + total + ")");
@@ -1509,8 +1582,13 @@ async function tryStream(stream, idx) {
 
   player.attemptTimer = setTimeout(() => {
     if (video.readyState === 0) {
-      logPush("WARN", "[stream] attempt timeout for " + label);
-      advanceToNextStream("Stream " + label + " timed out");
+      // On timeout, if we haven't tried direct yet and the URL is proxied, try direct
+      if (!isDirectRetry && stream.url.includes("/?url=") && !stream.url.includes("direct=1")) {
+        logPush("LOG", "[stream] proxied timeout, trying direct bypass");
+        tryDirectStream(stream, idx);
+      } else {
+        advanceToNextStream("Stream " + label + " timed out");
+      }
     }
   }, ATTEMPT_TIMEOUT_MS);
 
@@ -1522,14 +1600,34 @@ async function tryStream(stream, idx) {
   player.triedUrls.add(url);
   const isHls = /\.m3u8([?#&]|$)/i.test(url) || /mpegurl/i.test(stream.format);
 
+  // CORS: direct=1 bypasses the proxy → CDN has no CORS headers → remove crossorigin
+  if (isDirectRetry) {
+    video.removeAttribute("crossorigin");
+  } else {
+    video.setAttribute("crossorigin", "anonymous");
+  }
+
   try {
     if (isHls && !video.canPlayType("application/vnd.apple.mpegurl")) await attachHls(url);
     else await attachNative(url);
     buildQualityMenu();
   } catch (err) {
     logPush("ERR", "[stream] attach failed:", err.message);
+    // Try direct=1 bypass for proxied URLs before advancing
+    if (!isDirectRetry && stream.url.includes("/?url=") && !stream.url.includes("direct=1")) {
+      logPush("LOG", "[stream] trying direct=1 bypass for " + qualityLabel);
+      return tryDirectStream(stream, idx);
+    }
     advanceToNextStream(err.message || "Attach failed");
   }
+}
+
+async function tryDirectStream(stream, idx) {
+  clearTimeout(player.attemptTimer);
+  const directUrl = stream.url.includes("direct=1") ? stream.url : (stream.url + "&direct=1");
+  const directStream = { ...stream, url: directUrl };
+  logPush("LOG", "[stream] direct bypass URL (server will 302 to CDN)");
+  return tryStream(directStream, idx, { directRetry: true });
 }
 
 function attachNative(url) {
@@ -1618,7 +1716,8 @@ async function advanceToNextStream(reason) {
       if (!next || player.triedUrls.has(next.url)) continue;
       logPush("LOG", "[stream] trying next stream #" + nextIdx);
       await tryStream(next, nextIdx);
-      return;
+      // If playback actually started, stop
+      if (video.readyState > 0 && !video.paused) return;
     }
     if (player.apiRefreshes < MAX_API_REFRESHES) {
       player.apiRefreshes++;
@@ -1681,6 +1780,12 @@ video.addEventListener("playing", () => {
   loadingActions.hidden = true;
   logPush("LOG", "[video] playing");
   showControls();
+
+  // Retry captions once after playback truly starts (they sometimes load late)
+  if (!player.captionsRetried && player.captions.length === 0 && capWrap.hidden && !P.streamUrl) {
+    player.captionsRetried = true;
+    setTimeout(() => loadCaptionsForCurrentStream(), 900);
+  }
 });
 
 video.addEventListener("waiting", () => {
@@ -1851,7 +1956,7 @@ function resetIdleTimer() {
   clearTimeout(idleTimer);
   if (!video.paused) {
     idleTimer = setTimeout(() => {
-      if (!qualityList.hidden || !capList.hidden) return;
+      if (!qualityList.hidden || !capList.hidden || !audioList.hidden) return;
       if (!document.getElementById("avPanel").hidden) return;
       if (drawerOpen) return;
       if (!capSettingsPanel.hidden) return;
@@ -2037,29 +2142,77 @@ document.addEventListener("click", (e) => {
 
 /* ═══════════ CAPTIONS ═══════════ */
 async function loadCaptionsForCurrentStream() {
-  const stream = player.streams[0];
-  if (!stream || !stream.id || !stream.format) { capWrap.hidden = true; return; }
+  if (!P.subjectId || !P.detailPath) { capWrap.hidden = true; return; }
+
+  // Captions are per-subject: ANY stream with an id works, not just streams[0]
+  const anyStreamWithId = player.streams.find(s => s.id);
+  const captionId = anyStreamWithId?.id || "";
+  if (!captionId) {
+    logPush("LOG", "[cap] no stream has a caption-eligible id; skipping");
+    capWrap.hidden = true;
+    return;
+  }
+
+  const params = new URLSearchParams({
+    format: "MP4",
+    id: captionId,
+    subjectId: P.subjectId,
+    detailPath: P.detailPath,
+  });
+  const url = absolute(BASE, "/wefeed-h5api-bff/subject/caption?" + params);
+  const referer = absolute(BASE, "/movies/" + P.detailPath);
+
   try {
-    const params = new URLSearchParams({
-      format: stream.format, id: stream.id,
-      subjectId: P.subjectId, detailPath: P.detailPath,
-    });
-    const url = absolute(BASE, "/wefeed-h5api-bff/subject/caption?" + params);
-    const referer = absolute(BASE, "/movies/" + P.detailPath);
+    logPush("LOG", "[cap] fetching for id=" + captionId);
     const res = await fetch(proxied(url, referer));
-    if (!res.ok) { capWrap.hidden = true; return; }
+    if (!res.ok) {
+      logPush("WARN", "[cap] HTTP " + res.status);
+      capWrap.hidden = true;
+      return;
+    }
     const json = await res.json();
-    const raw = json?.data?.captions || json?.data?.captionList || json?.data?.list || [];
-    if (!raw.length) { capWrap.hidden = true; return; }
+
+    // Different MovieBox responses have used different shapes
+    const candidates = [
+      json?.data?.captions,
+      json?.data?.captionList,
+      json?.data?.list,
+      json?.data?.items,
+      Array.isArray(json?.data) ? json.data : null,
+      json?.captions,
+      json?.list,
+      json?.items,
+    ];
+    let raw = [];
+    for (const c of candidates) {
+      if (Array.isArray(c) && c.length) { raw = c; break; }
+    }
+
+    if (!raw.length) {
+      logPush("LOG", "[cap] no tracks returned (subject has no captions)");
+      capWrap.hidden = true;
+      return;
+    }
+
     player.captions = raw.map(c => ({
-      lang: pick(c, "lan", "lang") || "",
-      name: pick(c, "lanName", "language", "label") || "Subtitle",
-      url: pick(c, "url", "src", "file") || "",
+      lang: pick(c, "lan", "lang", "language", "code") || "",
+      name: pick(c, "lanName", "language", "label", "name", "title") || "Subtitle",
+      url: pick(c, "url", "src", "file", "link", "captionUrl") || "",
     })).filter(c => c.url);
+
     capWrap.hidden = player.captions.length === 0;
-    if (player.captions.length) buildCaptionMenu();
-  } catch (_) { capWrap.hidden = true; }
+    if (player.captions.length) {
+      buildCaptionMenu();
+      logPush("LOG", "[cap] loaded " + player.captions.length + " tracks: " + player.captions.map(c => c.name).join(", "));
+    } else {
+      logPush("LOG", "[cap] tracks missing url field; hiding menu");
+    }
+  } catch (e) {
+    logPush("WARN", "[cap] fetch failed:", e.message);
+    capWrap.hidden = true;
+  }
 }
+
 function buildCaptionMenu() {
   capList.innerHTML =
     '<button data-c="-1"' + (player.captionIndex === -1 ? ' class="active"' : '') + '><span>Off</span><span class="check">✓</span></button>' +
@@ -2458,17 +2611,9 @@ document.getElementById("playerRetry").addEventListener("click", () => {
   player.streams = [];
   startPlayback({ isRetry: false });
 });
-document.getElementById("playerShowLogs2").addEventListener("click", () => {
-  logPanelEl.hidden = false;
-  renderLogs();
-});
 document.getElementById("playerBack2").addEventListener("click", () => {
   if (history.length > 1) history.back();
   else location.href = "index.html";
-});
-document.getElementById("btnNetInspector").addEventListener("click", () => {
-  logPanelEl.hidden = !logPanelEl.hidden;
-  if (!logPanelEl.hidden) renderLogs();
 });
 
 /* ═══════════ KEYBOARD ═══════════ */
@@ -2476,7 +2621,6 @@ document.addEventListener("keydown", (e) => {
   if (e.target.matches("input, select, textarea")) return;
   if (e.key === "Escape") {
     if (!capSettingsPanel.hidden) { closeCapSettings(); return; }
-    if (!logPanelEl.hidden) { logPanelEl.hidden = true; return; }
     if (drawerOpen) { closeDrawer(); return; }
     if (history.length > 1) history.back();
     else location.href = "index.html";
@@ -2491,9 +2635,9 @@ document.addEventListener("keydown", (e) => {
     case "m": case "M": e.preventDefault(); video.muted = !video.muted; break;
     case "f": case "F": e.preventDefault(); toggleFullscreen(); break;
     case "b": case "B": e.preventDefault(); if (drawerOpen) closeDrawer(); else if (!drawerToggleBtn.hidden) openDrawer(); break;
-    case "l": case "L": e.preventDefault(); logPanelEl.hidden = !logPanelEl.hidden; if (!logPanelEl.hidden) renderLogs(); break;
     case "c": case "C": e.preventDefault(); if (!capWrap.hidden) { capList.hidden = !capList.hidden; capBtn.classList.toggle("open", !capList.hidden); } break;
     case "q": case "Q": e.preventDefault(); if (!qualityWrap.hidden) { qualityList.hidden = !qualityList.hidden; qualityBtn.classList.toggle("open", !qualityList.hidden); } break;
+    case "a": case "A": e.preventDefault(); if (!audioWrap.hidden) { audioBtn.click(); } break;
     case "[": e.preventDefault(); brightSlider.value = Math.max(0.2, Number(brightSlider.value) - 0.1); brightSlider.dispatchEvent(new Event("input")); break;
     case "]": e.preventDefault(); brightSlider.value = Math.min(2, Number(brightSlider.value) + 0.1); brightSlider.dispatchEvent(new Event("input")); break;
   }
@@ -2540,14 +2684,6 @@ document.getElementById("btnPip").addEventListener("click", async () => {
     if (document.pictureInPictureElement) await document.exitPictureInPicture();
     else await video.requestPictureInPicture();
   } catch (_) {}
-});
-document.getElementById("btnRewind").addEventListener("click", () => {
-  if (video.duration) video.currentTime = Math.max(0, video.currentTime - 10);
-  showFeedback("-10s");
-});
-document.getElementById("btnForward").addEventListener("click", () => {
-  if (video.duration) video.currentTime = Math.min(video.duration, video.currentTime + 10);
-  showFeedback("+10s");
 });
 
 /* ═══════════ NAVIGATION ═══════════ */
