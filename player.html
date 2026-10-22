@@ -624,6 +624,51 @@
     .drawer { width:88vw; }
     .drawer-body { padding:14px 16px 22px; }
   }
+
+  /* ═══ DEBUG LOG PANEL ═══ */
+  .log-panel {
+    position: fixed; inset: 0; z-index: 950;
+    background: rgba(10,10,13,.98);
+    display: flex; flex-direction: column;
+  }
+  .log-panel[hidden] { display: none; }
+  .log-head {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 12px; border-bottom: 1px solid #2a2a33;
+    background: #101014; flex-shrink: 0; flex-wrap: wrap;
+  }
+  .log-head h3 { font-size: 13px; font-weight: 700; min-width: 120px; flex: 0 0 auto; margin: 0; }
+  .log-head .log-hint { font-size: 11px; color: #6b7280; margin-right: auto; }
+  .log-btn {
+    background: #26262f; border: 1px solid #2a2a33; color: #fff;
+    padding: 6px 10px; border-radius: 7px; font-size: 11px;
+    font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .log-btn:hover { background: #2e2e38; }
+  .log-btn.log-close { background: #e50914; border-color: #e50914; }
+  .log-btn.log-close:hover { background: #f6121d; }
+  .log-body {
+    flex: 1; overflow-y: auto;
+    padding: 8px 10px 40px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 11.5px; line-height: 1.5;
+    -webkit-overflow-scrolling: touch;
+  }
+  .log-empty { text-align: center; color: #6b7280; padding: 60px 24px; font-size: 13px; }
+  .log-entry {
+    display: flex; gap: 8px; padding: 6px 8px;
+    border-radius: 6px; margin-bottom: 3px;
+    background: rgba(255,255,255,.02);
+    border-left: 3px solid #444;
+    word-break: break-word;
+  }
+  .log-entry.LOG  { border-left-color: #555;    color: #c3c3cd; }
+  .log-entry.NET  { border-left-color: #3b82f6; color: #93c5fd; background: rgba(59,130,246,.05); }
+  .log-entry.WARN { border-left-color: #eab308; color: #fde047; background: rgba(234,179,8,.06); }
+  .log-entry.ERR  { border-left-color: #e50914; color: #fca5a5; background: rgba(229,9,20,.1); font-weight: 600; }
+  .log-entry .log-time { color: #6b7280; flex-shrink: 0; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .log-entry .log-lvl  { color: #4b5563; flex-shrink: 0; font-size: 10px; font-weight: 700; min-width: 34px; }
+  .log-entry .log-msg  { flex: 1; white-space: pre-wrap; min-width: 0; }
 </style>
 </head>
 <body>
@@ -677,6 +722,10 @@
 
         <button class="icon-btn" id="drawerToggle" title="Episodes / Related (B)" hidden>
           <svg viewBox="0 0 24 24"><path d="M20 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 19H5V5h4v14zm10 0h-8V5h8v14z"/></svg>
+        </button>
+
+        <button class="icon-btn" id="btnLogs" title="Debug logs (L)">
+          <svg viewBox="0 0 24 24"><path d="M3 3h18v2H3zm0 4h18v2H3zm0 4h18v2H3zm0 4h12v2H3zm14 0v6l4-3z"/></svg>
         </button>
 
         <button class="icon-btn" id="playerHome" title="Home">
@@ -874,6 +923,19 @@
       <button id="capSettingsReset">Reset</button>
       <button id="capSettingsDone" class="btn-primary">Done</button>
     </div>
+  </div>
+</div>
+
+<div class="log-panel" id="logPanel" hidden>
+  <div class="log-head">
+    <h3>🐞 Debug Logs</h3>
+    <span class="log-hint">L to toggle · Esc to close</span>
+    <button class="log-btn" id="logCopy">Copy</button>
+    <button class="log-btn" id="logClear">Clear</button>
+    <button class="log-btn log-close" id="logClose">✕</button>
+  </div>
+  <div class="log-body" id="logBody">
+    <div class="log-empty">No logs yet. Play a video to capture output.</div>
   </div>
 </div>
 
@@ -1582,7 +1644,6 @@ async function tryStream(stream, idx, opts = {}) {
 
   player.attemptTimer = setTimeout(() => {
     if (video.readyState === 0) {
-      // On timeout, if we haven't tried direct yet and the URL is proxied, try direct
       if (!isDirectRetry && stream.url.includes("/?url=") && !stream.url.includes("direct=1")) {
         logPush("LOG", "[stream] proxied timeout, trying direct bypass");
         tryDirectStream(stream, idx);
@@ -1600,7 +1661,6 @@ async function tryStream(stream, idx, opts = {}) {
   player.triedUrls.add(url);
   const isHls = /\.m3u8([?#&]|$)/i.test(url) || /mpegurl/i.test(stream.format);
 
-  // CORS: direct=1 bypasses the proxy → CDN has no CORS headers → remove crossorigin
   if (isDirectRetry) {
     video.removeAttribute("crossorigin");
   } else {
@@ -1613,7 +1673,6 @@ async function tryStream(stream, idx, opts = {}) {
     buildQualityMenu();
   } catch (err) {
     logPush("ERR", "[stream] attach failed:", err.message);
-    // Try direct=1 bypass for proxied URLs before advancing
     if (!isDirectRetry && stream.url.includes("/?url=") && !stream.url.includes("direct=1")) {
       logPush("LOG", "[stream] trying direct=1 bypass for " + qualityLabel);
       return tryDirectStream(stream, idx);
@@ -1716,7 +1775,6 @@ async function advanceToNextStream(reason) {
       if (!next || player.triedUrls.has(next.url)) continue;
       logPush("LOG", "[stream] trying next stream #" + nextIdx);
       await tryStream(next, nextIdx);
-      // If playback actually started, stop
       if (video.readyState > 0 && !video.paused) return;
     }
     if (player.apiRefreshes < MAX_API_REFRESHES) {
@@ -1781,7 +1839,6 @@ video.addEventListener("playing", () => {
   logPush("LOG", "[video] playing");
   showControls();
 
-  // Retry captions once after playback truly starts (they sometimes load late)
   if (!player.captionsRetried && player.captions.length === 0 && capWrap.hidden && !P.streamUrl) {
     player.captionsRetried = true;
     setTimeout(() => loadCaptionsForCurrentStream(), 900);
@@ -1966,7 +2023,7 @@ function resetIdleTimer() {
 }
 
 let wasIdleOnPointerDown = false;
-const IGNORE_SELECTORS = ".player-top, .player-bottom, .player-overlay, .menu-wrap, .av-wrap, .drawer, .frame-nav-btn, .frame-seek-btn, .player-bigplay, .center-controls, .retry-status, .caption-overlay, .cap-settings-panel, .cap-settings-backdrop";
+const IGNORE_SELECTORS = ".player-top, .player-bottom, .player-overlay, .menu-wrap, .av-wrap, .drawer, .frame-nav-btn, .frame-seek-btn, .player-bigplay, .center-controls, .retry-status, .caption-overlay, .cap-settings-panel, .cap-settings-backdrop, .log-panel";
 
 document.addEventListener("pointerdown", (e) => {
   const onControl = e.target.closest(IGNORE_SELECTORS);
@@ -2144,7 +2201,6 @@ document.addEventListener("click", (e) => {
 async function loadCaptionsForCurrentStream() {
   if (!P.subjectId || !P.detailPath) { capWrap.hidden = true; return; }
 
-  // Captions are per-subject: ANY stream with an id works, not just streams[0]
   const anyStreamWithId = player.streams.find(s => s.id);
   const captionId = anyStreamWithId?.id || "";
   if (!captionId) {
@@ -2172,7 +2228,6 @@ async function loadCaptionsForCurrentStream() {
     }
     const json = await res.json();
 
-    // Different MovieBox responses have used different shapes
     const candidates = [
       json?.data?.captions,
       json?.data?.captionList,
@@ -2620,6 +2675,10 @@ document.getElementById("playerBack2").addEventListener("click", () => {
 document.addEventListener("keydown", (e) => {
   if (e.target.matches("input, select, textarea")) return;
   if (e.key === "Escape") {
+    if (!document.getElementById("logPanel").hidden) {
+      document.getElementById("logPanel").hidden = true;
+      return;
+    }
     if (!capSettingsPanel.hidden) { closeCapSettings(); return; }
     if (drawerOpen) { closeDrawer(); return; }
     if (history.length > 1) history.back();
@@ -2760,6 +2819,135 @@ if (!P.streamUrl && (!P.detailPath || !P.subjectId)) {
   playerLoading.hidden = true;
   document.getElementById("adGateBtn").addEventListener("click", startWithAd);
 }
+
+/* ═══════════ DEBUG LOG PANEL ═══════════ */
+(function () {
+  const panel = document.getElementById("logPanel");
+  const body = document.getElementById("logBody");
+  const entries = [];
+  const MAX = 2000;
+  let renderScheduled = false;
+
+  function timeNow() {
+    const d = new Date();
+    return d.toLocaleTimeString("en-GB", { hour12: false }) + "." + String(d.getMilliseconds()).padStart(3, "0");
+  }
+
+  function serialize(a) {
+    if (a instanceof Error) return a.message;
+    if (typeof a === "object" && a !== null) {
+      try { const s = JSON.stringify(a); return s.length > 500 ? s.slice(0, 500) + "…" : s; }
+      catch (_) { return String(a); }
+    }
+    return String(a);
+  }
+
+  function addEntry(level, args) {
+    const msg = args.map(serialize).join(" ");
+    entries.push({ t: timeNow(), l: level, m: msg });
+    if (entries.length > MAX) entries.shift();
+    if (!panel.hidden) scheduleRender();
+  }
+
+  function scheduleRender() {
+    if (renderScheduled) return;
+    renderScheduled = true;
+    requestAnimationFrame(() => { renderScheduled = false; render(); });
+  }
+
+  function render() {
+    if (!entries.length) {
+      body.innerHTML = '<div class="log-empty">No logs yet. Play a video to capture output.</div>';
+      return;
+    }
+    body.innerHTML = entries.map(e =>
+      '<div class="log-entry ' + e.l + '">' +
+        '<span class="log-time">' + e.t + '</span>' +
+        '<span class="log-lvl">' + e.l + '</span>' +
+        '<span class="log-msg">' + escapeHtml(e.m) + '</span>' +
+      '</div>'
+    ).join("");
+    body.scrollTop = body.scrollHeight;
+  }
+
+  const origLog  = console.log.bind(console);
+  const origWarn = console.warn.bind(console);
+  const origErr  = console.error.bind(console);
+  console.log   = (...a) => { origLog(...a);  addEntry("LOG",  a); };
+  console.warn  = (...a) => { origWarn(...a); addEntry("WARN", a); };
+  console.error = (...a) => { origErr(...a);  addEntry("ERR",  a); };
+
+  window.addEventListener("error", (e) => {
+    addEntry("ERR", ["[window] " + e.message + " @ " + String(e.filename || "?").split("/").pop() + ":" + e.lineno]);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const r = e.reason;
+    addEntry("ERR", ["[promise] " + (r instanceof Error ? r.message : String(r))]);
+  });
+
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async function (...a) {
+    const url = typeof a[0] === "string" ? a[0] : (a[0]?.url || String(a[0]));
+    const method = (a[1]?.method || "GET").toUpperCase();
+    const short = url.length > 160 ? url.slice(0, 157) + "…" : url;
+    addEntry("NET", ["→ " + method + " " + short]);
+    try {
+      const res = await origFetch(...a);
+      addEntry("NET", ["← " + res.status + " " + short]);
+      return res;
+    } catch (err) {
+      if (err.name === "AbortError") addEntry("WARN", ["✕ aborted " + short]);
+      else addEntry("ERR", ["✕ " + method + " " + short + " — " + err.message]);
+      throw err;
+    }
+  };
+
+  const origFail = window.failPlayback;
+  if (typeof origFail === "function") {
+    window.failPlayback = function (...args) {
+      panel.hidden = false;
+      render();
+      playerUI.classList.remove("idle");
+      return origFail.apply(this, args);
+    };
+  }
+
+  function toggle() {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) { render(); playerUI.classList.remove("idle"); }
+  }
+
+  document.getElementById("btnLogs").addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
+  document.getElementById("logClose").addEventListener("click", () => { panel.hidden = true; });
+  document.getElementById("logClear").addEventListener("click", () => { entries.length = 0; render(); });
+  document.getElementById("logCopy").addEventListener("click", async () => {
+    const txt = entries.map(e => "[" + e.t + "] " + e.l + " " + e.m).join("\n");
+    const btn = document.getElementById("logCopy");
+    try { await navigator.clipboard.writeText(txt); }
+    catch (_) {
+      const ta = document.createElement("textarea");
+      ta.value = txt;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches("input, select, textarea")) return;
+    if ((e.key === "l" || e.key === "L") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      toggle();
+    }
+  });
+
+  addEntry("LOG", ["[debug] log panel ready"]);
+  addEntry("LOG", ["[debug] URL=" + location.href]);
+  addEntry("LOG", ["[debug] UA=" + navigator.userAgent.slice(0, 100)]);
+})();
 </script>
 </body>
 </html>
