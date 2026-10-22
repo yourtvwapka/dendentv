@@ -1059,6 +1059,8 @@ const player = {
   seriesLoaded: false,
   audioDubs: [],
   audioLoaded: false,
+  attaching: false,       // ═══ RACE FIX: true while tryStream's attachNative is pending
+  activeAttempt: 0,       // ═══ RACE FIX: monotonic counter to detect stale callbacks
 };
 
 function proxied(realUrl, referer, cookie) {
@@ -1459,6 +1461,7 @@ function resetPlayerForNewEpisode() {
   player.apiRefreshes = 0;
   player.attemptCount = 0;
   player.busy = false;
+  player.attaching = false;
   player.captions = [];
   player.captionIndex = -1;
   player.captionsRetried = false;
@@ -1632,6 +1635,7 @@ async function tryStream(stream, idx, opts = {}) {
   const label = qualityLabel + (isDirectRetry ? " (direct)" : "");
 
   player.attemptCount++;
+  const myAttempt = ++player.activeAttempt;   // ═══ RACE FIX: track this attempt
   logPush("LOG", "[stream] attempt " + player.attemptCount + "/" + MAX_STREAM_ATTEMPTS + " → " + label + " (" + idx + "/" + total + ")");
 
   if (player.attemptCount > MAX_STREAM_ATTEMPTS) {
@@ -1667,11 +1671,22 @@ async function tryStream(stream, idx, opts = {}) {
     video.setAttribute("crossorigin", "anonymous");
   }
 
+  // ═══ RACE FIX: mark attaching so the global error handler skips this cycle ═══
+  player.attaching = true;
   try {
     if (isHls && !video.canPlayType("application/vnd.apple.mpegurl")) await attachHls(url);
     else await attachNative(url);
+    player.attaching = false;
     buildQualityMenu();
   } catch (err) {
+    player.attaching = false;
+
+    // Stale? A newer attempt has already taken over.
+    if (myAttempt !== player.activeAttempt) {
+      logPush("WARN", "[stream] stale attempt " + myAttempt + " ignored (current " + player.activeAttempt + ")");
+      return;
+    }
+
     logPush("ERR", "[stream] attach failed:", err.message);
     if (!isDirectRetry && stream.url.includes("/?url=") && !stream.url.includes("direct=1")) {
       logPush("LOG", "[stream] trying direct=1 bypass for " + qualityLabel);
@@ -1849,9 +1864,21 @@ video.addEventListener("waiting", () => {
   if (playbackStarted) setRetryStatus("Buffering…");
 });
 
+// ═══ RACE FIX: only advance on video error when NOT inside tryStream ═══
+// During tryStream, attachNative's onErr rejects the Promise and the
+// tryStream catch block handles the advance. If we also advance here,
+// we burn through the budget in milliseconds and skip streams.
 video.addEventListener("error", () => {
   const v = video.error;
   if (v) logPush("WARN", "[video] MediaError code=" + v.code + " msg=" + (v.message || "?"));
+
+  // If tryStream is currently attaching, let the promise rejection handle it.
+  if (player.attaching) {
+    logPush("LOG", "[video] error during attach — handled by tryStream promise");
+    return;
+  }
+
+  // Otherwise, this is a mid-playback failure (or attachNative already rejected).
   if (!playerLoading.hidden && !player.busy) {
     clearTimeout(player.attemptTimer);
     advanceToNextStream("video element error");
