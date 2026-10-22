@@ -11,16 +11,12 @@ Key fixes:
   3. `direct=1` query param — returns a 302 to the CDN so the user's browser
      fetches it directly (real IP + real TLS = usually not blocked).
   4. /favicon.ico returns 204 instead of 400.
-  5. OOM protection: capped concurrent streams, smaller chunk size,
-     gc.collect() after each stream, RSS logging.
 """
 
-import gc
 import importlib
 import json
 import os
 import re
-import resource
 import signal
 import socket
 import sys
@@ -32,17 +28,11 @@ from urllib.parse import urlparse, parse_qs, unquote, urljoin, quote
 from curl_cffi import requests as creq
 
 # ---------------------------------------------------------------- keepalive
-KEEPALIVE_INTERVAL = 15 * 60   # 15 min (was 4 min — fewer lingering curl_cffi allocations)
+KEEPALIVE_INTERVAL = 4 * 60
 KEEPALIVE_TARGETS = [
     "https://api.github.com/zen",
     "https://officialmoviebox.com/",
 ]
-
-def _rss_mb():
-    try:
-        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
-    except Exception:
-        return 0
 
 def _keepalive_loop():
     i = 0
@@ -52,7 +42,7 @@ def _keepalive_loop():
         try:
             r = creq.get(target, impersonate="chrome120", verify=False,
                          timeout=20, allow_redirects=True, http_version="v2")
-            print(f"[keepalive] {time.strftime('%H:%M:%S')} {target} -> {r.status_code} (RSS={_rss_mb():.0f}MB)", flush=True)
+            print(f"[keepalive] {time.strftime('%H:%M:%S')} {target} -> {r.status_code}", flush=True)
         except Exception as e:
             print(f"[keepalive] {target} failed: {e}", flush=True)
         time.sleep(KEEPALIVE_INTERVAL)
@@ -92,10 +82,7 @@ ALLOWED_HOSTS = (
     "docs.google.com", "gdrive.com",
 )
 
-CHUNK_SIZE = 65536   # was 262144 — 4× less peak memory per stream
-
-# Cap concurrent media streams to prevent OOM on small instances
-STREAM_SEMAPHORE = threading.Semaphore(3)
+CHUNK_SIZE = 262144
 
 CONTENT_TYPE_OVERRIDES = {
     ".mp4":  "video/mp4",
@@ -586,60 +573,45 @@ class Handler(BaseHTTPRequestHandler):
         compressed = encoding is not None and encoding.lower() not in ("", "identity")
         keep_alive = upstream_len is not None and not compressed
 
-        # ═══ Cap concurrent media streams to prevent OOM ═══
-        acquired = False
-        if is_media and not head_only:
-            if not STREAM_SEMAPHORE.acquire(blocking=False):
-                try: r.close()
-                except Exception: pass
-                return self._send_body(503, json.dumps({
-                    "error": "too many concurrent streams",
-                    "hint": "Retry shortly",
-                }), "application/json", head_only)
-            acquired = True
+        self.send_response(r.status_code)
+        self._cors()
 
-        try:
-            self.send_response(r.status_code)
-            self._cors()
+        cdn_ct = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if cdn_ct.startswith("video/") or cdn_ct == "application/octet-stream":
+            out_ct = r.headers.get("Content-Type")
+        else:
+            out_ct = media_ct or r.headers.get("Content-Type")
+        if out_ct: self.send_header("Content-Type", out_ct)
 
-            cdn_ct = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-            if cdn_ct.startswith("video/") or cdn_ct == "application/octet-stream":
-                out_ct = r.headers.get("Content-Type")
-            else:
-                out_ct = media_ct or r.headers.get("Content-Type")
-            if out_ct: self.send_header("Content-Type", out_ct)
+        for k in ("Content-Range", "Accept-Ranges", "ETag", "Last-Modified"):
+            if k in r.headers: self.send_header(k, r.headers[k])
+        if not is_api and "Cache-Control" in r.headers:
+            self.send_header("Cache-Control", r.headers["Cache-Control"])
+        elif is_api:
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+        if keep_alive:
+            self.send_header("Content-Length", upstream_len)
+        else:
+            self.send_header("Connection", "close")
+            self.close_connection = True
+        self.end_headers()
 
-            for k in ("Content-Range", "Accept-Ranges", "ETag", "Last-Modified"):
-                if k in r.headers: self.send_header(k, r.headers[k])
-            if not is_api and "Cache-Control" in r.headers:
-                self.send_header("Cache-Control", r.headers["Cache-Control"])
-            elif is_api:
-                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
-                self.send_header("Pragma", "no-cache")
-            if keep_alive:
-                self.send_header("Content-Length", upstream_len)
-            else:
-                self.send_header("Connection", "close")
-                self.close_connection = True
-            self.end_headers()
-
-            if head_only:
-                return
-
-            try:
-                for chunk in r.iter_content(chunk_size=CHUNK_SIZE):
-                    if chunk: self.wfile.write(chunk)
-            except (BrokenPipeError, ConnectionResetError, socket.timeout):
-                pass
-            except Exception as e:
-                print(f"[stream] write error: {e}", flush=True)
-        finally:
-            if acquired:
-                STREAM_SEMAPHORE.release()
+        if head_only:
             try: r.close()
             except Exception: pass
-            if is_media:
-                gc.collect()
+            return
+
+        try:
+            for chunk in r.iter_content(chunk_size=CHUNK_SIZE):
+                if chunk: self.wfile.write(chunk)
+        except (BrokenPipeError, ConnectionResetError, socket.timeout):
+            pass
+        except Exception as e:
+            print(f"[stream] write error: {e}", flush=True)
+        finally:
+            try: r.close()
+            except Exception: pass
 
 
 def get_local_ip():
@@ -654,12 +626,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     index_ok  = os.path.exists(os.path.join(BASE_DIR, "index.html"))
     player_ok = os.path.exists(os.path.join(BASE_DIR, "player.html"))
-    on_cloud = bool(
-        os.environ.get("RAILWAY_ENVIRONMENT")
-        or os.environ.get("RAILWAY_PROJECT_ID")
-        or os.environ.get("RENDER")
-        or os.environ.get("RENDER_EXTERNAL_URL")
-    )
+    on_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_PROJECT_ID"))
 
     banner = f"""
 ✓ MovieBox proxy + provider aggregator (HTTP/2 + CDN retry)
@@ -670,7 +637,7 @@ if __name__ == "__main__":
     - index.html     {"[OK]" if index_ok else "[MISSING]"}
     - player.html    {"[OK]" if player_ok else "[MISSING]"}
 """
-    if not on_cloud:
+    if not on_railway:
         banner += f"\n  Local:   http://localhost:{port}/\n  Network: http://{get_local_ip()}:{port}/\n"
     print(banner, flush=True)
 
