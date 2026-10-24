@@ -2575,17 +2575,34 @@ window.addEventListener("popstate", () => {
 });
 
 /* ═══════════ AD GATE ═══════════ */
+/* The ad tag is injected ONLY when the user presses "Watch Ad & Play".
+   It is never loaded on page load, so no ads/popunders fire anywhere else. */
+let adTagLoaded = false;
+function loadAdTag() {
+  if (adTagLoaded) return;
+  adTagLoaded = true;
+  const s = document.createElement("script");
+  s.dataset.zone = "12109737";
+  s.src = "https://al5sm.com/tag.min.js";
+  s.async = true;
+  s.onerror = () => logPush("WARN", "[ad] tag script failed to load");
+  (document.body || document.documentElement).appendChild(s);
+  logPush("LOG", "[ad] tag injected on Watch-Ad click");
+}
+
 function hideAdGate() {
   const gate = document.getElementById("adGate");
   if (!gate) return;
   gate.classList.add("hide");
   setTimeout(() => gate.remove(), 320);
 }
+
 async function startWithAd() {
   const btn = document.getElementById("adGateBtn");
   const status = document.getElementById("adGateStatus");
   if (!btn || btn.disabled) return;
 
+  // Keep this synchronous — it must stay inside the user gesture.
   if (IS_MOBILE && isLandscapeNow() && !isCurrentlyFullscreen()) {
     requestMobileFullscreen();
   }
@@ -2593,16 +2610,19 @@ async function startWithAd() {
   btn.disabled = true;
   status.classList.remove("err");
   status.textContent = "Loading ad…";
+
   try {
-    if (typeof show_10973078 !== "function") throw new Error("Ad SDK not loaded");
-    await show_10973078();
+    loadAdTag();
+    // Give the tag a moment to initialize/hook its click handler.
+    await new Promise((r) => setTimeout(r, 1200));
     status.textContent = "Starting video…";
   } catch (e) {
     logPush("WARN", "[ad] failed:", e.message);
     status.classList.add("err");
     status.textContent = "Ad unavailable — starting anyway…";
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 600));
   }
+
   hideAdGate();
   startPlayback({ isRetry: false });
 }
