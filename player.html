@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#000000" />
 <title>Playing…</title>
-<script src='//libtl.com/sdk.js' data-zone='10973078' data-sdk='show_10973078'></script>
 <style>
   :root {
     --accent:#e50914; --accent-2:#f6121d; --line:#2a2a33;
@@ -2575,57 +2574,152 @@ window.addEventListener("popstate", () => {
 });
 
 /* ═══════════ AD GATE ═══════════ */
-/* The ad tag is injected ONLY when the user presses "Watch Ad & Play".
-   It is never loaded on page load, so no ads/popunders fire anywhere else. */
-let adTagLoaded = false;
+/* Rules:
+   - The ad fires ONLY on the "Watch Ad & Play" button press.
+   - After that: no gate, no tag, no ads — for this whole tab session,
+     across every episode the user watches.
+   - Player clicks must never fire an ad.
+
+   How:
+   - If the ad was already shown this session, skip the gate and never
+     load the tag  →  zero ad risk on the player.
+   - Otherwise load the tag while the gate is up (so its click listener
+     exists BEFORE the button press), and swallow every click except the
+     button's, so the tag can only ever fire from that one press.
+   - After the button press, reload the page so the tag's document-level
+     listeners are fully removed before playback. The sessionStorage flag
+     makes the reload land directly in the player, ad-free. */
+
+const AD_SHOWN_KEY = "playerAdShown"; // sessionStorage; switch to localStorage for permanent
+let adGateVisible = true;
+let adGateClickAt = 0;
+let adTagState = "loading"; // "loading" | "ready" | "failed"
+let adStarting = false;
+let popupFired = false;
+let adCompleted = false;
+
+function adAlreadyShown() {
+  try { return sessionStorage.getItem(AD_SHOWN_KEY) === "1"; }
+  catch (_) { return false; }
+}
+function markAdShown() {
+  try { sessionStorage.setItem(AD_SHOWN_KEY, "1"); } catch (_) {}
+}
+
+/* If already watched this session, block ALL popups from this point on. */
+if (adAlreadyShown()) adCompleted = true;
+
+/* Popup safety net: at most one popup, only from the gate-button press. */
+const _origWindowOpen = window.open;
+window.open = function (...args) {
+  if (adCompleted) return null;
+  if (popupFired) return null;
+  if (Date.now() - adGateClickAt > 2500) {
+    logPush("WARN", "[ad] suppressed popup (outside gate click)");
+    return null;
+  }
+  popupFired = true;
+  logPush("LOG", "[ad] popup allowed");
+  return _origWindowOpen.apply(window, args);
+};
+
 function loadAdTag() {
-  if (adTagLoaded) return;
-  adTagLoaded = true;
   const s = document.createElement("script");
   s.dataset.zone = "12109737";
   s.src = "https://al5sm.com/tag.min.js";
   s.async = true;
-  s.onerror = () => logPush("WARN", "[ad] tag script failed to load");
+  s.onload = () => { adTagState = "ready"; updateAdGateBtn(); };
+  s.onerror = () => { adTagState = "failed"; updateAdGateBtn(); };
   (document.body || document.documentElement).appendChild(s);
-  logPush("LOG", "[ad] tag injected on Watch-Ad click");
+  setTimeout(() => {
+    if (adTagState === "loading") { adTagState = "failed"; updateAdGateBtn(); }
+  }, 4000);
+}
+
+function updateAdGateBtn() {
+  const btn = document.getElementById("adGateBtn");
+  const status = document.getElementById("adGateStatus");
+  if (!btn) return;
+  if (adTagState === "loading") {
+    btn.disabled = true;
+    if (status) { status.classList.remove("err"); status.textContent = "Preparing ad…"; }
+  } else {
+    btn.disabled = false;
+    if (status) {
+      if (adTagState === "failed") {
+        status.classList.add("err");
+        status.textContent = "Ad unavailable — tap to continue";
+      } else {
+        status.classList.remove("err");
+        status.textContent = "";
+      }
+    }
+  }
 }
 
 function hideAdGate() {
+  adGateVisible = false;
   const gate = document.getElementById("adGate");
   if (!gate) return;
   gate.classList.add("hide");
   setTimeout(() => gate.remove(), 320);
 }
 
-async function startWithAd() {
+function startWithAd() {
+  if (adStarting || !adGateVisible) return;
+  adStarting = true;
+
   const btn = document.getElementById("adGateBtn");
   const status = document.getElementById("adGateStatus");
-  if (!btn || btn.disabled) return;
+  if (btn) btn.disabled = true;
+  if (status) { status.classList.remove("err"); status.textContent = "Starting video…"; }
 
-  // Keep this synchronous — it must stay inside the user gesture.
+  markAdShown();               // remember: gate is done for this session
+  adGateClickAt = Date.now();  // arm the popup window
+
+  // Do NOT set adCompleted here — the click still needs to bubble to the
+  // tag's document listener so the ad can open. After a short grace window,
+  // neutralise everything and reload for a clean, ad-free player.
+  setTimeout(() => {
+    adCompleted = true;
+    location.reload();
+  }, 700);
+}
+
+/* Capture-phase guard: while the gate is up, only the gate button's clicks
+   reach the rest of the page, so the ad tag can never fire from anything else. */
+function isGateButtonTarget(t) {
+  const btn = document.getElementById("adGateBtn");
+  return !!(btn && t && btn.contains(t));
+}
+
+["pointerdown", "touchstart"].forEach((evt) => {
+  window.addEventListener(evt, (e) => {
+    if (!adGateVisible) return;
+    if (isGateButtonTarget(e.target)) return; // let it through
+    e.stopImmediatePropagation();
+    e.preventDefault();
+  }, true);
+});
+
+window.addEventListener("click", (e) => {
+  if (!adGateVisible) return;
+  if (isGateButtonTarget(e.target)) {
+    adGateClickAt = Date.now();
+    startWithAd();
+    return; // let the click reach the tag's document listener
+  }
+  e.stopImmediatePropagation();
+  e.preventDefault();
+}, true);
+
+/* Mobile: fullscreen lock inside a real user gesture. */
+window.addEventListener("pointerdown", () => {
+  if (!adGateVisible) return;
   if (IS_MOBILE && isLandscapeNow() && !isCurrentlyFullscreen()) {
     requestMobileFullscreen();
   }
-
-  btn.disabled = true;
-  status.classList.remove("err");
-  status.textContent = "Loading ad…";
-
-  try {
-    loadAdTag();
-    // Give the tag a moment to initialize/hook its click handler.
-    await new Promise((r) => setTimeout(r, 1200));
-    status.textContent = "Starting video…";
-  } catch (e) {
-    logPush("WARN", "[ad] failed:", e.message);
-    status.classList.add("err");
-    status.textContent = "Ad unavailable — starting anyway…";
-    await new Promise((r) => setTimeout(r, 600));
-  }
-
-  hideAdGate();
-  startPlayback({ isRetry: false });
-}
+}, true);
 
 /* ═══════════ BOOT ═══════════ */
 playerTitle.textContent = P.title;
@@ -2640,8 +2734,18 @@ updateCapUI();
 if (!P.streamUrl && (!P.detailPath || !P.subjectId)) {
   failPlayback("Missing URL parameters", "Open this page from the catalog.");
   hideAdGate();
+} else if (adAlreadyShown()) {
+  // Ad already watched this session → no gate, no tag, no ads.
+  const gate = document.getElementById("adGate");
+  if (gate) gate.remove();
+  adGateVisible = false;
+  startPlayback({ isRetry: false });
 } else {
   playerLoading.hidden = true;
+  loadAdTag();          // load now so the tag's click listener exists
+  updateAdGateBtn();    // before the user presses the button
+  // The capture-phase guard already calls startWithAd on button press;
+  // this listener is a redundancy in case the guard is bypassed.
   document.getElementById("adGateBtn").addEventListener("click", startWithAd);
 }
 </script>
