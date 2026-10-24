@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#000000" />
 <title>Playing…</title>
-<script src='//libtl.com/sdk.js' data-zone='10973078' data-sdk='show_10973078'></script>
 <style>
   :root {
     --accent:#e50914; --accent-2:#f6121d; --line:#2a2a33;
@@ -567,39 +566,6 @@
     background:var(--accent); border-color:var(--accent);
   }
 
-  .ad-gate {
-    position: fixed; inset: 0; z-index: 100;
-    background: radial-gradient(circle at top, rgba(229,9,20,.18), transparent 55%),
-                linear-gradient(to bottom, #050505, #0a0a0a);
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px;
-  }
-  .ad-gate.hide { opacity: 0; transition: opacity .3s ease; pointer-events: none; }
-  .ad-gate-card {
-    max-width: 440px; width: 100%;
-    background: rgba(255,255,255,.03);
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 22px; padding: 32px 26px; text-align: center;
-  }
-  .ad-gate-icon { font-size: 48px; margin-bottom: 12px; }
-  .ad-gate-title {
-    font-size: 22px; font-weight: 800; margin-bottom: 8px;
-    background: linear-gradient(90deg, #fff, #f9a8d4);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .ad-gate-sub { font-size: 14px; color: #8a8a94; line-height: 1.6; margin-bottom: 22px; }
-  .ad-gate-btn {
-    width: 100%;
-    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-    padding: 16px; border: none; border-radius: 14px;
-    background: linear-gradient(135deg, #e50914, #f6121d);
-    color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
-  }
-  .ad-gate-btn:disabled { opacity: .6; cursor: not-allowed; }
-  .ad-gate-btn svg { width: 22px; height: 22px; fill: currentColor; }
-  .ad-gate-status { font-size: 12.5px; color: #8a8a94; margin-top: 14px; min-height: 18px; font-weight: 600; }
-  .ad-gate-status.err { color: #fca5a5; }
-
   @media (max-width: 640px), (hover:none) {
     .player-top { padding:12px 14px 40px; gap:6px; }
     .player-bottom { padding:40px 14px 14px; }
@@ -629,19 +595,6 @@
 </style>
 </head>
 <body>
-
-<div class="ad-gate" id="adGate">
-  <div class="ad-gate-card">
-    <div class="ad-gate-icon">🎬</div>
-    <div class="ad-gate-title">Watch a short ad to play</div>
-    <div class="ad-gate-sub">Support the site — a quick ad keeps this player free. Your video starts right after.</div>
-    <button class="ad-gate-btn" id="adGateBtn">
-      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      Watch Ad &amp; Play
-    </button>
-    <div class="ad-gate-status" id="adGateStatus"></div>
-  </div>
-</div>
 
 <div class="player" id="playerRoot">
   <div class="player-stage" id="playerStage">
@@ -2574,39 +2527,6 @@ window.addEventListener("popstate", () => {
   }
 });
 
-/* ═══════════ AD GATE ═══════════ */
-function hideAdGate() {
-  const gate = document.getElementById("adGate");
-  if (!gate) return;
-  gate.classList.add("hide");
-  setTimeout(() => gate.remove(), 320);
-}
-async function startWithAd() {
-  const btn = document.getElementById("adGateBtn");
-  const status = document.getElementById("adGateStatus");
-  if (!btn || btn.disabled) return;
-
-  if (IS_MOBILE && isLandscapeNow() && !isCurrentlyFullscreen()) {
-    requestMobileFullscreen();
-  }
-
-  btn.disabled = true;
-  status.classList.remove("err");
-  status.textContent = "Loading ad…";
-  try {
-    if (typeof show_10973078 !== "function") throw new Error("Ad SDK not loaded");
-    await show_10973078();
-    status.textContent = "Starting video…";
-  } catch (e) {
-    logPush("WARN", "[ad] failed:", e.message);
-    status.classList.add("err");
-    status.textContent = "Ad unavailable — starting anyway…";
-    await new Promise(r => setTimeout(r, 600));
-  }
-  hideAdGate();
-  startPlayback({ isRetry: false });
-}
-
 /* ═══════════ BOOT ═══════════ */
 playerTitle.textContent = P.title;
 playerSub.textContent = P.subtitle;
@@ -2619,10 +2539,9 @@ updateCapUI();
 
 if (!P.streamUrl && (!P.detailPath || !P.subjectId)) {
   failPlayback("Missing URL parameters", "Open this page from the catalog.");
-  hideAdGate();
 } else {
   playerLoading.hidden = true;
-  document.getElementById("adGateBtn").addEventListener("click", startWithAd);
+  startPlayback({ isRetry: false });
 }
 </script>
 </body>
