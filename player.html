@@ -2540,7 +2540,6 @@ updateCapUI();
 if (!P.streamUrl && (!P.detailPath || !P.subjectId)) {
   failPlayback("Missing URL parameters", "Open this page from the catalog.");
 } else {
-  playerLoading.hidden = true;
   startPlayback({ isRetry: false });
 }
 </script>
