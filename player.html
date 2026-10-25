@@ -2300,6 +2300,13 @@ function deselectCaption() {
 async function selectCaption(idx) {
   const cap = player.captions[idx];
   if (!cap) return;
+
+  // FIX 1: Update UI/state IMMEDIATELY so the menu visually reflects
+  // the selection even before (or if) the network fetch completes.
+  player.captionIndex = idx;
+  capLabel.textContent = (cap.name || "CC").toUpperCase().slice(0, 8);
+  buildCaptionMenu();
+
   try {
     let text = captionCache.get(idx);
     if (!text) {
@@ -2313,13 +2320,15 @@ async function selectCaption(idx) {
       }
       captionCache.set(idx, text);
     }
-    // CRITICAL: set captionIndex BEFORE applyCaptionTrack so that any
-    // synchronous render during `video.appendChild(track)` sees the right index.
-    player.captionIndex = idx;
     applyCaptionTrack(text, cap.name);
-    capLabel.textContent = (cap.name || "CC").toUpperCase().slice(0, 8);
+  } catch (e) {
+    // FIX 2: Surface fetch failures instead of swallowing them silently.
+    console.warn("[caption] load failed:", e && e.message);
+    showFeedback("Subtitle failed to load");
+    player.captionIndex = -1;
+    capLabel.textContent = "CC";
     buildCaptionMenu();
-  } catch (e) { /* ignore */ }
+  }
 }
 
 function removeCaptionTrack() {
@@ -2333,46 +2342,64 @@ let lastCueHtml = "";
 
 function applyCaptionTrack(vttText, label) {
   removeCaptionTrack();
-  const blob = new Blob([vttText], { type: "text/vtt;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const track = document.createElement("track");
-  track.kind = "subtitles";
-  track.label = label || "Subtitle";
-  track.srclang = "en";
-  track.src = url;
-  track.default = false;
-  video.appendChild(track);
-  player.captionTrackEl = track;
-  player.captionBlobUrl = url;
 
-  let applied = false;
+  let track, blobUrl;
+  try {
+    const blob = new Blob([vttText], { type: "text/vtt;charset=utf-8" });
+    blobUrl = URL.createObjectURL(blob);
+    track = document.createElement("track");
+    track.kind = "subtitles";
+    track.label = label || "Subtitle";
+    track.srclang = "en";
+    track.src = blobUrl;
+    track.default = false;
+    video.appendChild(track);
+    player.captionTrackEl = track;
+    player.captionBlobUrl = blobUrl;
+  } catch (e) {
+    console.warn("[caption] apply failed:", e && e.message);
+    return;
+  }
+
+  // FIX 3: Robust activation loop. The old version set a flag too early
+  // and abandoned retries while the track was still loading. This one
+  // keeps polling until readyState >= 2 (LOADED), then does one final
+  // render in case `cuechange` was missed.
+  let bound = false;
   let attempts = 0;
-  const setupTrack = () => {
-    if (applied) return;
-    attempts++;
+  let finalDone = false;
+  const MAX_ATTEMPTS = 100;
+
+  const activate = () => {
+    if (attempts++ >= MAX_ATTEMPTS) return;
+    if (player.captionTrackEl !== track) return; // superseded by a newer track
     const tt = track.track;
     if (!tt) {
-      // Not populated yet — retry shortly (rare, but some browsers delay it).
-      if (attempts < 30) setTimeout(setupTrack, 100);
+      setTimeout(activate, 50);
       return;
     }
-    applied = true;
-    if (!tt._cueChangeBound) {
-      tt._cueChangeBound = true;
+    if (!bound) {
+      bound = true;
       tt.addEventListener("cuechange", renderCues);
     }
-    if (tt.mode !== "hidden" && tt.mode !== "showing") {
-      try { tt.mode = "hidden"; } catch (_) {}
-    }
+    try {
+      if (tt.mode !== "hidden") tt.mode = "hidden";
+    } catch (_) {}
     renderCues({ target: tt });
-    // If the track hasn't finished loading yet, keep trying to render
-    // (activeCues will be populated once readyState hits 2).
-    if (tt.readyState < 2 && attempts < 30) {
-      setTimeout(setupTrack, 150);
+    if (tt.readyState < 2) {
+      setTimeout(activate, 100);
+    } else if (!finalDone) {
+      finalDone = true;
+      setTimeout(() => {
+        if (player.captionTrackEl !== track) return;
+        const t2 = track.track;
+        if (t2) renderCues({ target: t2 });
+      }, 200);
     }
   };
-  track.addEventListener("load", setupTrack, { once: true });
-  setTimeout(setupTrack, 50);
+
+  track.addEventListener("load", activate, { once: true });
+  activate();
 }
 
 function renderCues(e) {
@@ -2416,7 +2443,9 @@ video.addEventListener("timeupdate", () => {
   const trackEl = player.captionTrackEl;
   if (!trackEl || !trackEl.track) return;
   const tt = trackEl.track;
-  if (tt.mode !== "hidden") return;
+  if (tt.mode !== "hidden") {
+    try { tt.mode = "hidden"; } catch (_) {}
+  }
   renderCues({ target: tt });
 });
 video.addEventListener("seeked", () => {
@@ -2424,7 +2453,9 @@ video.addEventListener("seeked", () => {
   const trackEl = player.captionTrackEl;
   if (!trackEl || !trackEl.track) return;
   const tt = trackEl.track;
-  if (tt.mode !== "hidden") return;
+  if (tt.mode !== "hidden") {
+    try { tt.mode = "hidden"; } catch (_) {}
+  }
   renderCues({ target: tt });
 });
 
