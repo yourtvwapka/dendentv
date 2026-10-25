@@ -996,7 +996,7 @@ const player = {
 };
 
 /* ═══════════ CAPTION CACHE ═══════════ */
-const captionCache = new Map();  // idx -> vttText
+const captionCache = new Map();
 
 function proxied(realUrl, referer, cookie) {
   let u = PROXY_URL + "/?url=" + encodeURIComponent(realUrl)
@@ -2313,8 +2313,10 @@ async function selectCaption(idx) {
       }
       captionCache.set(idx, text);
     }
-    applyCaptionTrack(text, cap.name);
+    // CRITICAL: set captionIndex BEFORE applyCaptionTrack so that any
+    // synchronous render during `video.appendChild(track)` sees the right index.
     player.captionIndex = idx;
+    applyCaptionTrack(text, cap.name);
     capLabel.textContent = (cap.name || "CC").toUpperCase().slice(0, 8);
     buildCaptionMenu();
   } catch (e) { /* ignore */ }
@@ -2344,18 +2346,33 @@ function applyCaptionTrack(vttText, label) {
   player.captionBlobUrl = url;
 
   let applied = false;
+  let attempts = 0;
   const setupTrack = () => {
     if (applied) return;
+    attempts++;
     const tt = track.track;
-    if (!tt) return;
-    if (tt.readyState === 3) return;
+    if (!tt) {
+      // Not populated yet — retry shortly (rare, but some browsers delay it).
+      if (attempts < 30) setTimeout(setupTrack, 100);
+      return;
+    }
     applied = true;
-    tt.addEventListener("cuechange", renderCues);
-    tt.mode = "hidden";
+    if (!tt._cueChangeBound) {
+      tt._cueChangeBound = true;
+      tt.addEventListener("cuechange", renderCues);
+    }
+    if (tt.mode !== "hidden" && tt.mode !== "showing") {
+      try { tt.mode = "hidden"; } catch (_) {}
+    }
     renderCues({ target: tt });
+    // If the track hasn't finished loading yet, keep trying to render
+    // (activeCues will be populated once readyState hits 2).
+    if (tt.readyState < 2 && attempts < 30) {
+      setTimeout(setupTrack, 150);
+    }
   };
   track.addEventListener("load", setupTrack, { once: true });
-  setTimeout(setupTrack, 300);
+  setTimeout(setupTrack, 50);
 }
 
 function renderCues(e) {
@@ -2393,7 +2410,7 @@ function renderCues(e) {
   captionOverlay.hidden = false;
 }
 
-/* Fallback render: if `cuechange` doesn't fire (some browsers), re-render on time/seek changes */
+/* Fallback render on timeupdate / seek in case cuechange doesn't fire */
 video.addEventListener("timeupdate", () => {
   if (player.captionIndex === -1) return;
   const trackEl = player.captionTrackEl;
