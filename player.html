@@ -17,8 +17,8 @@
   img { display:block; }
 
   .player { position:fixed; inset:0; background:#000; }
-  .player-stage { position:absolute; inset:0; overflow:hidden; background:#000; }
-  .player video { width:100%; height:100%; object-fit:contain; background:#000; display:block; }
+  .player-stage { position:absolute; inset:0; overflow:hidden; background:#000; touch-action:none; }
+  .player video { width:100%; height:100%; object-fit:contain; background:#000; display:block; touch-action:none; }
 
   .player-ui {
     position:absolute; inset:0;
@@ -40,6 +40,37 @@
     backdrop-filter:blur(8px);
   }
   .player-feedback.show { opacity:1; }
+
+  /* ═══════════ SWIPE HUD ═══════════ */
+  .swipe-hud {
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%) scale(.95);
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    padding:14px 20px; border-radius:14px;
+    background:rgba(0,0,0,.78); color:#fff;
+    pointer-events:none; z-index:5;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    min-width:130px;
+    opacity:0;
+    transition:opacity .15s ease, transform .15s ease;
+    box-shadow:0 8px 28px rgba(0,0,0,.5);
+  }
+  .swipe-hud.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  .swipe-hud-icon { width:28px; height:28px; fill:#fff; }
+  .swipe-hud-bar {
+    width:110px; height:6px; border-radius:3px;
+    background:rgba(255,255,255,.22); overflow:hidden;
+  }
+  .swipe-hud-fill {
+    height:100%; background:var(--accent); width:0%;
+    border-radius:3px;
+    transition:width .06s linear;
+  }
+  .swipe-hud-value {
+    font-size:14px; font-weight:700;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-.2px;
+  }
 
   .frame-nav-btn {
     position:absolute;
@@ -270,7 +301,7 @@
     width:14px; height:14px; border-radius:50%;
     background:#fff; border:2px solid var(--accent);
   }
-  .av-row .val { font-size:11.5px; color:#8a8a94; min-width:38px; text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
+  .av-row .val { font-size:11.5px; color:#8a8a94; min-width:42px; text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
   .av-divider { height:1px; background:#2a2a33; margin:-4px 0; }
 
   .player-overlay {
@@ -580,6 +611,9 @@
     .frame-seek-btn svg { width:20px; height:20px; }
     .frame-seek-btn .seek-label { font-size:8px; bottom:5px; }
 
+    .swipe-hud { padding:12px 16px; min-width:115px; }
+    .swipe-hud-bar { width:95px; }
+
     .drawer { width:88vw; }
     .drawer-body { padding:14px 16px 22px; }
   }
@@ -594,6 +628,12 @@
     <div class="caption-overlay" id="captionOverlay" hidden></div>
 
     <div class="player-feedback" id="playerFeedback"></div>
+
+    <div class="swipe-hud" id="swipeHud">
+      <svg class="swipe-hud-icon" id="swipeHudIcon" viewBox="0 0 24 24"><path d=""/></svg>
+      <div class="swipe-hud-bar"><div class="swipe-hud-fill" id="swipeHudFill"></div></div>
+      <div class="swipe-hud-value" id="swipeHudValue">100%</div>
+    </div>
 
     <div class="player-ui" id="playerUI">
       <div class="player-top">
@@ -697,7 +737,7 @@
             <div class="av-panel" id="avPanel" hidden>
               <div class="av-row">
                 <svg class="av-icon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
-                <input type="range" id="volume" min="0" max="1" step="0.01" value="1" />
+                <input type="range" id="volume" min="0" max="3" step="0.01" value="1" />
                 <span class="val" id="volVal">100%</span>
               </div>
               <div class="av-divider"></div>
@@ -850,7 +890,7 @@ const ATTEMPT_TIMEOUT_MS = 15000;
 const TOTAL_TIMEOUT_MS = 60000;
 const IDLE_MS = 3000;
 
-/* ═══════════ LOGGING (silent no-op, keeps console clean) ═══════════ */
+/* ═══════════ LOGGING (silent no-op) ═══════════ */
 function logPush() {}
 
 function escapeHtml(s) {
@@ -911,6 +951,11 @@ const drawerEyebrow = document.getElementById("drawerEyebrow");
 const capSettingsPanel = document.getElementById("capSettingsPanel");
 const capSettingsBackdrop = document.getElementById("capSettingsBackdrop");
 const capSettingsPreview = document.getElementById("capSettingsPreview");
+
+const swipeHud = document.getElementById("swipeHud");
+const swipeHudFill = document.getElementById("swipeHudFill");
+const swipeHudValue = document.getElementById("swipeHudValue");
+const swipeHudIcon = document.getElementById("swipeHudIcon");
 
 const ICON_PLAY = "M8 5v14l11-7z";
 const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z";
@@ -1852,7 +1897,201 @@ document.addEventListener("pointerdown", (e) => {
   wasIdleOnPointerDown = playerUI.classList.contains("idle");
 }, true);
 
+/* ═══════════ VOLUME / BRIGHTNESS (audio boost + HUD setters) ═══════════ */
+const volumeSlider = document.getElementById("volume");
+const volVal = document.getElementById("volVal");
+const brightSlider = document.getElementById("bright");
+const brightVal = document.getElementById("brightVal");
+const avPanel = document.getElementById("avPanel");
+const avWrap = document.getElementById("avWrap");
+
+let audioCtx = null;
+let gainNode = null;
+let mediaSourceNode = null;
+let volumeBoost = 1.0;   // 0 – 3 (0% – 300%)
+let brightness = 1.0;    // 0.2 – 2.0
+
+function ensureAudioGraph() {
+  if (audioCtx) {
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    return true;
+  }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    audioCtx = new AC();
+    mediaSourceNode = audioCtx.createMediaElementSource(video);
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = volumeBoost;
+    mediaSourceNode.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    video.volume = 1.0;
+    return true;
+  } catch (e) {
+    console.warn("[audio-graph] failed:", e && e.message);
+    audioCtx = null;
+    mediaSourceNode = null;
+    gainNode = null;
+    return false;
+  }
+}
+
+function setVolumeBoost(v) {
+  volumeBoost = Math.max(0, Math.min(3, v));
+
+  if (gainNode) {
+    // Graph exists — control via gain only
+    gainNode.gain.value = volumeBoost;
+    video.volume = 1.0;
+  } else if (volumeBoost > 1.0) {
+    // Need boost — create graph
+    if (ensureAudioGraph() && gainNode) {
+      gainNode.gain.value = volumeBoost;
+      video.volume = 1.0;
+    } else {
+      // Graph creation failed — cap at 100%
+      volumeBoost = 1.0;
+      video.volume = 1.0;
+    }
+  } else {
+    // No graph needed — use native volume
+    video.volume = volumeBoost;
+  }
+
+  if (volumeBoost > 0 && video.muted) video.muted = false;
+  volumeSlider.value = volumeBoost;
+  volVal.textContent = Math.round(volumeBoost * 100) + "%";
+}
+
+function setBrightness(v) {
+  brightness = Math.max(0.2, Math.min(2.0, v));
+  video.style.filter = Math.abs(brightness - 1) < 0.01 ? "" : "brightness(" + brightness + ")";
+  brightSlider.value = brightness;
+  brightVal.textContent = Math.round(brightness * 100) + "%";
+}
+
+volumeSlider.addEventListener("input", () => setVolumeBoost(Number(volumeSlider.value)));
+brightSlider.addEventListener("input", () => setBrightness(Number(brightSlider.value)));
+
+document.getElementById("btnAv").addEventListener("click", (e) => {
+  e.stopPropagation();
+  avPanel.hidden = !avPanel.hidden;
+  resetIdleTimer();
+});
+document.addEventListener("click", (e) => {
+  if (!avWrap.contains(e.target)) avPanel.hidden = true;
+});
+
+/* ═══════════ SWIPE GESTURES (volume right / brightness left) ═══════════ */
+const SWIPE_DEADZONE = 8;
+const SWIPE_RANGE_PX = 200;
+
+const swipeState = {
+  active: false,
+  pointerId: null,
+  side: null, // 'left' | 'right'
+  startX: 0,
+  startY: 0,
+  startValue: 0,
+  engaged: false,
+};
+
+let lastSwipeEndTime = 0;
+
+const ICON_VOLUME = "M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.23v2.06a6.5 6.5 0 0 1 0 13.42v2.06A8.51 8.51 0 0 0 22.5 12 8.51 8.51 0 0 0 14 3.23z";
+const ICON_BRIGHT = "M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2v-2H2v2zm18 0h2v-2h-2v2zM11 2v2h2V2h-2zm0 18v2h2v-2h-2zM5.99 4.58L4.58 5.99l1.41 1.41 1.41-1.41-1.41-1.41zm12.02 12.02l-1.41 1.41 1.41 1.41 1.41-1.41-1.41-1.41zM18.01 4.58l-1.41 1.41 1.41 1.41 1.41-1.41-1.41-1.41zM6.01 16.6l-1.41 1.41 1.41 1.41 1.41-1.41-1.41-1.41z";
+
+function showSwipeHud(side, value, maxValue) {
+  swipeHudIcon.querySelector("path").setAttribute("d", side === "left" ? ICON_BRIGHT : ICON_VOLUME);
+  const pct = Math.max(0, Math.min(1, value / maxValue)) * 100;
+  swipeHudFill.style.width = pct + "%";
+  swipeHudValue.textContent = Math.round(value * 100) + "%";
+  swipeHud.classList.add("show");
+}
+function hideSwipeHud() {
+  swipeHud.classList.remove("show");
+}
+
+function getSwipeSide(clientX) {
+  const rect = playerStage.getBoundingClientRect();
+  return clientX < rect.left + rect.width / 2 ? "left" : "right";
+}
+
+playerStage.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  if (e.target.closest(IGNORE_SELECTORS)) return;
+  if (!playerStage.contains(e.target)) return;
+
+  swipeState.active = true;
+  swipeState.pointerId = e.pointerId;
+  swipeState.side = getSwipeSide(e.clientX);
+  swipeState.startX = e.clientX;
+  swipeState.startY = e.clientY;
+  swipeState.engaged = false;
+  swipeState.startValue = swipeState.side === "left" ? brightness : volumeBoost;
+}, { passive: true });
+
+playerStage.addEventListener("pointermove", (e) => {
+  if (!swipeState.active || e.pointerId !== swipeState.pointerId) return;
+
+  const dx = e.clientX - swipeState.startX;
+  const dy = e.clientY - swipeState.startY;
+
+  if (!swipeState.engaged) {
+    if (Math.abs(dy) < SWIPE_DEADZONE) return;
+    if (Math.abs(dy) <= Math.abs(dx)) {
+      // horizontal — cancel
+      swipeState.active = false;
+      swipeState.pointerId = null;
+      return;
+    }
+    swipeState.engaged = true;
+    clearTimeout(idleTimer);
+    try { playerStage.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+
+  try { e.preventDefault(); } catch (_) {}
+
+  const delta = -dy / SWIPE_RANGE_PX; // up = +, down = -
+
+  if (swipeState.side === "left") {
+    const min = 0.2, max = 2.0;
+    const newVal = Math.max(min, Math.min(max, swipeState.startValue + delta * (max - min)));
+    setBrightness(newVal);
+    showSwipeHud("left", newVal, max);
+  } else {
+    const min = 0, max = 3.0;
+    const newVal = Math.max(min, Math.min(max, swipeState.startValue + delta * (max - min)));
+    setVolumeBoost(newVal);
+    showSwipeHud("right", newVal, max);
+  }
+}, { passive: false });
+
+playerStage.addEventListener("pointerup", (e) => {
+  if (!swipeState.active || e.pointerId !== swipeState.pointerId) return;
+  const wasEngaged = swipeState.engaged;
+  swipeState.active = false;
+  swipeState.engaged = false;
+  swipeState.pointerId = null;
+  try { playerStage.releasePointerCapture(e.pointerId); } catch (_) {}
+  if (wasEngaged) {
+    lastSwipeEndTime = Date.now();
+    hideSwipeHud();
+    resetIdleTimer();
+  }
+});
+
+playerStage.addEventListener("pointercancel", (e) => {
+  if (!swipeState.active || e.pointerId !== swipeState.pointerId) return;
+  swipeState.active = false;
+  swipeState.engaged = false;
+  swipeState.pointerId = null;
+  hideSwipeHud();
+});
+
+/* ═══════════ STAGE CLICK (tap to play/pause) ═══════════ */
 playerStage.addEventListener("click", (e) => {
+  if (Date.now() - lastSwipeEndTime < 400) return;
   if (e.target.closest(IGNORE_SELECTORS)) return;
   if (wasIdleOnPointerDown) {
     wasIdleOnPointerDown = false;
@@ -1951,33 +2190,6 @@ function applySeek(e, update) {
   timeCur.textContent = formatTime(t);
   if (update) video.currentTime = t;
 }
-
-/* ═══════════ VOLUME / BRIGHTNESS ═══════════ */
-const volumeSlider = document.getElementById("volume");
-const volVal = document.getElementById("volVal");
-const brightSlider = document.getElementById("bright");
-const brightVal = document.getElementById("brightVal");
-const avPanel = document.getElementById("avPanel");
-const avWrap = document.getElementById("avWrap");
-document.getElementById("btnAv").addEventListener("click", (e) => {
-  e.stopPropagation();
-  avPanel.hidden = !avPanel.hidden;
-  resetIdleTimer();
-});
-document.addEventListener("click", (e) => {
-  if (!avWrap.contains(e.target)) avPanel.hidden = true;
-});
-volumeSlider.addEventListener("input", () => {
-  video.volume = Number(volumeSlider.value);
-  video.muted = video.volume === 0;
-  volVal.textContent = Math.round(video.volume * 100) + "%";
-});
-let brightness = 1;
-brightSlider.addEventListener("input", () => {
-  brightness = Number(brightSlider.value);
-  video.style.filter = Math.abs(brightness - 1) < 0.01 ? "" : "brightness(" + brightness + ")";
-  brightVal.textContent = Math.round(brightness * 100) + "%";
-});
 
 /* ═══════════ QUALITY MENU ═══════════ */
 function buildQualityMenu() {
@@ -2464,15 +2676,15 @@ document.addEventListener("keydown", (e) => {
     case " ": case "k": case "K": e.preventDefault(); togglePlay(); break;
     case "ArrowRight": e.preventDefault(); if (video.duration) video.currentTime = Math.min(video.duration, video.currentTime + 10); break;
     case "ArrowLeft": e.preventDefault(); if (video.duration) video.currentTime = Math.max(0, video.currentTime - 10); break;
-    case "ArrowUp": e.preventDefault(); video.volume = Math.min(1, video.volume + 0.05); volumeSlider.value = video.volume; break;
-    case "ArrowDown": e.preventDefault(); video.volume = Math.max(0, video.volume - 0.05); volumeSlider.value = video.volume; break;
+    case "ArrowUp": e.preventDefault(); setVolumeBoost(volumeBoost + 0.1); break;
+    case "ArrowDown": e.preventDefault(); setVolumeBoost(volumeBoost - 0.1); break;
     case "m": case "M": e.preventDefault(); video.muted = !video.muted; break;
     case "f": case "F": e.preventDefault(); toggleFullscreen(); break;
     case "b": case "B": e.preventDefault(); if (drawerOpen) closeDrawer(); else if (!drawerToggleBtn.hidden) openDrawer(); break;
     case "c": case "C": e.preventDefault(); if (!capWrap.hidden) { capList.hidden = !capList.hidden; capBtn.classList.toggle("open", !capList.hidden); } break;
     case "q": case "Q": e.preventDefault(); if (!qualityWrap.hidden) { qualityList.hidden = !qualityList.hidden; qualityBtn.classList.toggle("open", !qualityList.hidden); } break;
-    case "[": e.preventDefault(); brightSlider.value = Math.max(0.2, Number(brightSlider.value) - 0.1); brightSlider.dispatchEvent(new Event("input")); break;
-    case "]": e.preventDefault(); brightSlider.value = Math.min(2, Number(brightSlider.value) + 0.1); brightSlider.dispatchEvent(new Event("input")); break;
+    case "[": e.preventDefault(); setBrightness(brightness - 0.1); break;
+    case "]": e.preventDefault(); setBrightness(brightness + 0.1); break;
   }
 });
 
