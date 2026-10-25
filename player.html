@@ -2227,7 +2227,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-/* ═══════════ CAPTIONS — reliable <track> pipeline ═══════════ */
+/* ═══════════ CAPTIONS ═══════════ */
 async function loadCaptionsForCurrentStream() {
   const stream = player.streams[player.currentIdx];
   if (!stream || !stream.id || !stream.format) { capWrap.hidden = true; return; }
@@ -2251,6 +2251,39 @@ async function loadCaptionsForCurrentStream() {
     capWrap.hidden = player.captions.length === 0;
     if (player.captions.length) buildCaptionMenu();
   } catch (_) { capWrap.hidden = true; }
+}
+
+// Detect whether a response body actually contains subtitle content.
+function looksLikeSubtitle(text) {
+  if (!text || text.length < 15) return false;
+  return /-->/.test(text) || /WEBVTT/i.test(text);
+}
+
+// Fetch subtitle text. Try the CDN URL directly first (signed CloudFront URLs
+// normally allow CORS and only validate the signature/expiration), then fall
+// back to the proxy. Also salvage bodies that come back with a non-2xx status
+// if they still contain real subtitle content (the proxy sometimes 502s even
+// when the CDN responded fine).
+async function fetchSubtitleText(url, referer) {
+  // 1. Direct fetch — bypasses the proxy bug that returns 502 for this CDN.
+  try {
+    const direct = await fetch(url, { credentials: "omit", cache: "no-store" });
+    const text = await direct.text();
+    if (looksLikeSubtitle(text)) return text;
+  } catch (_) {
+    // CORS or network error — fall through to proxy
+  }
+
+  // 2. Proxy fallback — read the body even on non-2xx responses.
+  try {
+    const prox = await fetch(proxied(url, referer));
+    const text = await prox.text();
+    if (looksLikeSubtitle(text)) return text;
+    if (!prox.ok) throw new Error("HTTP " + prox.status);
+    throw new Error("Empty subtitle response");
+  } catch (e) {
+    throw new Error(e.message || "Subtitle fetch failed");
+  }
 }
 
 function buildCaptionMenu() {
@@ -2292,9 +2325,7 @@ async function selectCaption(idx) {
   if (!cap) return;
   try {
     const referer = absolute(BASE, "/movies/" + P.detailPath);
-    const res = await fetch(proxied(cap.url, referer));
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    let text = await res.text();
+    let text = await fetchSubtitleText(cap.url, referer);
     text = text.replace(/^\uFEFF/, "");
     if (!/^\s*WEBVTT/i.test(text)) {
       text = "WEBVTT\n\n" + text
