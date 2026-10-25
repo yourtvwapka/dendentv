@@ -206,6 +206,12 @@
   .menu-list button .check { font-size:11px; opacity:0; flex-shrink:0; }
   .menu-list button.active .check { opacity:1; }
 
+  /* Audio menu opens upward since it lives in the bottom bar */
+  #audioWrap .menu-list {
+    top: auto;
+    bottom: calc(100% + 6px);
+  }
+
   .player-bottom {
     position:absolute; left:0; right:0; bottom:0;
     padding:60px 22px 20px;
@@ -428,22 +434,6 @@
   }
   .drawer-empty { text-align:center; color:#6b7280; font-size:13px; padding:40px 20px; }
 
-  .log-panel { position:fixed; inset:0; z-index:600; background:rgba(13,13,15,.97); display:flex; flex-direction:column; }
-  .log-panel[hidden] { display:none; }
-  .log-head { display:flex; align-items:center; gap:6px; padding:10px 12px; border-bottom:1px solid var(--line); background:#101014; flex-wrap:wrap; }
-  .log-head h3 { font-size:13px; flex:0 0 auto; font-weight:700; min-width:80px; }
-  .log-btn { background:var(--card-2); border:1px solid var(--line); color:#fff; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:700; cursor:pointer; }
-  .log-btn.log-close { background:var(--accent); border-color:var(--accent); }
-  .log-body { flex:1; overflow-y:auto; padding:8px 10px 40px; font-family:ui-monospace,monospace; font-size:11.5px; line-height:1.5; }
-  .log-empty { text-align:center; color:var(--muted); padding:60px 24px; font-size:13px; }
-  .log-entry { display:flex; gap:8px; padding:7px 8px; border-radius:6px; margin-bottom:3px; background:rgba(255,255,255,.02); border-left:3px solid #444; font-family:ui-monospace,monospace; font-size:11.5px; }
-  .log-entry.LOG { border-left-color:#555; color:#c3c3cd; }
-  .log-entry.WARN { border-left-color:#eab308; color:#fde047; background:rgba(234,179,8,.06); }
-  .log-entry.ERR { border-left-color:var(--accent); color:#fca5a5; background:rgba(229,9,20,.1); font-weight:600; }
-  .log-entry .log-time { color:#6b7280; flex-shrink:0; font-size:10.5px; }
-  .log-entry .log-lvl { color:#4b5563; flex-shrink:0; font-size:10px; font-weight:700; }
-  .log-entry .log-msg { flex:1; word-break:break-all; white-space:pre-wrap; min-width:0; }
-
   .cap-settings-backdrop {
     position:fixed; inset:0; z-index:800;
     background:rgba(0,0,0,.72);
@@ -574,6 +564,7 @@
     .icon-btn { width:36px; height:36px; }
     .icon-btn.small { width:34px; height:34px; }
     .menu-btn { padding:9px 10px; font-size:12px; max-width:120px; }
+    #audioWrap .menu-btn { padding:8px 9px; font-size:11.5px; max-width:90px; }
     .time { font-size:11.5px; padding:0 2px; }
     .player-title { font-size:14px; }
     .player-sub { font-size:11.5px; }
@@ -634,10 +625,6 @@
           <svg viewBox="0 0 24 24"><path d="M20 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 19H5V5h4v14zm10 0h-8V5h8v14z"/></svg>
         </button>
 
-        <button class="icon-btn" id="btnNetInspector" title="Show logs (L)">
-          <svg viewBox="0 0 24 24"><path d="M3 3h18v2H3zm0 4h18v2H3zm0 4h18v2H3zm0 4h12v2H3zm14 0v6l4-3z"/></svg>
-        </button>
-
         <button class="icon-btn" id="playerHome" title="Home">
           <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
         </button>
@@ -687,12 +674,14 @@
           <button class="icon-btn" id="btnPlay" title="Play / Pause (Space)">
             <svg id="btnPlayIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </button>
-          <button class="icon-btn" id="btnRewind" title="-10s">
-            <svg viewBox="0 0 24 24"><path d="M12.5 3a9 9 0 1 0 6.36 15.36l-1.42-1.42A7 7 0 1 1 12.5 5c.55 0 1.08.06 1.59.18L11.5 7.77V6.44L8.34 9.6 11.5 12.77v-1.33l3.32-3.32.07-.07A9 9 0 0 0 12.5 3z"/></svg>
-          </button>
-          <button class="icon-btn" id="btnForward" title="+10s">
-            <svg viewBox="0 0 24 24"><path d="M11.5 3a9 9 0 1 1-6.36 15.36l1.42-1.42A7 7 0 1 0 11.5 5c-.55 0-1.08.06-1.59.18l2.59 2.59v-1.33l3.16 3.16-3.16 3.17v-1.33L9.18 8.11l-.07-.07A9 9 0 0 1 11.5 3z"/></svg>
-          </button>
+
+          <div class="menu-wrap" id="audioWrap" hidden>
+            <button class="menu-btn" id="audioBtn" title="Audio track">
+              <span class="label" id="audioLabel">Audio</span>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div class="menu-list" id="audioList" hidden></div>
+          </div>
 
           <div class="time">
             <span id="timeCur">0:00</span>
@@ -745,7 +734,6 @@
       <div class="err-msg" id="playerErrorMsg"></div>
       <div class="error-actions">
         <button class="btn btn-primary" id="playerRetry">Retry</button>
-        <button class="btn" id="playerShowLogs2">Show Logs</button>
         <button class="btn" id="playerBack2">Back</button>
       </div>
       <div class="error-detail" id="playerErrorDetail" hidden></div>
@@ -766,16 +754,6 @@
     <div class="drawer-loading"><div class="spinner"></div>Loading…</div>
   </div>
 </aside>
-
-<div id="logPanel" class="log-panel" hidden>
-  <div class="log-head">
-    <h3>Logs</h3>
-    <button class="log-btn" id="logCopyAll">Copy All</button>
-    <button class="log-btn" id="logClear">Clear</button>
-    <button class="log-btn log-close" id="logClose">✕</button>
-  </div>
-  <div class="log-body" id="logBody"><div class="log-empty">No logs yet.</div></div>
-</div>
 
 <!-- ═══════════ CAPTION SETTINGS PANEL ═══════════ -->
 <div class="cap-settings-backdrop" id="capSettingsBackdrop" hidden></div>
@@ -872,50 +850,13 @@ const ATTEMPT_TIMEOUT_MS = 15000;
 const TOTAL_TIMEOUT_MS = 60000;
 const IDLE_MS = 3000;
 
-/* ═══════════ LOGGING ═══════════ */
-const LOG = [];
-const logBodyEl = document.getElementById("logBody");
-const logPanelEl = document.getElementById("logPanel");
+/* ═══════════ LOGGING (silent no-op, keeps console clean) ═══════════ */
+function logPush() {}
 
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 }
-function nowTime() {
-  return new Date().toLocaleTimeString("en-GB", { hour12: false });
-}
-function logPush(level, ...args) {
-  const text = args.map(a => typeof a === "object" ? JSON.stringify(a) : String(a)).join(" ");
-  LOG.push({ t: nowTime(), l: level, m: text });
-  if (LOG.length > 2000) LOG.shift();
-  if (!logPanelEl.hidden) renderLogs();
-}
-const _log = console.log.bind(console);
-const _warn = console.warn.bind(console);
-const _err = console.error.bind(console);
-console.log = (...a) => { _log(...a); logPush("LOG", ...a); };
-console.warn = (...a) => { _warn(...a); logPush("WARN", ...a); };
-console.error = (...a) => { _err(...a); logPush("ERR", ...a); };
-
-function renderLogs() {
-  if (!LOG.length) {
-    logBodyEl.innerHTML = '<div class="log-empty">No logs yet.</div>';
-    return;
-  }
-  logBodyEl.innerHTML = LOG.map(e =>
-    `<div class="log-entry ${e.l}"><span class="log-time">${e.t}</span><span class="log-lvl">${e.l}</span><span class="log-msg">${escapeHtml(e.m)}</span></div>`
-  ).join("");
-  logBodyEl.scrollTop = logBodyEl.scrollHeight;
-}
-document.getElementById("logClose").addEventListener("click", () => { logPanelEl.hidden = true; });
-document.getElementById("logCopyAll").addEventListener("click", () => {
-  const txt = LOG.map(e => `[${e.t}] ${e.l} ${e.m}`).join("\n");
-  navigator.clipboard.writeText(txt).then(() => {
-    document.getElementById("logCopyAll").textContent = "Copied!";
-    setTimeout(() => document.getElementById("logCopyAll").textContent = "Copy All", 1500);
-  });
-});
-document.getElementById("logClear").addEventListener("click", () => { LOG.length = 0; renderLogs(); });
 
 /* ═══════════ DOM REFS ═══════════ */
 const playerStage = document.getElementById("playerStage");
@@ -940,6 +881,10 @@ const capWrap = document.getElementById("capWrap");
 const capBtn = document.getElementById("capBtn");
 const capList = document.getElementById("capList");
 const capLabel = document.getElementById("capLabel");
+const audioWrap = document.getElementById("audioWrap");
+const audioBtn = document.getElementById("audioBtn");
+const audioList = document.getElementById("audioList");
+const audioLabel = document.getElementById("audioLabel");
 const seekEl = document.getElementById("seek");
 const seekBuffer = document.getElementById("seekBuffer");
 const seekPlayed = document.getElementById("seekPlayed");
@@ -974,7 +919,7 @@ const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z";
 const player = {
   streams: [],
   currentIdx: 0,
-  preferredQuality: null,   // null = auto (720→480→highest); number = locked tier
+  preferredQuality: null,   // null = auto (480p → highest); number = locked tier
   hls: null,
   signCookie: "",
   triedUrls: new Set(),
@@ -997,6 +942,14 @@ const player = {
   currentEp: Number(P.ep) || 1,
   seriesLoading: false,
   seriesLoaded: false,
+  audio: {
+    tracks: [],
+    currentIdx: 0,
+    fetched: false,
+    fetching: false,
+    pendingSeek: null,
+    pendingPlay: null,
+  },
 };
 
 function proxied(realUrl, referer, cookie) {
@@ -1052,11 +1005,9 @@ function pickStreamIndex(streams, preferredQuality) {
     return 0;
   }
 
-  // Auto: 720p → 480p → highest
-  for (const target of [720, 480]) {
-    const idx = streams.findIndex(s => parseInt(s.quality, 10) === target);
-    if (idx >= 0) return idx;
-  }
+  // Auto default: 480p first, otherwise highest available (streams sorted desc)
+  const idx480 = streams.findIndex(s => parseInt(s.quality, 10) === 480);
+  if (idx480 >= 0) return idx480;
   return 0;
 }
 
@@ -1190,17 +1141,119 @@ async function fetchSeriesInfo() {
     player.detailRelated = findRelatedSubjects(resolved, P.mainDetailPath).filter(r => r.isTV === isSeries);
     player.seriesLoaded = true;
 
-    logPush("LOG", "[series] loaded " + player.seasons.length + " seasons, " + player.detailRelated.length + " related");
-
     drawerToggleBtn.hidden = false;
     updatePrevNext();
     if (drawerOpen) renderDrawerContent();
   } catch (e) {
-    logPush("WARN", "[series] failed:", e.message);
+    // ignore
   } finally {
     player.seriesLoading = false;
   }
 }
+
+/* ═══════════ AUDIO TRACKS FETCH ═══════════ */
+async function fetchAudioTracks() {
+  if (player.audio.fetched || player.audio.fetching) return;
+  if (!P.mainDetailPath) return;
+  player.audio.fetching = true;
+  try {
+    const realUrl = absolute(BASE, "/moviesDetail/" + P.mainDetailPath);
+    const res = await fetch(proxied(realUrl));
+    if (!res.ok) return;
+    const resolved = extractNuxt3Payload(await res.text());
+    if (!resolved) return;
+    const detail = findDetailRoot(resolved);
+    if (!detail) return;
+    const subject = detail.subject;
+    const dubs = Array.isArray(subject.dubs) ? subject.dubs : [];
+
+    const tracks = [{
+      name: P.lang || "Original Audio",
+      subjectId: String(P.subjectId),
+      detailPath: String(P.detailPath),
+      lang: P.lang || "Original Audio",
+    }];
+    for (const dub of dubs) {
+      if (!dub || !dub.subjectId) continue;
+      if (String(dub.subjectId) === String(P.subjectId)) continue;
+      tracks.push({
+        name: dub.lanName || dub.lan || "Audio",
+        subjectId: String(dub.subjectId),
+        detailPath: dub.detailPath || P.detailPath,
+        lang: dub.lanName || dub.lan || "",
+      });
+    }
+
+    player.audio.tracks = tracks;
+    const curIdx = tracks.findIndex(t => String(t.subjectId) === String(P.subjectId));
+    player.audio.currentIdx = curIdx >= 0 ? curIdx : 0;
+    player.audio.fetched = true;
+    buildAudioMenu();
+  } catch (_) {
+    // ignore
+  } finally {
+    player.audio.fetching = false;
+  }
+}
+
+/* ═══════════ AUDIO MENU ═══════════ */
+function buildAudioMenu() {
+  if (player.audio.tracks.length <= 1) { audioWrap.hidden = true; return; }
+  audioWrap.hidden = false;
+  audioList.innerHTML = player.audio.tracks.map((t, i) =>
+    `<button type="button" data-a="${i}"${i === player.audio.currentIdx ? ' class="active"' : ''}><span>${escapeHtml(t.name)}</span><span class="check">✓</span></button>`
+  ).join("");
+  audioList.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.a);
+      audioList.hidden = true;
+      audioBtn.classList.remove("open");
+      if (idx === player.audio.currentIdx) return;
+      switchAudio(idx);
+    });
+  });
+  const cur = player.audio.tracks[player.audio.currentIdx];
+  audioLabel.textContent = cur?.name || "Audio";
+}
+
+function switchAudio(idx) {
+  const track = player.audio.tracks[idx];
+  if (!track) return;
+
+  const savedTime = video.currentTime || 0;
+  const wasPlaying = !video.paused;
+
+  P.subjectId = track.subjectId;
+  P.detailPath = track.detailPath;
+  P.lang = track.lang;
+  player.audio.currentIdx = idx;
+
+  player.streams = [];
+  player.triedUrls.clear();
+  player.apiRefreshes = 0;
+  player.attemptCount = 0;
+
+  player.audio.pendingSeek = savedTime;
+  player.audio.pendingPlay = wasPlaying;
+
+  buildAudioMenu();
+  playerLoading.hidden = false;
+  playerError.hidden = true;
+  startPlayback({ isRetry: false });
+}
+
+audioBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  audioList.hidden = !audioList.hidden;
+  audioBtn.classList.toggle("open", !audioList.hidden);
+  resetIdleTimer();
+});
+document.addEventListener("click", (e) => {
+  if (!audioWrap.contains(e.target)) {
+    audioList.hidden = true;
+    audioBtn.classList.remove("open");
+  }
+});
 
 function getPrevNextEp() {
   const seasons = player.seasons;
@@ -1244,7 +1297,6 @@ function updatePrevNext() {
 /* ═══════════ EPISODE NAVIGATION ═══════════ */
 function navigateToEpisode(se, ep) {
   if (player.busy) return;
-  logPush("LOG", "[nav] → S" + se + "E" + ep);
 
   P.se = String(se);
   P.ep = String(ep);
@@ -1283,6 +1335,8 @@ function resetPlayerForNewEpisode() {
   capWrap.hidden = true;
   qualityWrap.hidden = true;
   qualityList.hidden = true;
+  player.audio.pendingSeek = null;
+  player.audio.pendingPlay = null;
   seekPlayed.style.width = "0%";
   seekKnob.style.left = "0%";
   seekBuffer.style.width = "0%";
@@ -1312,7 +1366,6 @@ async function fetchStreams(signal) {
 
   const realPlayUrl = absolute(BASE, "/wefeed-h5api-bff/subject/play?" + playParams);
   const fetchUrl = proxied(realPlayUrl, referer);
-  logPush("LOG", "[play] fetching:", playParams.toString());
 
   const res = await fetch(fetchUrl, { signal });
   const body = await res.clone().text();
@@ -1369,17 +1422,7 @@ function normalizeStreams(data, pageReferer) {
     return bi - ai;
   });
 
-  // ═══ IMPORTANT: We do NOT cap streams by playConfig.maxResolution ═══
-  // The API often reports maxResolution=480, which was hiding 1080p/4K tiers
-  // from the user. We surface every stream the API returns so users can pick
-  // any quality. Default selection (720p → 480p → highest) is handled
-  // separately in startPlayback() via pickStreamIndex().
-  const maxRes = Number(d?.playConfig?.maxResolution) || 0;
-  if (maxRes > 0) {
-    logPush("LOG", "[play] playConfig.maxResolution=" + maxRes + "p (ignored — showing all tiers)");
-  }
-
-  logPush("LOG", "[play] got " + streams.length + " streams: " + streams.map(s => s.quality).join(", "));
+  // All tiers are kept so the user can pick any quality from the menu.
   return { streams, signCookie };
 }
 
@@ -1397,7 +1440,6 @@ async function startPlayback(opts = {}) {
 
   player.totalTimer = setTimeout(() => {
     if (video.readyState === 0 || video.ended) {
-      logPush("ERR", "[timeout] total elapsed");
       failPlayback("Stream timed out", "The video didn't start within " + (TOTAL_TIMEOUT_MS / 1000) + " seconds.", { reason: "total_timeout" });
     }
   }, TOTAL_TIMEOUT_MS);
@@ -1407,6 +1449,7 @@ async function startPlayback(opts = {}) {
   player.abort = new AbortController();
 
   if (!player.seriesLoaded && !player.seriesLoading) fetchSeriesInfo();
+  if (!player.audio.fetched && !player.audio.fetching) fetchAudioTracks();
 
   try {
     if (P.streamUrl) {
@@ -1426,10 +1469,6 @@ async function startPlayback(opts = {}) {
       player.signCookie = signCookie || "";
 
       player.currentIdx = pickStreamIndex(streams, player.preferredQuality);
-      const chosen = streams[player.currentIdx];
-      logPush("LOG", "[quality] preferred=" +
-        (player.preferredQuality == null ? "auto (720→480→highest)" : player.preferredQuality + "p") +
-        " → chose " + chosen.quality + "p (idx " + player.currentIdx + ")");
 
       buildQualityMenu();
       loadCaptionsForCurrentStream();
@@ -1438,7 +1477,6 @@ async function startPlayback(opts = {}) {
     await tryStream(player.streams[player.currentIdx], player.currentIdx);
   } catch (err) {
     if (err.name === "AbortError") return;
-    logPush("ERR", "[play] start failed:", err.message);
     failPlayback("Could not start playback", err.message || "Unknown error");
   }
 }
@@ -1450,7 +1488,6 @@ async function tryStream(stream, idx) {
   const label = stream.quality && stream.quality !== "Auto" ? stream.quality : "Auto";
 
   player.attemptCount++;
-  logPush("LOG", "[stream] attempt " + player.attemptCount + "/" + MAX_STREAM_ATTEMPTS + " → " + label + " (" + idx + "/" + total + ")");
 
   if (player.attemptCount > MAX_STREAM_ATTEMPTS) {
     return failPlayback("Too many failed attempts", "Tried " + MAX_STREAM_ATTEMPTS + " streams without success.");
@@ -1462,7 +1499,6 @@ async function tryStream(stream, idx) {
 
   player.attemptTimer = setTimeout(() => {
     if (video.readyState === 0) {
-      logPush("WARN", "[stream] attempt timeout for " + label);
       advanceToNextStream("Stream " + label + " timed out");
     }
   }, ATTEMPT_TIMEOUT_MS);
@@ -1480,7 +1516,6 @@ async function tryStream(stream, idx) {
     else await attachNative(url);
     buildQualityMenu();
   } catch (err) {
-    logPush("ERR", "[stream] attach failed:", err.message);
     advanceToNextStream(err.message || "Attach failed");
   }
 }
@@ -1494,8 +1529,9 @@ function attachNative(url) {
       playerLoading.hidden = true;
       setRetryStatus("");
       loadingActions.hidden = true;
-      video.play().catch(() => {});
-      logPush("LOG", "[stream] native playback ready");
+      const shouldPlay = player.audio.pendingPlay !== false;
+      player.audio.pendingPlay = null;
+      if (shouldPlay) video.play().catch(() => {});
       resolve();
     };
     const onErr = () => {
@@ -1529,13 +1565,13 @@ async function attachHls(url) {
       playerLoading.hidden = true;
       setRetryStatus("");
       loadingActions.hidden = true;
-      video.play().catch(() => {});
-      logPush("LOG", "[hls] manifest parsed, playing");
+      const shouldPlay = player.audio.pendingPlay !== false;
+      player.audio.pendingPlay = null;
+      if (shouldPlay) video.play().catch(() => {});
       resolve();
     });
     hls.on(Hls.Events.ERROR, (evt, data) => {
       if (!data.fatal) return;
-      logPush("ERR", "[hls] fatal:", data.type, data.details);
       clearTimeout(player.attemptTimer);
       try { hls.destroy(); } catch (_) {}
       player.hls = null;
@@ -1563,19 +1599,16 @@ async function advanceToNextStream(reason) {
   player.busy = true;
   clearTimeout(player.attemptTimer);
   try {
-    logPush("LOG", "[stream] advancing (reason: " + (reason || "unknown") + ")");
     const total = player.streams.length;
     for (let i = 0; i < total; i++) {
       const nextIdx = (player.currentIdx + 1 + i) % total;
       const next = player.streams[nextIdx];
       if (!next || player.triedUrls.has(next.url)) continue;
-      logPush("LOG", "[stream] trying next stream #" + nextIdx);
       await tryStream(next, nextIdx);
       return;
     }
     if (player.apiRefreshes < MAX_API_REFRESHES) {
       player.apiRefreshes++;
-      logPush("LOG", "[stream] refreshing play API (" + player.apiRefreshes + "/" + MAX_API_REFRESHES + ")");
       setRetryStatus("Refreshing play API (" + player.apiRefreshes + "/" + MAX_API_REFRESHES + ")…", "warn");
       loadingText.textContent = "Refreshing stream tokens...";
       player.triedUrls.clear();
@@ -1589,12 +1622,10 @@ async function advanceToNextStream(reason) {
 
         player.currentIdx = pickStreamIndex(streams, player.preferredQuality);
         buildQualityMenu();
-        logPush("LOG", "[stream] API refresh returned " + streams.length + " fresh streams");
         await tryStream(streams[player.currentIdx], player.currentIdx);
         return;
-      } catch (e) { logPush("ERR", "[stream] API refresh failed:", e.message); }
+      } catch (e) { /* ignore */ }
     }
-    logPush("ERR", "[stream] giving up");
     failPlayback("All streams failed", "Tried " + player.attemptCount + " attempts across " + player.streams.length + " streams" + (player.apiRefreshes ? " (" + player.apiRefreshes + " API refreshes)" : "") + ".");
   } finally { player.busy = false; }
 }
@@ -1606,7 +1637,6 @@ function failPlayback(title, message, extra) {
   setRetryStatus("");
   playerLoading.hidden = true;
   loadingActions.hidden = true;
-  logPush("ERR", "[fail] " + title + " — " + message);
   playerError.hidden = false;
   playerErrorMsg.innerHTML = escapeHtml(message);
   if (extra || player.triedUrls.size) {
@@ -1632,7 +1662,6 @@ video.addEventListener("playing", () => {
   playerError.hidden = true;
   setRetryStatus("");
   loadingActions.hidden = true;
-  logPush("LOG", "[video] playing");
   showControls();
 });
 
@@ -1642,7 +1671,6 @@ video.addEventListener("waiting", () => {
 
 video.addEventListener("error", () => {
   const v = video.error;
-  if (v) logPush("WARN", "[video] MediaError code=" + v.code + " msg=" + (v.message || "?"));
   if (!playerLoading.hidden && !player.busy) {
     clearTimeout(player.attemptTimer);
     advanceToNextStream("video element error");
@@ -1653,7 +1681,6 @@ video.addEventListener("ended", () => {
   if (P.isSeries && player.seasons.length) {
     const { next } = getPrevNextEp();
     if (next) {
-      logPush("LOG", "[ended] auto-advance to S" + next.se + "E" + next.ep);
       navigateToEpisode(next.se, next.ep);
     }
   }
@@ -1804,7 +1831,7 @@ function resetIdleTimer() {
   clearTimeout(idleTimer);
   if (!video.paused) {
     idleTimer = setTimeout(() => {
-      if (!qualityList.hidden || !capList.hidden) return;
+      if (!qualityList.hidden || !capList.hidden || !audioList.hidden) return;
       if (!document.getElementById("avPanel").hidden) return;
       if (drawerOpen) return;
       if (!capSettingsPanel.hidden) return;
@@ -1839,7 +1866,7 @@ playerStage.addEventListener("click", (e) => {
 document.addEventListener("mousemove", showControls);
 document.addEventListener("pointerdown", showControls);
 
-/* ═══════════ FRAME BUTTONS ═══════════ */
+/* ═══════════ FRAME BUTTONS (center ±10s) ═══════════ */
 document.getElementById("frameRewind").addEventListener("click", (e) => {
   e.stopPropagation();
   if (!video.duration) return;
@@ -1881,7 +1908,13 @@ video.addEventListener("progress", () => {
   const end = video.buffered.end(video.buffered.length - 1);
   seekBuffer.style.width = (end / video.duration) * 100 + "%";
 });
-video.addEventListener("loadedmetadata", () => { timeDur.textContent = formatTime(video.duration); });
+video.addEventListener("loadedmetadata", () => {
+  timeDur.textContent = formatTime(video.duration);
+  if (player.audio.pendingSeek != null && isFinite(video.duration)) {
+    try { video.currentTime = Math.min(player.audio.pendingSeek, video.duration - 0.1); } catch (_) {}
+    player.audio.pendingSeek = null;
+  }
+});
 
 let scrubbing = false;
 seekEl.addEventListener("pointerdown", (e) => {
@@ -1966,9 +1999,12 @@ function buildQualityMenu() {
       player.triedUrls.clear();
       player.apiRefreshes = 0;
       player.attemptCount = 0;
+
+      player.audio.pendingSeek = video.currentTime || 0;
+      player.audio.pendingPlay = !video.paused;
+
       playerLoading.hidden = false;
       playerError.hidden = true;
-      logPush("LOG", "[quality] user selected " + (isNaN(q) ? "Auto" : q + "p"));
       startPlayback({ isRetry: true });
     });
   });
@@ -2059,7 +2095,7 @@ async function selectCaption(idx) {
     player.captionIndex = idx;
     capLabel.textContent = (cap.name || "CC").toUpperCase().slice(0, 8);
     buildCaptionMenu();
-  } catch (e) { logPush("ERR", "[cap] failed:", e.message); }
+  } catch (e) { /* ignore */ }
 }
 function removeCaptionTrack() {
   if (player.captionTrackEl) { try { player.captionTrackEl.remove(); } catch (_) {} player.captionTrackEl = null; }
@@ -2397,11 +2433,9 @@ function renderDrawerRelated() {
 
 /* ═══════════ PLAYER ACTIONS ═══════════ */
 document.getElementById("loadingSkip").addEventListener("click", () => {
-  logPush("LOG", "[user] skip to next stream");
   advanceToNextStream("user skipped");
 });
 document.getElementById("loadingGiveup").addEventListener("click", () => {
-  logPush("LOG", "[user] give up");
   failPlayback("Cancelled", "You stopped trying to play this stream.");
 });
 document.getElementById("playerRetry").addEventListener("click", () => {
@@ -2411,17 +2445,9 @@ document.getElementById("playerRetry").addEventListener("click", () => {
   player.streams = [];
   startPlayback({ isRetry: false });
 });
-document.getElementById("playerShowLogs2").addEventListener("click", () => {
-  logPanelEl.hidden = false;
-  renderLogs();
-});
 document.getElementById("playerBack2").addEventListener("click", () => {
   if (history.length > 1) history.back();
   else location.href = "index.html";
-});
-document.getElementById("btnNetInspector").addEventListener("click", () => {
-  logPanelEl.hidden = !logPanelEl.hidden;
-  if (!logPanelEl.hidden) renderLogs();
 });
 
 /* ═══════════ KEYBOARD ═══════════ */
@@ -2429,7 +2455,6 @@ document.addEventListener("keydown", (e) => {
   if (e.target.matches("input, select, textarea")) return;
   if (e.key === "Escape") {
     if (!capSettingsPanel.hidden) { closeCapSettings(); return; }
-    if (!logPanelEl.hidden) { logPanelEl.hidden = true; return; }
     if (drawerOpen) { closeDrawer(); return; }
     if (history.length > 1) history.back();
     else location.href = "index.html";
@@ -2444,7 +2469,6 @@ document.addEventListener("keydown", (e) => {
     case "m": case "M": e.preventDefault(); video.muted = !video.muted; break;
     case "f": case "F": e.preventDefault(); toggleFullscreen(); break;
     case "b": case "B": e.preventDefault(); if (drawerOpen) closeDrawer(); else if (!drawerToggleBtn.hidden) openDrawer(); break;
-    case "l": case "L": e.preventDefault(); logPanelEl.hidden = !logPanelEl.hidden; if (!logPanelEl.hidden) renderLogs(); break;
     case "c": case "C": e.preventDefault(); if (!capWrap.hidden) { capList.hidden = !capList.hidden; capBtn.classList.toggle("open", !capList.hidden); } break;
     case "q": case "Q": e.preventDefault(); if (!qualityWrap.hidden) { qualityList.hidden = !qualityList.hidden; qualityBtn.classList.toggle("open", !qualityList.hidden); } break;
     case "[": e.preventDefault(); brightSlider.value = Math.max(0.2, Number(brightSlider.value) - 0.1); brightSlider.dispatchEvent(new Event("input")); break;
@@ -2493,14 +2517,6 @@ document.getElementById("btnPip").addEventListener("click", async () => {
     if (document.pictureInPictureElement) await document.exitPictureInPicture();
     else await video.requestPictureInPicture();
   } catch (_) {}
-});
-document.getElementById("btnRewind").addEventListener("click", () => {
-  if (video.duration) video.currentTime = Math.max(0, video.currentTime - 10);
-  showFeedback("-10s");
-});
-document.getElementById("btnForward").addEventListener("click", () => {
-  if (video.duration) video.currentTime = Math.min(video.duration, video.currentTime + 10);
-  showFeedback("+10s");
 });
 
 /* ═══════════ NAVIGATION ═══════════ */
