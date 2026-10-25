@@ -41,7 +41,6 @@
   }
   .player-feedback.show { opacity:1; }
 
-  /* ═══════════ SWIPE HUD ═══════════ */
   .swipe-hud {
     position:absolute; top:50%; left:50%;
     transform:translate(-50%,-50%) scale(.95);
@@ -237,7 +236,6 @@
   .menu-list button .check { font-size:11px; opacity:0; flex-shrink:0; }
   .menu-list button.active .check { opacity:1; }
 
-  /* Audio menu opens upward since it lives in the bottom bar */
   #audioWrap .menu-list {
     top: auto;
     bottom: calc(100% + 6px);
@@ -964,7 +962,7 @@ const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z";
 const player = {
   streams: [],
   currentIdx: 0,
-  preferredQuality: null,   // null = auto (480p → highest); number = locked tier
+  preferredQuality: null,
   hls: null,
   signCookie: "",
   triedUrls: new Set(),
@@ -996,6 +994,9 @@ const player = {
     pendingPlay: null,
   },
 };
+
+/* ═══════════ CAPTION CACHE ═══════════ */
+const captionCache = new Map();  // idx -> vttText
 
 function proxied(realUrl, referer, cookie) {
   let u = PROXY_URL + "/?url=" + encodeURIComponent(realUrl)
@@ -1050,7 +1051,6 @@ function pickStreamIndex(streams, preferredQuality) {
     return 0;
   }
 
-  // Auto default: 480p first, otherwise highest available (streams sorted desc)
   const idx480 = streams.findIndex(s => parseInt(s.quality, 10) === 480);
   if (idx480 >= 0) return idx480;
   return 0;
@@ -1376,6 +1376,7 @@ function resetPlayerForNewEpisode() {
   player.busy = false;
   player.captions = [];
   player.captionIndex = -1;
+  captionCache.clear();
   removeCaptionTrack();
   capWrap.hidden = true;
   qualityWrap.hidden = true;
@@ -1458,7 +1459,6 @@ function normalizeStreams(data, pageReferer) {
     });
   }
 
-  // Sort descending by quality
   streams.sort((a, b) => {
     const ai = parseInt(a.quality, 10), bi = parseInt(b.quality, 10);
     if (isNaN(ai) && isNaN(bi)) return 0;
@@ -1467,7 +1467,6 @@ function normalizeStreams(data, pageReferer) {
     return bi - ai;
   });
 
-  // All tiers are kept so the user can pick any quality from the menu.
   return { streams, signCookie };
 }
 
@@ -1577,6 +1576,7 @@ function attachNative(url) {
       const shouldPlay = player.audio.pendingPlay !== false;
       player.audio.pendingPlay = null;
       if (shouldPlay) video.play().catch(() => {});
+      reapplySelectedCaption();
       resolve();
     };
     const onErr = () => {
@@ -1613,6 +1613,7 @@ async function attachHls(url) {
       const shouldPlay = player.audio.pendingPlay !== false;
       player.audio.pendingPlay = null;
       if (shouldPlay) video.play().catch(() => {});
+      reapplySelectedCaption();
       resolve();
     });
     hls.on(Hls.Events.ERROR, (evt, data) => {
@@ -1626,6 +1627,12 @@ async function attachHls(url) {
     hls.attachMedia(video);
     player.hls = hls;
   });
+}
+
+function reapplySelectedCaption() {
+  if (player.captionIndex < 0) return;
+  if (!player.captions[player.captionIndex]) return;
+  selectCaption(player.captionIndex).catch(() => {});
 }
 
 function loadHlsLib() {
@@ -1715,7 +1722,6 @@ video.addEventListener("waiting", () => {
 });
 
 video.addEventListener("error", () => {
-  const v = video.error;
   if (!playerLoading.hidden && !player.busy) {
     clearTimeout(player.attemptTimer);
     advanceToNextStream("video element error");
@@ -1897,7 +1903,7 @@ document.addEventListener("pointerdown", (e) => {
   wasIdleOnPointerDown = playerUI.classList.contains("idle");
 }, true);
 
-/* ═══════════ VOLUME / BRIGHTNESS (audio boost + HUD setters) ═══════════ */
+/* ═══════════ VOLUME / BRIGHTNESS ═══════════ */
 const volumeSlider = document.getElementById("volume");
 const volVal = document.getElementById("volVal");
 const brightSlider = document.getElementById("bright");
@@ -1908,8 +1914,8 @@ const avWrap = document.getElementById("avWrap");
 let audioCtx = null;
 let gainNode = null;
 let mediaSourceNode = null;
-let volumeBoost = 1.0;   // 0 – 3 (0% – 300%)
-let brightness = 1.0;    // 0.2 – 2.0
+let volumeBoost = 1.0;
+let brightness = 1.0;
 
 function ensureAudioGraph() {
   if (audioCtx) {
@@ -1940,21 +1946,17 @@ function setVolumeBoost(v) {
   volumeBoost = Math.max(0, Math.min(3, v));
 
   if (gainNode) {
-    // Graph exists — control via gain only
     gainNode.gain.value = volumeBoost;
     video.volume = 1.0;
   } else if (volumeBoost > 1.0) {
-    // Need boost — create graph
     if (ensureAudioGraph() && gainNode) {
       gainNode.gain.value = volumeBoost;
       video.volume = 1.0;
     } else {
-      // Graph creation failed — cap at 100%
       volumeBoost = 1.0;
       video.volume = 1.0;
     }
   } else {
-    // No graph needed — use native volume
     video.volume = volumeBoost;
   }
 
@@ -1982,14 +1984,14 @@ document.addEventListener("click", (e) => {
   if (!avWrap.contains(e.target)) avPanel.hidden = true;
 });
 
-/* ═══════════ SWIPE GESTURES (volume right / brightness left) ═══════════ */
+/* ═══════════ SWIPE GESTURES ═══════════ */
 const SWIPE_DEADZONE = 8;
 const SWIPE_RANGE_PX = 200;
 
 const swipeState = {
   active: false,
   pointerId: null,
-  side: null, // 'left' | 'right'
+  side: null,
   startX: 0,
   startY: 0,
   startValue: 0,
@@ -2040,7 +2042,6 @@ playerStage.addEventListener("pointermove", (e) => {
   if (!swipeState.engaged) {
     if (Math.abs(dy) < SWIPE_DEADZONE) return;
     if (Math.abs(dy) <= Math.abs(dx)) {
-      // horizontal — cancel
       swipeState.active = false;
       swipeState.pointerId = null;
       return;
@@ -2052,7 +2053,7 @@ playerStage.addEventListener("pointermove", (e) => {
 
   try { e.preventDefault(); } catch (_) {}
 
-  const delta = -dy / SWIPE_RANGE_PX; // up = +, down = -
+  const delta = -dy / SWIPE_RANGE_PX;
 
   if (swipeState.side === "left") {
     const min = 0.2, max = 2.0;
@@ -2089,7 +2090,7 @@ playerStage.addEventListener("pointercancel", (e) => {
   hideSwipeHud();
 });
 
-/* ═══════════ STAGE CLICK (tap to play/pause) ═══════════ */
+/* ═══════════ STAGE CLICK ═══════════ */
 playerStage.addEventListener("click", (e) => {
   if (Date.now() - lastSwipeEndTime < 400) return;
   if (e.target.closest(IGNORE_SELECTORS)) return;
@@ -2105,7 +2106,7 @@ playerStage.addEventListener("click", (e) => {
 document.addEventListener("mousemove", showControls);
 document.addEventListener("pointerdown", showControls);
 
-/* ═══════════ FRAME BUTTONS (center ±10s) ═══════════ */
+/* ═══════════ FRAME BUTTONS ═══════════ */
 document.getElementById("frameRewind").addEventListener("click", (e) => {
   e.stopPropagation();
   if (!video.duration) return;
@@ -2238,7 +2239,7 @@ document.addEventListener("click", (e) => {
 
 /* ═══════════ CAPTIONS ═══════════ */
 async function loadCaptionsForCurrentStream() {
-  const stream = player.streams[0];
+  const stream = player.streams[player.currentIdx];
   if (!stream || !stream.id || !stream.format) { capWrap.hidden = true; return; }
   try {
     const params = new URLSearchParams({
@@ -2257,10 +2258,12 @@ async function loadCaptionsForCurrentStream() {
       name: pick(c, "lanName", "language", "label") || "Subtitle",
       url: pick(c, "url", "src", "file") || "",
     })).filter(c => c.url);
+    captionCache.clear();
     capWrap.hidden = player.captions.length === 0;
     if (player.captions.length) buildCaptionMenu();
   } catch (_) { capWrap.hidden = true; }
 }
+
 function buildCaptionMenu() {
   capList.innerHTML =
     '<button data-c="-1"' + (player.captionIndex === -1 ? ' class="active"' : '') + '><span>Off</span><span class="check">✓</span></button>' +
@@ -2286,22 +2289,29 @@ function buildCaptionMenu() {
     });
   });
 }
+
 function deselectCaption() {
   player.captionIndex = -1;
   removeCaptionTrack();
   buildCaptionMenu();
   capLabel.textContent = "CC";
 }
+
 async function selectCaption(idx) {
   const cap = player.captions[idx];
   if (!cap) return;
   try {
-    const referer = absolute(BASE, "/movies/" + P.detailPath);
-    const res = await fetch(proxied(cap.url, referer));
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    let text = await res.text();
-    if (!/^\s*WEBVTT/i.test(text)) {
-      text = "WEBVTT\n\n" + text.replace(/\r+/g, "").replace(/^\d+\s*$/gm, "").replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+    let text = captionCache.get(idx);
+    if (!text) {
+      const referer = absolute(BASE, "/movies/" + P.detailPath);
+      const res = await fetch(proxied(cap.url, referer));
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      text = await res.text();
+      text = text.replace(/^\uFEFF/, "");
+      if (!/^\s*WEBVTT/i.test(text)) {
+        text = "WEBVTT\n\n" + text.replace(/\r+/g, "").replace(/^\d+\s*$/gm, "").replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+      }
+      captionCache.set(idx, text);
     }
     applyCaptionTrack(text, cap.name);
     player.captionIndex = idx;
@@ -2309,34 +2319,59 @@ async function selectCaption(idx) {
     buildCaptionMenu();
   } catch (e) { /* ignore */ }
 }
+
 function removeCaptionTrack() {
   if (player.captionTrackEl) { try { player.captionTrackEl.remove(); } catch (_) {} player.captionTrackEl = null; }
   if (player.captionBlobUrl) { try { URL.revokeObjectURL(player.captionBlobUrl); } catch (_) {} player.captionBlobUrl = null; }
   if (captionOverlay) { captionOverlay.hidden = true; captionOverlay.innerHTML = ""; }
+  lastCueHtml = "";
 }
+
+let lastCueHtml = "";
+
 function applyCaptionTrack(vttText, label) {
   removeCaptionTrack();
   const blob = new Blob([vttText], { type: "text/vtt;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const track = document.createElement("track");
-  track.kind = "subtitles"; track.label = label || "Subtitle"; track.srclang = "en"; track.src = url; track.default = true;
+  track.kind = "subtitles";
+  track.label = label || "Subtitle";
+  track.srclang = "en";
+  track.src = url;
+  track.default = false;
   video.appendChild(track);
   player.captionTrackEl = track;
   player.captionBlobUrl = url;
-  setTimeout(() => {
+
+  let applied = false;
+  const setupTrack = () => {
+    if (applied) return;
     const tt = track.track;
     if (!tt) return;
-    tt.mode = "hidden";
+    if (tt.readyState === 3) return;
+    applied = true;
     tt.addEventListener("cuechange", renderCues);
-  }, 200);
+    tt.mode = "hidden";
+    renderCues({ target: tt });
+  };
+  track.addEventListener("load", setupTrack, { once: true });
+  setTimeout(setupTrack, 300);
 }
+
 function renderCues(e) {
   const tt = e.target;
   if (!tt || !captionOverlay) return;
-  if (player.captionIndex === -1) { captionOverlay.hidden = true; return; }
+  if (player.captionIndex === -1) {
+    if (!captionOverlay.hidden) { captionOverlay.hidden = true; captionOverlay.innerHTML = ""; }
+    lastCueHtml = "";
+    return;
+  }
   const cues = tt.activeCues;
-  if (!cues || !cues.length) { captionOverlay.hidden = true; return; }
-
+  if (!cues || !cues.length) {
+    if (!captionOverlay.hidden) { captionOverlay.hidden = true; captionOverlay.innerHTML = ""; }
+    lastCueHtml = "";
+    return;
+  }
   const lines = [];
   for (let i = 0; i < cues.length; i++) {
     const raw = (cues[i].text || "").replace(/<[^>]+>/g, "").trim();
@@ -2346,12 +2381,36 @@ function renderCues(e) {
       if (t) lines.push(t);
     });
   }
-  if (!lines.length) { captionOverlay.hidden = true; return; }
-  captionOverlay.innerHTML = lines
-    .map(l => '<div class="cap-line">' + escapeHtml(l) + "</div>")
-    .join("");
+  if (!lines.length) {
+    if (!captionOverlay.hidden) { captionOverlay.hidden = true; captionOverlay.innerHTML = ""; }
+    lastCueHtml = "";
+    return;
+  }
+  const html = lines.map(l => '<div class="cap-line">' + escapeHtml(l) + "</div>").join("");
+  if (html === lastCueHtml && !captionOverlay.hidden) return;
+  lastCueHtml = html;
+  captionOverlay.innerHTML = html;
   captionOverlay.hidden = false;
 }
+
+/* Fallback render: if `cuechange` doesn't fire (some browsers), re-render on time/seek changes */
+video.addEventListener("timeupdate", () => {
+  if (player.captionIndex === -1) return;
+  const trackEl = player.captionTrackEl;
+  if (!trackEl || !trackEl.track) return;
+  const tt = trackEl.track;
+  if (tt.mode !== "hidden") return;
+  renderCues({ target: tt });
+});
+video.addEventListener("seeked", () => {
+  if (player.captionIndex === -1) return;
+  const trackEl = player.captionTrackEl;
+  if (!trackEl || !trackEl.track) return;
+  const tt = trackEl.track;
+  if (tt.mode !== "hidden") return;
+  renderCues({ target: tt });
+});
+
 capBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   capList.hidden = !capList.hidden;
