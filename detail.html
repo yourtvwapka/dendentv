@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>(function(s){s.dataset.zone='12123736',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#000000" />
@@ -769,6 +768,31 @@
     .person-credits-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
   }
 
+  /* ═══════════ TOAST ═══════════ */
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 96px;
+    transform: translateX(-50%) translateY(12px);
+    background: rgba(30,30,37,.98);
+    border: 1px solid var(--line);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    z-index: 10000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    box-shadow: 0 12px 32px rgba(0,0,0,.65);
+    max-width: min(90vw, 420px);
+    text-align: center;
+    line-height: 1.45;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  body.has-footer #toast { bottom: 140px; }
+
   #debugOutput {
     position: fixed; bottom: 0; left: 0; right: 0;
     max-height: 40vh; overflow: auto;
@@ -941,6 +965,84 @@ function imgUrl(v) {
   if (!v) return "";
   if (typeof v === "string") return v.startsWith("//") ? "https:" + v : v;
   return v.url || v.src || v.path || "";
+}
+
+/* ═══════════ AD GATE (direct-link ad) ═══════════ */
+const AD_URL = "https://uplcm.com/4/12109724";
+const AD_UNLOCK_PREFIX = "adUnlocked:";
+
+let adPendingKey = null;
+let adWatcherBound = false;
+
+function isAdUnlocked(key) {
+  try { return sessionStorage.getItem(AD_UNLOCK_PREFIX + key) === "1"; }
+  catch (_) { return false; }
+}
+function unlockAd(key) {
+  try { sessionStorage.setItem(AD_UNLOCK_PREFIX + key, "1"); } catch (_) {}
+}
+
+/* One "ad token" per movie / per season / per provider */
+function getPlayKey(kind, extra) {
+  if (kind === "moviebox") {
+    const m = state.moviebox;
+    const dub = m.data && m.data.dubs ? m.data.dubs[m.selectedDub] : null;
+    const dp = (dub && dub.detailPath) || (m.data && m.data.detailPath) || "unknown";
+    const se = m.data && m.data.isSeries ? (m.selectedSe || 0) : 0;
+    return "mb|" + dp + "|" + se;
+  }
+  return "srv|" + (extra || "");
+}
+
+/* Entry point for every play action */
+function handlePlay(kind, extra) {
+  const key = getPlayKey(kind, extra);
+  if (!isAdUnlocked(key)) { requestAd(key); return; }
+  if (kind === "moviebox") playMovieBox();
+  else if (kind === "server") playServer(extra);
+}
+
+function requestAd(key) {
+  adPendingKey = key;
+  bindAdWatcher();
+  let win = null;
+  try { win = window.open(AD_URL, "_blank"); } catch (_) {}
+  if (win) {
+    try { win.opener = null; } catch (_) {}
+  } else {
+    adPendingKey = null;
+    showToast("Please allow pop-ups so the ad can open, then tap again.");
+  }
+}
+
+function bindAdWatcher() {
+  if (adWatcherBound) return;
+  adWatcherBound = true;
+  document.addEventListener("visibilitychange", onAdReturn);
+  window.addEventListener("focus", onAdReturn);
+}
+
+/* User came back from the ad tab → unlock the button */
+function onAdReturn() {
+  if (!adPendingKey) return;
+  if (document.visibilityState === "hidden") return;
+  const key = adPendingKey;
+  adPendingKey = null;
+  unlockAd(key);
+  render();
+}
+
+function showToast(msg) {
+  let el = document.getElementById("toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => el.classList.remove("show"), 3200);
 }
 
 /* ═══════════ POSTER / BACKDROP BACKGROUND ═══════════ */
@@ -1669,6 +1771,18 @@ document.addEventListener("keydown", (e) => {
   if (personModal && !personModal.hidden) { closePersonModal(); return; }
 });
 
+/* ═══════════ PLAY BUTTON (ad-gated) ═══════════ */
+function playButtonHtml(kind, extra, playText) {
+  const unlocked = isAdUnlocked(getPlayKey(kind, extra));
+  const action = kind === "moviebox" ? "play-moviebox" : "play-server";
+  const providerAttr = kind === "server" ? ` data-provider="${escapeHtml(extra || "")}"` : "";
+  const icon = unlocked
+    ? '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'
+    : '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>';
+  const label = unlocked ? playText : "Watch Ad to Play";
+  return `<button class="btn btn-primary" data-action="${action}"${providerAttr} type="button">${icon}${label}</button>`;
+}
+
 /* ═══════════ TRAILER BUTTON HELPER ═══════════ */
 function trailerBtnHtml() {
   if (!state.hero.trailerKey) return "";
@@ -1734,11 +1848,7 @@ function renderHero() {
       const playText = m.data.isSeries
         ? `Play S${m.selectedSe}E${String(m.selectedEp).padStart(2, "0")}`
         : "Play Movie";
-      actionsHtml += `
-        <button class="btn btn-primary" data-action="play-moviebox" type="button">
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-          ${playText}
-        </button>`;
+      actionsHtml += playButtonHtml("moviebox", null, playText);
     }
     actionsHtml += trailerBtnHtml();
     actionsHtml += '</div>';
@@ -1843,10 +1953,7 @@ function renderMovieBoxTab() {
     ? `Play S${m.selectedSe}E${String(m.selectedEp).padStart(2, "0")}`
     : "Play Movie";
   parts.push(`<div class="play-row">
-    <button class="btn btn-primary" data-action="play-moviebox" type="button">
-      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      ${playText}
-    </button>
+    ${playButtonHtml("moviebox", null, playText)}
     ${trailerBtnHtml()}
   </div>`);
 
@@ -1865,10 +1972,7 @@ function renderServerTab(provider) {
         </button>`).join("")}
     </div></div>
     <div class="play-row">
-      <button class="btn btn-primary" data-action="play-server" data-provider="${provider}" type="button">
-        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        Play
-      </button>
+      ${playButtonHtml("server", provider, "Play")}
       ${trailerBtnHtml()}
     </div>`;
 }
@@ -2009,15 +2113,16 @@ function bindEvents() {
       } else if (a === "pick-ep") {
         state.moviebox.selectedSe = Number(btn.dataset.se);
         state.moviebox.selectedEp = Number(btn.dataset.ep);
-        playMovieBox();
+        render();
+        handlePlay("moviebox");
       } else if (a === "pick-server") {
         const p = btn.dataset.provider;
         state[p].selectedServer = Number(btn.dataset.server);
         render();
       } else if (a === "play-moviebox") {
-        playMovieBox();
+        handlePlay("moviebox");
       } else if (a === "play-server") {
-        playServer(btn.dataset.provider);
+        handlePlay("server", btn.dataset.provider);
       } else if (a === "play-trailer") {
         openTrailer();
       }
